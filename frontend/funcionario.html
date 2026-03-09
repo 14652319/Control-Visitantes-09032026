@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funcionario - Autorización de Visitantes</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="funcionarioApp()" x-init="init()" x-cloak>
+    
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-green-800 to-green-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <img src="assets/img/logo-canaveral.png" alt="Logo Cañaveral" class="h-12 w-auto">
+                    <div>
+                        <h1 class="text-2xl font-bold">Autorización de Visitantes</h1>
+                        <p class="text-sm text-green-200">Supertiendas Cañaveral SAS</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="font-semibold" x-text="usuario.nombre_completo || '¡Hola!'"></p>
+                        <p class="text-xs text-green-200" x-text="usuario.sede || 'Cargando...'"></p>
+                    </div>
+                    <button 
+                        @click="logout()"
+                        class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition flex items-center gap-2"
+                    >
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Salir</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Contenido Principal -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- Botón Nueva Autorización -->
+        <div class="mb-6 flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-gray-800">Mis Autorizaciones</h2>
+            <div class="flex gap-3">
+                <button 
+                    @click="cargarAutorizaciones()"
+                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold shadow-lg transition inline-flex items-center gap-2"
+                    title="Actualizar lista"
+                    :disabled="cargando"
+                >
+                    <i class="fas fa-sync-alt" :class="{'fa-spin': cargando}"></i>
+                    <span class="hidden md:inline">Actualizar</span>
+                </button>
+                <button 
+                    @click="abrirModalAutorizacion()"
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition inline-flex items-center gap-2"
+                >
+                    <i class="fas fa-plus"></i>
+                    <span>Nueva Autorización</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Estado</label>
+                    <select 
+                        x-model="filtros.estado" 
+                        @change="cargarAutorizaciones()"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                        <option value="">Todos los estados</option>
+                        <option value="PENDIENTE">Pendientes</option>
+                        <option value="UTILIZADA">Utilizadas</option>
+                        <option value="VENCIDA">Vencidas</option>
+                        <option value="CANCELADA">Canceladas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Búsqueda</label>
+                    <input 
+                        type="text"
+                        x-model="filtros.busqueda"
+                        @input="filtrarAutorizaciones()"
+                        placeholder="Buscar por identificación o nombre..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                </div>
+                <div class="flex items-end">
+                    <label class="flex items-center gap-2">
+                        <input 
+                            type="checkbox"
+                            x-model="filtros.incluirVencidas"
+                            @change="cargarAutorizaciones()"
+                            class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        >
+                        <span class="text-gray-700">Incluir vencidas</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estadísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total</p>
+                        <p class="text-2xl font-bold text-gray-800" x-text="estadisticas.total || 0"></p>
+                    </div>
+                    <div class="bg-gray-100 p-3 rounded-full">
+                        <i class="fas fa-list-ul text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Pendientes</p>
+                        <p class="text-2xl font-bold text-blue-600" x-text="estadisticas.pendientes || 0"></p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-clock text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Utilizadas</p>
+                        <p class="text-2xl font-bold text-green-600" x-text="estadisticas.utilizadas || 0"></p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-check text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Vencidas</p>
+                        <p class="text-2xl font-bold text-gray-600" x-text="estadisticas.vencidas || 0"></p>
+                    </div>
+                    <div class="bg-gray-100 p-3 rounded-full">
+                        <i class="fas fa-times text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista de Autorizaciones -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitante</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Autoriza</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vigencia</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-if="autorizacionesFiltradas.length === 0">
+                            <tr>
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                    <i class="fas fa-inbox text-4xl mb-2"></i>
+                                    <p>No hay autorizaciones para mostrar</p>
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-for="auth in autorizacionesFiltradas" :key="auth.id">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm">
+                                        <div class="font-medium text-gray-900" x-text="auth.nombre_completo"></div>
+                                        <div class="text-gray-500" x-text="auth.tipo_identificacion + ' ' + auth.num_identificacion"></div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="auth.empresa"></div>
+                                    <div class="text-xs text-gray-500" x-text="auth.nit_empresa || 'Sin NIT'"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="auth.prefijo_dependencia"></div>
+                                    <div class="text-xs text-gray-500" x-text="auth.descripcion_dependencia"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="auth.funcionario_autoriza"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span 
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                        :class="{
+                                            'bg-green-100 text-green-800': auth.estado === 'PENDIENTE',
+                                            'bg-blue-100 text-blue-800': auth.estado === 'UTILIZADA',
+                                            'bg-red-100 text-red-800': auth.estado === 'VENCIDA',
+                                            'bg-gray-100 text-gray-800': auth.estado === 'CANCELADA'
+                                        }"
+                                    >
+                                        <i class="fas mr-1" :class="{
+                                            'fa-clock': auth.estado === 'PENDIENTE',
+                                            'fa-check-circle': auth.estado === 'UTILIZADA',
+                                            'fa-exclamation-triangle': auth.estado === 'VENCIDA',
+                                            'fa-ban': auth.estado === 'CANCELADA'
+                                        }"></i>
+                                        <span x-text="auth.estado"></span>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <template x-if="auth.estado === 'PENDIENTE' && auth.dias_restantes !== null">
+                                        <span 
+                                            :class="{
+                                                'text-red-600 font-semibold': auth.dias_restantes <= 1,
+                                                'text-yellow-600': auth.dias_restantes > 1 && auth.dias_restantes <= 3,
+                                                'text-green-600': auth.dias_restantes > 3
+                                            }"
+                                            x-text="auth.dias_restantes + ' día(s)'"
+                                        ></span>
+                                    </template>
+                                    <template x-if="auth.estado === 'UTILIZADA'">
+                                        <span class="text-gray-500" x-text="formatearFecha(auth.fecha_utilizacion)"></span>
+                                    </template>
+                                    <template x-if="auth.estado === 'VENCIDA'">
+                                        <span class="text-red-600 font-semibold">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            Vencida
+                                        </span>
+                                    </template>
+                                    <template x-if="auth.estado === 'CANCELADA'">
+                                        <span class="text-gray-400">-</span>
+                                    </template>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button 
+                                        @click="verDetalles(auth)"
+                                        class="text-blue-600 hover:text-blue-900 mr-3"
+                                        title="Ver detalles"
+                                    >
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <template x-if="auth.estado === 'PENDIENTE'">
+                                        <button 
+                                            @click="editarAutorizacion(auth)"
+                                            class="text-green-600 hover:text-green-900 mr-3"
+                                            title="Editar"
+                                        >
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button 
+                                            @click="confirmarCancelar(auth)"
+                                            class="text-red-600 hover:text-red-900"
+                                            title="Cancelar"
+                                        >
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                    </template>
+                                    <template x-if="(auth.estado === 'VENCIDA' || auth.estado === 'CANCELADA') && auth.estado !== 'UTILIZADA'">
+                                        <button 
+                                            @click="confirmarEliminar(auth)"
+                                            class="text-red-600 hover:text-red-900"
+                                            title="Eliminar"
+                                        >
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </main>
+    
+    <!-- Modal Nueva/Editar Autorización -->
+    <div 
+        x-show="mostrarModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="cerrarModal()"
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-clipboard-check text-blue-600 mr-2"></i>
+                    <span x-text="autorizacionEditando ? 'Editar Autorización' : 'Nueva Autorización'"></span>
+                </h3>
+                <button @click="cerrarModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form @submit.prevent="guardarAutorizacion()">
+                    
+                    <!-- Datos del Visitante -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Datos del Visitante</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Tipo de Identificación *</label>
+                                <select 
+                                    x-model="formulario.tipo_identificacion"
+                                    @change="buscarVisitanteExistente()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Seleccione...</option>
+                                    <option value="RC">RC - REGISTRO CIVIL</option>
+                                    <option value="TI">TI - TARJETA DE IDENTIDAD</option>
+                                    <option value="CC">CC - CEDULA CIUDADANIA</option>
+                                    <option value="CE">CE - CEDULA EXTRANJERIA</option>
+                                    <option value="PS">PS - PASAPORTE</option>
+                                    <option value="CT">CT - CONTRASEÑA</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Número de Identificación *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.num_identificacion"
+                                    @input="buscarVisitanteExistente()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                            </div>
+                        </div>
+                        
+                        <!-- Mensaje de estado de búsqueda -->
+                        <div x-show="mensajeBusquedaVisitante" class="mt-4">
+                            <div 
+                                class="p-4 rounded-lg border-l-4"
+                                :class="{
+                                    'bg-green-50 border-green-500 text-green-800': !visitanteNoRegistrado && mensajeBusquedaVisitante,
+                                    'bg-yellow-50 border-yellow-500 text-yellow-800': visitanteNoRegistrado,
+                                    'bg-red-50 border-red-500 text-red-800': mensajeBusquedaVisitante.includes('Error')
+                                }"
+                            >
+                                <p class="text-sm font-medium" x-text="mensajeBusquedaVisitante"></p>
+                                <p x-show="visitanteNoRegistrado" class="text-xs mt-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Solo puede autorizar visitantes que ya estén registrados en el sistema.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Primer Nombre *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.primer_nombre"
+                                    @input="formulario.primer_nombre = $event.target.value.toUpperCase()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Segundo Nombre</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.segundo_nombre"
+                                    @input="formulario.segundo_nombre = $event.target.value.toUpperCase()"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Primer Apellido *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.primer_apellido"
+                                    @input="formulario.primer_apellido = $event.target.value.toUpperCase()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Segundo Apellido</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.segundo_apellido"
+                                    @input="formulario.segundo_apellido = $event.target.value.toUpperCase()"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Datos de la Empresa -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Datos de la Empresa</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">NIT/RUT *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.nit_empresa"
+                                    @input="formulario.nit_empresa = $event.target.value.toUpperCase(); buscarEmpresaPorNit()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                    placeholder="Ingrese el NIT"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Empresa (Razón Social) *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.empresa"
+                                    @input="formulario.empresa = $event.target.value.toUpperCase()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Destino -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Destino en la Empresa</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Dependencia *</label>
+                                <select 
+                                    x-model="formulario.dependencia_seleccionada"
+                                    @change="asignarDependencia()"
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Seleccione dependencia...</option>
+                                    <template x-for="dep in dependencias" :key="dep.id">
+                                        <option :value="dep.id" x-text="dep.prefijo_dependencia + ' - ' + dep.descripcion_dependencia"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Funcionario que Autoriza *</label>
+                                <input 
+                                    type="text"
+                                    x-model="formulario.funcionario_autoriza"
+                                    @input="formulario.funcionario_autoriza = $event.target.value.toUpperCase()"
+                                    required
+                                    placeholder="Nombre del funcionario"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-medium mb-2">Observaciones</label>
+                        <textarea 
+                            x-model="formulario.observaciones"
+                            @input="formulario.observaciones = $event.target.value.toUpperCase()"
+                            rows="3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent uppercase"
+                            placeholder="Motivo de la visita, información adicional..."
+                        ></textarea>
+                    </div>
+                    
+                    <!-- Info de Vigencia -->
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-blue-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    Esta autorización tendrá una vigencia de <strong>24 horas (1 día)</strong> a partir de su creación.
+                                    El operador podrá aplicarla durante ese período al registrar el ingreso del visitante.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="flex justify-end gap-3">
+                        <button 
+                            type="button"
+                            @click="cerrarModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit"
+                            :disabled="visitanteNoRegistrado"
+                            :class="{
+                                'bg-gray-400 cursor-not-allowed': visitanteNoRegistrado,
+                                'bg-green-600 hover:bg-green-700': !visitanteNoRegistrado
+                            }"
+                            class="text-white px-6 py-2 rounded-lg font-semibold transition"
+                        >
+                            <i class="fas fa-save mr-2"></i>
+                            <span x-text="autorizacionEditando ? 'Actualizar' : 'Guardar'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Detalles -->
+    <div 
+        x-show="mostrarDetalles"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="cerrarDetalles()"
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-file-alt text-blue-600 mr-2"></i>
+                    Detalles de la Autorización
+                </h3>
+                <button @click="cerrarDetalles()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6" x-show="autorizacionDetalles">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start pb-4 border-b">
+                        <div>
+                            <h4 class="text-xl font-bold text-gray-800" x-text="autorizacionDetalles?.nombre_completo"></h4>
+                            <p class="text-gray-600" x-text="autorizacionDetalles?.tipo_identificacion + ' ' + autorizacionDetalles?.num_identificacion"></p>
+                        </div>
+                        <span 
+                            class="px-3 py-1 text-sm font-semibold rounded-full"
+                            :class="{
+                                'bg-green-100 text-green-800': autorizacionDetalles?.estado === 'PENDIENTE',
+                                'bg-green-100 text-green-800': autorizacionDetalles?.estado === 'UTILIZADA',
+                                'bg-gray-100 text-gray-800': autorizacionDetalles?.estado === 'VENCIDA',
+                                'bg-red-100 text-red-800': autorizacionDetalles?.estado === 'CANCELADA'
+                            }"
+                            x-text="autorizacionDetalles?.estado"
+                        ></span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Empresa</p>
+                            <p class="font-semibold" x-text="autorizacionDetalles?.empresa"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">NIT/RUT</p>
+                            <p class="font-semibold" x-text="autorizacionDetalles?.nit_empresa || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Dependencia</p>
+                            <p class="font-semibold" x-text="autorizacionDetalles?.prefijo_dependencia"></p>
+                            <p class="text-sm text-gray-600" x-text="autorizacionDetalles?.descripcion_dependencia"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Funcionario Autoriza</p>
+                            <p class="font-semibold" x-text="autorizacionDetalles?.funcionario_autoriza"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Creada por</p>
+                            <p class="font-semibold" x-text="autorizacionDetalles?.usuario_creador?.usuario || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Fecha de Creación</p>
+                            <p class="font-semibold" x-text="formatearFecha(autorizacionDetalles?.fecha_creacion)"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Fecha de Vencimiento</p>
+                            <p class="font-semibold" x-text="formatearFecha(autorizacionDetalles?.fecha_vencimiento)"></p>
+                        </div>
+                        <div x-show="autorizacionDetalles?.dias_restantes !== null && autorizacionDetalles?.estado === 'PENDIENTE'">
+                            <p class="text-sm text-gray-500">Días Restantes</p>
+                            <p 
+                                class="font-semibold"
+                                :class="{
+                                    'text-red-600': autorizacionDetalles?.dias_restantes <= 1,
+                                    'text-yellow-600': autorizacionDetalles?.dias_restantes > 1 && autorizacionDetalles?.dias_restantes <= 3,
+                                    'text-green-600': autorizacionDetalles?.dias_restantes > 3
+                                }"
+                                x-text="autorizacionDetalles?.dias_restantes + ' día(s)'"
+                            ></p>
+                        </div>
+                    </div>
+                    
+                    <div x-show="autorizacionDetalles?.observaciones">
+                        <p class="text-sm text-gray-500">Observaciones</p>
+                        <p class="text-gray-700 mt-1" x-text="autorizacionDetalles?.observaciones"></p>
+                    </div>
+                    
+                    <div x-show="autorizacionDetalles?.estado === 'UTILIZADA' && autorizacionDetalles?.fecha_utilizacion">
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4">
+                            <p class="text-sm text-green-700">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Esta autorización fue utilizada el <strong x-text="formatearFecha(autorizacionDetalles?.fecha_utilizacion)"></strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end">
+                    <button 
+                        @click="cerrarDetalles()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-semibold transition"
+                    >
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    function funcionarioApp() {
+        return {
+            usuario: {},
+            autorizaciones: [],
+            autorizacionesFiltradas: [],
+            dependencias: [],
+            mostrarModal: false,
+            mostrarDetalles: false,
+            autorizacionEditando: null,
+            autorizacionDetalles: null,
+            filtros: {
+                estado: '',
+                busqueda: '',
+                incluirVencidas: false
+            },
+            estadisticas: {
+                total: 0,
+                pendientes: 0,
+                utilizadas: 0,
+                vencidas: 0
+            },
+            cargando: false,
+            autoRefreshInterval: null,
+            formulario: {
+                tipo_identificacion: '',
+                num_identificacion: '',
+                primer_nombre: '',
+                segundo_nombre: '',
+                primer_apellido: '',
+                segundo_apellido: '',
+                empresa: '',
+                nit_empresa: '',
+                prefijo_dependencia: '',
+                descripcion_dependencia: '',
+                dependencia_seleccionada: '',
+                funcionario_autoriza: '',
+                observaciones: ''
+            },
+            visitanteNoRegistrado: false,
+            mensajeBusquedaVisitante: '',
+            
+            async init() {
+                try {
+                    // Verificar sesión
+                    const sessionCheck = await apiClient.auth.checkSession();
+                    if (!sessionCheck.authenticated) {
+                        console.log('❌ No hay sesión activa');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    
+                    // Obtener datos del usuario
+                    const response = await apiClient.auth.getCurrentUser();
+                    if (response.success && response.usuario) {
+                        this.usuario = response.usuario;
+                        
+                        // Verificar que sea funcionario o master
+                        if (this.usuario.rol !== 'usuario_funcionario' && this.usuario.rol !== 'usuario_master') {
+                            alert('Acceso denegado. Solo funcionarios y administradores pueden acceder.');
+                            await apiClient.auth.logout();
+                            window.location.href = 'index.html';
+                            return;
+                        }
+                        
+                        console.log('✓ Usuario autenticado:', this.usuario.nombre_completo);
+                    } else {
+                        console.error('❌ No se pudieron obtener datos del usuario');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                } catch (error) {
+                    console.error('❌ Error en init():', error);
+                    // No redirigir inmediatamente en caso de error de red
+                    alert('Error al cargar. Intente nuevamente.');
+                    return;
+                }
+                
+                await this.cargarDependencias();
+                await this.cargarAutorizaciones();
+                this.calcularEstadisticas();
+                
+                // Auto-refresh cada 30 segundos
+                this.autoRefreshInterval = setInterval(() => {
+                    if (!this.mostrarModal && document.visibilityState === 'visible') {
+                        this.cargarAutorizaciones();
+                    }
+                }, 30000);
+                
+                // Refrescar cuando la ventana recupera el foco
+                window.addEventListener('focus', () => {
+                    if (!this.mostrarModal) {
+                        this.cargarAutorizaciones();
+                    }
+                });
+            },
+            
+            async cargarDependencias() {
+                try {
+                    const response = await apiClient.dependencias.listar();
+                    if (response.success) {
+                        this.dependencias = response.dependencias.filter(d => d.estado === 'ACTIVO');
+                    }
+                } catch (error) {
+                    console.error('Error al cargar dependencias:', error);
+                }
+            },
+            
+            async cargarAutorizaciones() {
+                try {
+                    const params = new URLSearchParams();
+                    if (this.filtros.estado) params.append('estado', this.filtros.estado);
+                    if (this.filtros.incluirVencidas) params.append('incluir_vencidas', 'true');
+                    
+                    console.log('🔍 Cargando autorizaciones con filtros:', {
+                        estado: this.filtros.estado,
+                        incluirVencidas: this.filtros.incluirVencidas
+                    });
+                    
+                    const response = await fetch(`${API_URL}/autorizaciones/?${params}`, {
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    console.log('📦 Respuesta del servidor:', data);
+                    
+                    if (data.success) {
+                        this.autorizaciones = data.autorizaciones;
+                        console.log(`✅ ${this.autorizaciones.length} autorizaciones cargadas`);
+                        this.filtrarAutorizaciones();
+                        this.calcularEstadisticas();
+                    } else {
+                        console.error('❌ Error en respuesta:', data.message);
+                    }
+                } catch (error) {
+                    console.error('❌ Error al cargar autorizaciones:', error);
+                }
+            },
+            
+            filtrarAutorizaciones() {
+                if (!this.filtros.busqueda) {
+                    this.autorizacionesFiltradas = this.autorizaciones;
+                } else {
+                    const busqueda = this.filtros.busqueda.toLowerCase();
+                    this.autorizacionesFiltradas = this.autorizaciones.filter(auth => 
+                        auth.num_identificacion.toLowerCase().includes(busqueda) ||
+                        auth.nombre_completo.toLowerCase().includes(busqueda) ||
+                        auth.empresa.toLowerCase().includes(busqueda)
+                    );
+                }
+            },
+            
+            calcularEstadisticas() {
+                this.estadisticas.total = this.autorizaciones.length;
+                this.estadisticas.pendientes = this.autorizaciones.filter(a => a.estado === 'PENDIENTE').length;
+                this.estadisticas.utilizadas = this.autorizaciones.filter(a => a.estado === 'UTILIZADA').length;
+                this.estadisticas.vencidas = this.autorizaciones.filter(a => a.estado === 'VENCIDA').length;
+            },
+            
+            abrirModalAutorizacion() {
+                this.autorizacionEditando = null;
+                this.resetFormulario();
+                this.mostrarModal = true;
+            },
+            
+            editarAutorizacion(auth) {
+                this.autorizacionEditando = auth;
+                this.formulario = {
+                    tipo_identificacion: auth.tipo_identificacion,
+                    num_identificacion: auth.num_identificacion,
+                    primer_nombre: auth.primer_nombre,
+                    segundo_nombre: auth.segundo_nombre || '',
+                    primer_apellido: auth.primer_apellido,
+                    segundo_apellido: auth.segundo_apellido || '',
+                    empresa: auth.empresa,
+                    nit_empresa: auth.nit_empresa || '',
+                    prefijo_dependencia: auth.prefijo_dependencia,
+                    descripcion_dependencia: auth.descripcion_dependencia,
+                    funcionario_autoriza: auth.funcionario_autoriza,
+                    observaciones: auth.observaciones || ''
+                };
+                this.mostrarModal = true;
+            },
+            
+            asignarDependencia() {
+                const dep = this.dependencias.find(d => d.id === parseInt(this.formulario.dependencia_seleccionada));
+                if (dep) {
+                    this.formulario.prefijo_dependencia = dep.prefijo_dependencia;
+                    this.formulario.descripcion_dependencia = dep.descripcion_dependencia;
+                }
+            },
+            
+            async buscarVisitanteExistente() {
+                // Resetear mensaje
+                this.visitanteNoRegistrado = false;
+                this.mensajeBusquedaVisitante = '';
+                
+                // Solo buscar si hay tipo y número de identificación
+                if (!this.formulario.tipo_identificacion || !this.formulario.num_identificacion) {
+                    return;
+                }
+                
+                if (this.formulario.num_identificacion.length < 4) {
+                    return; // No buscar con menos de 4 dígitos
+                }
+                
+                try {
+                    const response = await fetch(
+                        `${API_URL}/visitantes/buscar?tipo_identificacion=${this.formulario.tipo_identificacion}&num_identificacion=${this.formulario.num_identificacion}`,
+                        { credentials: 'include' }
+                    );
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.visitante) {
+                        // Visitante existe - autocompletar datos en mayúsculas
+                        const v = data.visitante;
+                        this.formulario.primer_nombre = (v.primer_nombre || '').toUpperCase();
+                        this.formulario.segundo_nombre = (v.segundo_nombre || '').toUpperCase();
+                        this.formulario.primer_apellido = (v.primer_apellido || '').toUpperCase();
+                        this.formulario.segundo_apellido = (v.segundo_apellido || '').toUpperCase();
+                        
+                        this.visitanteNoRegistrado = false;
+                        this.mensajeBusquedaVisitante = '✓ Visitante encontrado en el sistema';
+                        console.log('✓ Visitante encontrado en el sistema');
+                    } else {
+                        // Visitante NO existe
+                        this.visitanteNoRegistrado = true;
+                        this.mensajeBusquedaVisitante = '⚠️ El visitante NO está registrado en el sistema. Por favor, comuníquese con Recepción para solicitar el registro del visitante antes de crear la autorización.';
+                        
+                        // Limpiar campos de nombres
+                        this.formulario.primer_nombre = '';
+                        this.formulario.segundo_nombre = '';
+                        this.formulario.primer_apellido = '';
+                        this.formulario.segundo_apellido = '';
+                    }
+                } catch (error) {
+                    console.error('Error al buscar visitante:', error);
+                    this.mensajeBusquedaVisitante = '❌ Error al buscar visitante. Intente nuevamente.';
+                }
+            },
+            
+            async buscarEmpresaPorNit() {
+                // Solo buscar si hay NIT
+                if (!this.formulario.nit_empresa) {
+                    return;
+                }
+                
+                const nit = this.formulario.nit_empresa.trim();
+                
+                if (nit.length < 3) {
+                    return; // No buscar con menos de 3 caracteres
+                }
+                
+                try {
+                    const response = await apiClient.visitantes.buscarPorNit(nit);
+                    
+                    if (response.success && response.empresa) {
+                        // Empresa encontrada - autocompletar nombre en mayúsculas
+                        this.formulario.empresa = (response.empresa || '').toUpperCase();
+                        console.log('✓ Empresa encontrada:', response.empresa);
+                    }
+                } catch (error) {
+                    // No mostrar error si no se encuentra, es normal
+                    console.log('Empresa no encontrada en el sistema');
+                }
+            },
+            
+            async guardarAutorizacion() {
+                try {
+                    const url = this.autorizacionEditando 
+                        ? `${API_URL}/autorizaciones/${this.autorizacionEditando.id}`
+                        : `${API_URL}/autorizaciones/`;
+                    
+                    const method = this.autorizacionEditando ? 'PUT' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(this.formulario)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        this.cerrarModal();
+                        await this.cargarAutorizaciones();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al guardar la autorización');
+                }
+            },
+            
+            async confirmarCancelar(auth) {
+                if (!confirm(`¿Está seguro de cancelar la autorización para ${auth.nombre_completo}?`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_URL}/autorizaciones/${auth.id}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        await this.cargarAutorizaciones();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al cancelar la autorización');
+                }
+            },
+            
+            async confirmarEliminar(auth) {
+                if (!confirm(`¿Está seguro de ELIMINAR PERMANENTEMENTE esta autorización?\n\nVisitante: ${auth.nombre_completo}\nEstado: ${auth.estado}\n\nEsta acción no se puede deshacer.`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_URL}/autorizaciones/${auth.id}/eliminar`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        await this.cargarAutorizaciones();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al eliminar la autorización');
+                }
+            },
+            
+            verDetalles(auth) {
+                this.autorizacionDetalles = auth;
+                this.mostrarDetalles = true;
+            },
+            
+            cerrarModal() {
+                this.mostrarModal = false;
+                this.autorizacionEditando = null;
+                this.resetFormulario();
+            },
+            
+            cerrarDetalles() {
+                this.mostrarDetalles = false;
+                this.autorizacionDetalles = null;
+            },
+            
+            resetFormulario() {
+                this.formulario = {
+                    tipo_identificacion: '',
+                    num_identificacion: '',
+                    primer_nombre: '',
+                    segundo_nombre: '',
+                    primer_apellido: '',
+                    segundo_apellido: '',
+                    empresa: '',
+                    nit_empresa: '',
+                    prefijo_dependencia: '',
+                    descripcion_dependencia: '',
+                    dependencia_seleccionada: '',
+                    funcionario_autoriza: '',
+                    observaciones: ''
+                };
+            },
+            
+            formatearFecha(fecha) {
+                if (!fecha) return 'N/A';
+                const date = new Date(fecha);
+                return date.toLocaleDateString('es-CO', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            },
+            
+            async logout() {
+                if (confirm('¿Está seguro de cerrar sesión?')) {
+                    await apiClient.auth.logout();
+                    window.location.href = 'index.html';
+                }
+            }
+        };
+    }
+    </script>
+</body>
+</html>

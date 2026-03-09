@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Control de Visitantes</title>
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            background-size: 400px 400px;
+            background-repeat: repeat;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div x-data="loginApp()" x-init="init()" class="w-full max-w-md" x-cloak>
+        <!-- Logo y Título -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
+                <img src="assets/img/logo-canaveral.png" alt="Supertiendas Cañaveral" class="h-20 w-auto mx-auto">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Control de Visitantes</h1>
+            <p class="text-gray-600 font-medium">Supertiendas Cañaveral SAS</p>
+        </div>
+        
+        <!-- Tarjeta de Login -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Iniciar Sesión</h2>
+            
+            <!-- Mensajes -->
+            <div x-show="mensaje.mostrar" 
+                 x-transition
+                 :class="mensaje.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'"
+                 class="p-4 border rounded-lg mb-4">
+                <p class="text-sm flex items-center gap-2">
+                    <i :class="mensaje.tipo === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
+                    <span x-text="mensaje.texto"></span>
+                </p>
+            </div>
+            
+            <form @submit.prevent="login()">
+                <!-- Usuario -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-user mr-2"></i>Usuario *
+                    </label>
+                    <input 
+                        type="text" 
+                        x-model="form.usuario"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                        placeholder="Ingrese su usuario"
+                        required
+                        :disabled="cargando"
+                    >
+                </div>
+                
+                <!-- Contraseña -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-lock mr-2"></i>Contraseña *
+                    </label>
+                    <div class="relative">
+                        <input 
+                            :type="mostrarPassword ? 'text' : 'password'" 
+                            x-model="form.password"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition pr-12"
+                            placeholder="Ingrese su contraseña"
+                            required
+                            :disabled="cargando"
+                        >
+                        <button 
+                            type="button"
+                            @click="mostrarPassword = !mostrarPassword"
+                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                            <i :class="mostrarPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Botón Iniciar Sesión -->
+                <button 
+                    type="submit"
+                    :disabled="cargando"
+                    class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    <i class="fas" :class="cargando ? 'fa-spinner fa-spin' : 'fa-sign-in-alt'"></i>
+                    <span x-text="cargando ? 'Iniciando sesión...' : 'Iniciar Sesión'"></span>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Footer -->
+        <div class="mt-6 text-center text-sm text-gray-600">
+            <p>&copy; 2026 Supertiendas Cañaveral SAS - Todos los derechos reservados</p>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        
+        function loginApp() {
+            return {
+                form: {
+                    usuario: '',
+                    password: ''
+                },
+                mensaje: {
+                    mostrar: false,
+                    tipo: '',
+                    texto: ''
+                },
+                cargando: false,
+                mostrarPassword: false,
+                
+                init() {
+                    // No verificar sesión automáticamente para evitar bucles
+                    // El usuario debe hacer login manualmente
+                },
+                
+                async verificarSesion() {
+                    try {
+                        const response = await fetch(`${API_URL}/auth/check-session`, {
+                            credentials: 'include'
+                        });
+                        const data = await response.json();
+                        
+                        if (data.authenticated) {
+                            this.redirigirSegunRol(data.usuario.rol);
+                        }
+                    } catch (error) {
+                        console.log('No hay sesión activa');
+                    }
+                },
+                
+                async login() {
+                    this.cargando = true;
+                    this.ocultarMensaje();
+                    
+                    try {
+                        const response = await fetch(`${API_URL}/auth/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(this.form)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.mostrarMensaje('success', 'Login exitoso! Redirigiendo...');
+                            
+                            // Guardar información del usuario
+                            localStorage.setItem('usuario', JSON.stringify(data.usuario));
+                            
+                            // Redirigir según rol
+                            setTimeout(() => {
+                                this.redirigirSegunRol(data.usuario.rol);
+                            }, 1000);
+                        } else {
+                            this.mostrarMensaje('error', data.message);
+                            if (data.bloqueado) {
+                                this.form.password = '';
+                            }
+                        }
+                    } catch (error) {
+                        this.mostrarMensaje('error', 'Error de conexión con el servidor');
+                        console.error('Error:', error);
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+                
+                redirigirSegunRol(rol) {
+                    // Limpiar espacios y convertir a minúsculas por seguridad
+                    const rolLimpio = (rol || '').trim().toLowerCase();
+                    
+                    console.log('Redirigiendo rol:', rolLimpio); // Debug
+                    
+                    if (rolLimpio === 'usuario_master') {
+                        window.location.href = 'admin.html';
+                    } else if (rolLimpio === 'usuario_operador') {
+                        window.location.href = 'operador.html';
+                    } else if (rolLimpio === 'usuario_funcionario') {
+                        window.location.href = 'funcionario.html';
+                    } else {
+                        console.error('Rol no reconocido:', rol);
+                        alert('Error: Rol de usuario no reconocido. Contacte al administrador.');
+                    }
+                },
+                
+                mostrarMensaje(tipo, texto) {
+                    this.mensaje = {
+                        mostrar: true,
+                        tipo: tipo,
+                        texto: texto
+                    };
+                },
+                
+                ocultarMensaje() {
+                    this.mensaje.mostrar = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

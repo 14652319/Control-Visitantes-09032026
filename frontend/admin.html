@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Control de Visitantes</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="adminApp()" x-init="init()" x-cloak>
+    
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gradient-to-b from-green-800 to-green-900 text-white flex flex-col">
+            <div class="p-6 border-b border-green-700">
+                <div class="flex flex-col items-center space-y-2">
+                    <div class="bg-white rounded-lg p-3 shadow-md">
+                        <img src="assets/img/logo-canaveral.png" alt="Logo Cañaveral" class="h-16 w-auto">
+                    </div>
+                    <div class="text-center">
+                        <h1 class="font-bold text-lg">Panel Admin</h1>
+                        <p class="text-xs text-yellow-300">Supertiendas Cañaveral</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button 
+                    @click="seccion = 'inicio'"
+                    :class="seccion === 'inicio' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-home w-5"></i>
+                    <span>Inicio</span>
+                </button>
+                <button 
+                    @click="seccion = 'usuarios'"
+                    :class="seccion === 'usuarios' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-users w-5"></i>
+                    <span>Usuarios</span>
+                </button>
+                <button 
+                    @click="seccion = 'sedes'"
+                    :class="seccion === 'sedes' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-building w-5"></i>
+                    <span>Sedes</span>
+                </button>
+                <button 
+                    @click="seccion = 'dependencias'"
+                    :class="seccion === 'dependencias' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-sitemap w-5"></i>
+                    <span>Dependencias</span>
+                </button>
+                <button 
+                    @click="seccion = 'reportes'"
+                    :class="seccion === 'reportes' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span>Reportes</span>
+                </button>
+                <button 
+                    @click="seccion = 'configuracion'"
+                    :class="seccion === 'configuracion' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-cog w-5"></i>
+                    <span>Configuración</span>
+                </button>
+            </nav>
+            
+            <div class="p-4 border-t border-green-700">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-user-circle text-2xl"></i>
+                        <div>
+                            <p class="font-medium text-sm" x-text="usuario.nombre_completo"></p>
+                            <p class="text-xs text-yellow-300">Administrador</p>
+                        </div>
+                    </div>
+                </div>
+                <button 
+                    @click="logout()"
+                    class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Contenido Principal -->
+        <main class="flex-1 overflow-auto">
+            <header class="bg-white shadow-sm sticky top-0 z-30">
+                <div class="flex items-center justify-between p-4">
+                    <h1 class="text-2xl font-bold text-gray-800" x-text="tituloSeccion"></h1>
+                </div>
+            </header>
+            
+            <div class="p-6">
+                <!-- Inicio -->
+                <div x-show="seccion === 'inicio'">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Visitas Hoy</p>
+                                    <p class="text-3xl font-bold text-green-600" x-text="estadisticas.hoy.total"></p>
+                                </div>
+                                <i class="fas fa-users text-4xl text-green-600"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-600 text-sm">En Instalaciones</p>
+                                    <p class="text-3xl font-bold text-yellow-600" x-text="estadisticas.hoy.en_instalaciones"></p>
+                                </div>
+                                <i class="fas fa-door-open text-4xl text-yellow-600"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Total Visitas</p>
+                                    <p class="text-3xl font-bold text-blue-600" x-text="estadisticas.total_visitas"></p>
+                                </div>
+                                <i class="fas fa-chart-line text-4xl text-blue-600"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Han Salido</p>
+                                    <p class="text-3xl font-bold text-gray-600" x-text="estadisticas.salieron"></p>
+                                </div>
+                                <i class="fas fa-check-circle text-4xl text-gray-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Bienvenido al Panel de Administración</h2>
+                        <p class="text-gray-600 mb-4">
+                            Desde este panel puede gestionar usuarios, sedes, dependencias y generar reportes del sistema 
+                            de control de visitantes.
+                        </p>
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <p><i class="fas fa-check text-green-600 mr-2"></i>Crear y gestionar usuarios operadores</p>
+                            <p><i class="fas fa-check text-green-600 mr-2"></i>Administrar sedes de la empresa</p>
+                            <p><i class="fas fa-check text-green-600 mr-2"></i>Configurar dependencias por sede</p>
+                            <p><i class="fas fa-check text-green-600 mr-2"></i>Generar reportes y exportar a Excel</p>
+                            <p><i class="fas fa-check text-green-600 mr-2"></i>Desbloquear usuarios y resetear contraseñas</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Usuarios -->
+                <div x-show="seccion === 'usuarios'">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-800">Gestión de Usuarios</h2>
+                            <button 
+                                @click="abrirModalUsuario()"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+                            >
+                                <i class="fas fa-plus mr-2"></i>Crear Usuario
+                            </button>
+                        </div>
+                        
+                        <!-- Tabla de usuarios -->
+                        <div class="overflow-x-auto" x-show="usuarios.length > 0">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">ID</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Usuario</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Nombre Completo</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Correo</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Rol</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Sede</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Estado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <template x-for="usr in usuarios" :key="usr.id">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm" x-text="usr.id"></td>
+                                            <td class="px-4 py-3 text-sm font-medium" x-text="usr.usuario"></td>
+                                            <td class="px-4 py-3 text-sm" x-text="usr.nombre_completo"></td>
+                                            <td class="px-4 py-3 text-sm" x-text="usr.dir_correo"></td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span 
+                                                    class="px-2 py-1 rounded text-xs font-medium"
+                                                    :class="{
+                                                        'bg-purple-100 text-purple-800': usr.rol === 'usuario_master',
+                                                        'bg-blue-100 text-blue-800': usr.rol === 'usuario_operador',
+                                                        'bg-teal-100 text-teal-800': usr.rol === 'usuario_funcionario'
+                                                    }"
+                                                    x-text="
+                                                        usr.rol === 'usuario_master' ? 'Master' :
+                                                        usr.rol === 'usuario_operador' ? 'Operador' :
+                                                        usr.rol === 'usuario_funcionario' ? 'Funcionario' :
+                                                        usr.rol
+                                                    "
+                                                ></span>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm" x-text="usr.sede || 'N/A'"></td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <span 
+                                                    class="px-2 py-1 rounded text-xs font-medium"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': usr.estado === 'ACTIVO',
+                                                        'bg-red-100 text-red-800': usr.estado === 'INACTIVO',
+                                                        'bg-yellow-100 text-yellow-800': usr.estado === 'BLOQUEADO'
+                                                    }"
+                                                    x-text="usr.estado"
+                                                ></span>
+                                                <span x-show="usr.estado === 'BLOQUEADO'" class="ml-2 text-xs text-yellow-600">
+                                                    <i class="fas fa-lock"></i>
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm space-x-2">
+                                                <button 
+                                                    @click="editarUsuario(usr)"
+                                                    class="text-blue-600 hover:text-blue-800"
+                                                    title="Editar"
+                                                >
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button 
+                                                    x-show="usr.estado === 'BLOQUEADO'"
+                                                    @click="desbloquearUsuario(usr)"
+                                                    class="text-yellow-600 hover:text-yellow-800"
+                                                    title="Desbloquear Usuario"
+                                                >
+                                                    <i class="fas fa-unlock"></i>
+                                                </button>
+                                                <button 
+                                                    @click="resetearPassword(usr)"
+                                                    class="text-orange-600 hover:text-orange-800"
+                                                    title="Resetear Contraseña"
+                                                >
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                                <button 
+                                                    x-show="usr.estado !== 'BLOQUEADO'"
+                                                    @click="cambiarEstadoUsuario(usr)"
+                                                    :class="usr.estado === 'ACTIVO' ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'"
+                                                    :title="usr.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'"
+                                                >
+                                                    <i :class="usr.estado === 'ACTIVO' ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Mensaje cuando no hay usuarios -->
+                        <div x-show="usuarios.length === 0" class="text-center py-12 text-gray-500">
+                            <i class="fas fa-users text-6xl mb-4"></i>
+                            <p class="text-lg">No hay usuarios registrados</p>
+                            <p class="text-sm">Cree el primer usuario haciendo clic en el botón "Crear Usuario"</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sedes -->
+                <div x-show="seccion === 'sedes'">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-800">Gestión de Sedes</h2>
+                            <button 
+                                @click="abrirModalSede()"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                            >
+                                <i class="fas fa-plus mr-2"></i>Crear Sede
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full" x-show="sedes.length > 0">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Código</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Descripción</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Dirección</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Estado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <template x-for="sede in sedes" :key="sede.id">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm font-medium" x-text="sede.codigo_sede"></td>
+                                            <td class="px-4 py-3 text-sm" x-text="sede.descripcion_sede"></td>
+                                            <td class="px-4 py-3 text-sm" x-text="sede.direccion_sede"></td>
+                                            <td class="px-4 py-3">
+                                                <span 
+                                                    :class="sede.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                                    class="px-2 py-1 rounded-full text-xs font-semibold"
+                                                    x-text="sede.estado"
+                                                ></span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex gap-2">
+                                                    <button 
+                                                        @click="editarSede(sede)"
+                                                        class="text-blue-600 hover:text-blue-800"
+                                                        title="Editar"
+                                                    >
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button 
+                                                        @click="cambiarEstadoSede(sede)"
+                                                        :class="sede.estado === 'ACTIVO' ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800'"
+                                                        :title="sede.estado === 'ACTIVO' ? 'Inactivar' : 'Activar'"
+                                                    >
+                                                        <i :class="sede.estado === 'ACTIVO' ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
+                                                    </button>
+                                                    <button 
+                                                        @click="eliminarSede(sede)"
+                                                        class="text-red-600 hover:text-red-800"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dependencias -->
+                <div x-show="seccion === 'dependencias'">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-800">Gestión de Dependencias</h2>
+                            <button 
+                                @click="abrirModalDependencia()"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                            >
+                                <i class="fas fa-plus mr-2"></i>Crear Dependencia
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full" x-show="dependencias.length > 0">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Prefijo</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Descripción</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Sedes Asociadas</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Estado</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <template x-for="dep in dependencias" :key="dep.id">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-sm font-medium" x-text="dep.prefijo_dependencia"></td>
+                                            <td class="px-4 py-3 text-sm" x-text="dep.descripcion_dependencia"></td>
+                                            <td class="px-4 py-3 text-sm">
+                                                <div class="flex flex-wrap gap-1">
+                                                    <template x-for="sede in dep.sedes" :key="sede.id">
+                                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs" x-text="sede.descripcion"></span>
+                                                    </template>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span 
+                                                    :class="dep.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                                    class="px-2 py-1 rounded-full text-xs font-semibold"
+                                                    x-text="dep.estado"
+                                                ></span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex gap-2">
+                                                    <button 
+                                                        @click="editarDependencia(dep)"
+                                                        class="text-blue-600 hover:text-blue-800"
+                                                        title="Editar"
+                                                    >
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button 
+                                                        @click="cambiarEstadoDependencia(dep)"
+                                                        :class="dep.estado === 'ACTIVO' ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800'"
+                                                        :title="dep.estado === 'ACTIVO' ? 'Inactivar' : 'Activar'"
+                                                    >
+                                                        <i :class="dep.estado === 'ACTIVO' ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
+                                                    </button>
+                                                    <button 
+                                                        @click="eliminarDependencia(dep)"
+                                                        class="text-red-600 hover:text-red-800"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            
+                            <div x-show="dependencias.length === 0" class="text-center py-12 text-gray-500">
+                                <i class="fas fa-sitemap text-6xl mb-4"></i>
+                                <p class="text-lg">No hay dependencias registradas</p>
+                                <p class="text-sm">Cree la primera dependencia usando el botón superior</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Reportes -->
+                <div x-show="seccion === 'reportes'">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-6">Generación de Reportes</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Fecha Inicio</label>
+                                <input 
+                                    type="date" 
+                                    x-model="filtrosReporte.fecha_inicio"
+                                    class="w-full px-4 py-3 border rounded-lg"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Fecha Fin</label>
+                                <input 
+                                    type="date" 
+                                    x-model="filtrosReporte.fecha_fin"
+                                    class="w-full px-4 py-3 border rounded-lg"
+                                >
+                            </div>
+                        </div>
+                        
+                        <button 
+                            @click="generarReporteExcel()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
+                        >
+                            <i class="fas fa-file-excel mr-2"></i>Generar Reporte Excel
+                        </button>
+                        
+                        <div class="mt-6 text-center py-12 text-gray-500">
+                            <i class="fas fa-chart-bar text-6xl mb-4"></i>
+                            <p class="text-lg">Sistema de reportes completo disponible</p>
+                            <p class="text-sm">Filtre por fechas y exporte resultados a Excel</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Configuración del Sistema -->
+                <div x-show="seccion === 'configuracion'">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">
+                            <i class="fas fa-cog mr-2 text-green-600"></i>Configuración del Sistema
+                        </h2>
+                        <p class="text-gray-600 mb-6 text-sm">Ajuste los parámetros operativos del sistema</p>
+                        
+                        <!-- Configuración de Vigencia de Autorizaciones -->
+                        <div class="bg-gray-50 border-l-4 border-green-600 p-6 mb-6 rounded-lg">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2 flex items-center">
+                                        <i class="fas fa-calendar-check mr-2 text-green-600"></i>
+                                        Vigencia de Autorizaciones
+                                    </h3>
+                                    <p class="text-gray-600 text-sm">
+                                        Define cuántos días tienen validez las autorizaciones de ingreso creadas por los funcionarios.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="col-span-2">
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        Días de Vigencia
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="configuraciones.dias_vigencia_autorizacion"
+                                        min="1" 
+                                        max="365"
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="Ejemplo: 1"
+                                    >
+                                    <p class="text-xs text-gray-500 mt-1">Rango permitido: 1 a 365 días</p>
+                                </div>
+                                <div class="flex items-end">
+                                    <button 
+                                        @click="guardarConfiguracion('dias_vigencia_autorizacion')"
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition font-semibold"
+                                    >
+                                        <i class="fas fa-save mr-2"></i>Guardar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div x-show="configuraciones.dias_vigencia_autorizacion == 1" class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                <p class="text-yellow-800 text-sm">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    <strong>Vigencia actual: 24 horas.</strong> Las autorizaciones vencerán al día siguiente.
+                                </p>
+                            </div>
+                            <div x-show="configuraciones.dias_vigencia_autorizacion > 1" class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p class="text-blue-800 text-sm">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Las autorizaciones tendrán una vigencia de <strong x-text="configuraciones.dias_vigencia_autorizacion"></strong> días.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Configuración de Seguridad -->
+                        <div class="bg-gray-50 border-l-4 border-blue-600 p-6 mb-6 rounded-lg">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2 flex items-center">
+                                        <i class="fas fa-shield-alt mr-2 text-blue-600"></i>
+                                        Seguridad y Sesiones
+                                    </h3>
+                                    <p class="text-gray-600 text-sm">
+                                        Configure parámetros de seguridad y manejo de sesiones.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        Intentos Máximos de Login
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="configuraciones.max_intentos_login"
+                                        min="1" 
+                                        max="100"
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                                    >
+                                    <p class="text-xs text-gray-500">Rango: 1-100</p>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        Tiempo de Sesión (minutos)
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="configuraciones.tiempo_sesion_minutos"
+                                        min="5" 
+                                        max="1440"
+                                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                                    >
+                                    <p class="text-xs text-gray-500">Rango: 5-1440 minutos</p>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <button 
+                                    @click="guardarConfiguracionSeguridad()"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition font-semibold"
+                                >
+                                    <i class="fas fa-save mr-2"></i>Guardar Configuración de Seguridad
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Información General -->
+                        <div class="bg-gray-50 border-l-4 border-gray-600 p-6 rounded-lg">
+                            <h3 class="font-bold text-gray-800 mb-2 flex items-center">
+                                <i class="fas fa-info-circle mr-2 text-gray-600"></i>
+                                Información de Empresa
+                            </h3>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 font-medium mb-2">
+                                    Nombre de la Empresa
+                                </label>
+                                <input 
+                                    type="text" 
+                                    x-model="configuraciones.nombre_empresa"
+                                    class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                                    placeholder="Nombre de su empresa"
+                                >
+                            </div>
+                            <button 
+                                @click="guardarConfiguracion('nombre_empresa')"
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition font-semibold"
+                            >
+                                <i class="fas fa-save mr-2"></i>Guardar
+                            </button>
+                        </div>
+                        
+                        <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <p class="text-yellow-800 text-sm">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Nota:</strong> Los cambios en la configuración se aplican inmediatamente. No es necesario reiniciar el sistema.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </main>
+        
+    </div>
+    
+    <!-- Modal Crear/Editar Usuario -->
+    <div 
+        x-show="mostrarModalUsuario" 
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="cerrarModalUsuario()"
+        x-cloak
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-green-700 to-green-600 text-white px-6 py-4 flex items-center justify-between sticky top-0">
+                <h3 class="text-xl font-bold" x-text="usuarioEdicion.id ? 'Editar Usuario' : 'Crear Nuevo Usuario'"></h3>
+                <button @click="cerrarModalUsuario()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Tipo de Identificación -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Tipo Identificación *</label>
+                        <select x-model="usuarioEdicion.tipo_identificacion" class="w-full px-4 py-3 border rounded-lg" required>
+                            <option value="">Seleccione...</option>
+                            <option value="RC">RC - REGISTRO CIVIL</option>
+                            <option value="TI">TI - TARJETA DE IDENTIDAD</option>
+                            <option value="CC">CC - CEDULA CIUDADANIA</option>
+                            <option value="CE">CE - CEDULA EXTRANJERIA</option>
+                            <option value="PS">PS - PASAPORTE</option>
+                            <option value="CT">CT - CONTRASEÑA</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Número de Identificación -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Número Identificación *</label>
+                        <input type="text" x-model="usuarioEdicion.num_identificacion" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                    </div>
+                    
+                    <!-- Primer Nombre -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Primer Nombre *</label>
+                        <input type="text" x-model="usuarioEdicion.primer_nombre" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                    </div>
+                    
+                    <!-- Segundo Nombre -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Segundo Nombre</label>
+                        <input type="text" x-model="usuarioEdicion.segundo_nombre" class="w-full px-4 py-3 border rounded-lg uppercase">
+                    </div>
+                    
+                    <!-- Primer Apellido -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Primer Apellido *</label>
+                        <input type="text" x-model="usuarioEdicion.primer_apellido" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                    </div>
+                    
+                    <!-- Segundo Apellido -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Segundo Apellido</label>
+                        <input type="text" x-model="usuarioEdicion.segundo_apellido" class="w-full px-4 py-3 border rounded-lg uppercase">
+                    </div>
+                    
+                    <!-- Teléfono -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Teléfono *</label>
+                        <input type="text" x-model="usuarioEdicion.num_telefono" class="w-full px-4 py-3 border rounded-lg" required>
+                    </div>
+                    
+                    <!-- Correo -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Correo Electrónico *</label>
+                        <input type="email" x-model="usuarioEdicion.dir_correo" class="w-full px-4 py-3 border rounded-lg" required>
+                    </div>
+                    
+                    <!-- Sede -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            Sede <span x-show="usuarioEdicion.rol !== 'usuario_master'">*</span>
+                            <span x-show="usuarioEdicion.rol === 'usuario_master'" class="text-blue-600 text-xs">(Opcional - Master tiene acceso a todas)</span>
+                        </label>
+                        <select x-model="usuarioEdicion.sede_id" class="w-full px-4 py-3 border rounded-lg" :required="usuarioEdicion.rol !== 'usuario_master'">
+                            <option value="">Seleccione...</option>
+                            <optgroup label="═══ SEDES ACTIVAS ═══">
+                                <template x-for="sede in sedesActivas" :key="sede.id">
+                                    <option :value="sede.id" x-text="sede.codigo_sede + ' - ' + sede.descripcion_sede"></option>
+                                </template>
+                            </optgroup>
+                            <optgroup label="═══ SEDES INACTIVAS (No seleccionables) ═══" x-show="sedesInactivas.length > 0">
+                                <template x-for="sede in sedesInactivas" :key="sede.id">
+                                    <option :value="sede.id" x-text="'[INACTIVA] ' + sede.codigo_sede + ' - ' + sede.descripcion_sede" disabled class="text-gray-400"></option>
+                                </template>
+                            </optgroup>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1" x-show="usuarioEdicion.rol !== 'usuario_master'">Solo las sedes activas pueden ser asignadas a usuarios</p>
+                        <p class="text-xs text-blue-600 mt-1" x-show="usuarioEdicion.rol === 'usuario_master'">⚡ Los usuarios Master tienen acceso global a todas las sedes del sistema</p>
+                    </div>
+                    
+                    <!-- Rol -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            Rol *
+                            <template x-if="usuarioEdicion.id && usuario.id && usuarioEdicion.id === usuario.id">
+                                <span class="text-orange-600 text-xs">⚠️ No puedes cambiar tu propio rol</span>
+                            </template>
+                        </label>
+                        <select 
+                            x-model="usuarioEdicion.rol" 
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            :disabled="!!(usuarioEdicion.id && usuario.id && usuarioEdicion.id === usuario.id)" 
+                            :class="{'bg-gray-100 cursor-not-allowed': usuarioEdicion.id && usuario.id && usuarioEdicion.id === usuario.id}" 
+                            required>
+                            <option value="">Seleccione...</option>
+                            <option value="usuario_master">Usuario Master (Administrador)</option>
+                            <option value="usuario_operador">Usuario Operador</option>
+                            <option value="usuario_funcionario">Usuario Funcionario</option>
+                        </select>
+                        <template x-if="usuarioEdicion.id && usuario.id && usuarioEdicion.id === usuario.id">
+                            <p class="text-xs text-gray-600 mt-1">
+                                🔒 Por seguridad, no puedes modificar tu propio rol. Solicita a otro administrador que realice el cambio.
+                            </p>
+                        </template>
+                    </div>
+                    
+                    <!-- Usuario (solo al crear) -->
+                    <div x-show="!usuarioEdicion.id">
+                        <label class="block text-gray-700 font-medium mb-2">Usuario (login) *</label>
+                        <input type="text" x-model="usuarioEdicion.usuario" class="w-full px-4 py-3 border rounded-lg" required>
+                    </div>
+                    
+                    <!-- Contraseña (solo al crear) -->
+                    <div x-show="!usuarioEdicion.id">
+                        <label class="block text-gray-700 font-medium mb-2">Contraseña *</label>
+                        <input type="password" x-model="usuarioEdicion.password" class="w-full px-4 py-3 border rounded-lg" placeholder="Mínimo 8 caracteres" required>
+                        <p class="text-xs text-gray-500 mt-1">8 caracteres, mayúsculas, minúsculas, números y especial</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                <button @click="cerrarModalUsuario()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition">
+                    Cancelar
+                </button>
+                <button @click="guardarUsuario()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Crear/Editar Sede -->
+    <div 
+        x-show="mostrarModalSede" 
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="cerrarModalSede()"
+        x-cloak
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-green-700 to-green-600 text-white px-6 py-4 flex items-center justify-between sticky top-0">
+                <h3 class="text-xl font-bold" x-text="sedeEdicion.id ? 'Editar Sede' : 'Crear Nueva Sede'"></h3>
+                <button @click="cerrarModalSede()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Código Sede -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Código Sede *</label>
+                        <input 
+                            type="text" 
+                            x-model="sedeEdicion.codigo_sede" 
+                            @input="sedeEdicion.codigo_sede = $event.target.value.toUpperCase()"
+                            :disabled="!!sedeEdicion.id" 
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            :class="!!sedeEdicion.id ? 'bg-gray-100 cursor-not-allowed' : ''"
+                            placeholder="Ej: SEDE001"
+                            required
+                        >
+                        <p class="text-xs text-gray-500 mt-1" x-show="!sedeEdicion.id">El código no puede modificarse después de crear la sede</p>
+                    </div>
+                    
+                    <!-- Descripción -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Descripción Sede *</label>
+                        <input 
+                            type="text" 
+                            x-model="sedeEdicion.descripcion_sede" 
+                            @input="sedeEdicion.descripcion_sede = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            placeholder="Ej: SEDE PRINCIPAL CAÑAVERAL"
+                            required
+                        >
+                    </div>
+                    
+                    <!-- Dirección -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Dirección *</label>
+                        <input 
+                            type="text" 
+                            x-model="sedeEdicion.direccion_sede" 
+                            @input="sedeEdicion.direccion_sede = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            placeholder="Ej: Calle 123 #45-67, Cali, Valle del Cauca"
+                            required
+                        >
+                    </div>
+                    
+                    <!-- Estado -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Estado *</label>
+                        <select x-model="sedeEdicion.estado" class="w-full px-4 py-3 border rounded-lg" required>
+                            <option value="ACTIVO">ACTIVO</option>
+                            <option value="INACTIVO">INACTIVO</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                <button @click="cerrarModalSede()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition">
+                    Cancelar
+                </button>
+                <button @click="guardarSede()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Crear/Editar Dependencia -->
+    <div 
+        x-show="mostrarModalDependencia" 
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="cerrarModalDependencia()"
+        x-cloak
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-green-700 to-green-600 text-white px-6 py-4 flex items-center justify-between sticky top-0">
+                <h3 class="text-xl font-bold" x-text="dependenciaEdicion.id ? 'Editar Dependencia' : 'Crear Nueva Dependencia'"></h3>
+                <button @click="cerrarModalDependencia()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Prefijo Dependencia -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Prefijo Dependencia *</label>
+                        <input 
+                            type="text" 
+                            x-model="dependenciaEdicion.prefijo_dependencia" 
+                            @input="dependenciaEdicion.prefijo_dependencia = $event.target.value.toUpperCase()"
+                            :disabled="!!dependenciaEdicion.id" 
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            :class="!!dependenciaEdicion.id ? 'bg-gray-100 cursor-not-allowed' : ''"
+                            placeholder="Ej: CONT"
+                            required
+                        >
+                        <p class="text-xs text-gray-500 mt-1" x-show="!dependenciaEdicion.id">El prefijo no puede modificarse después de crear la dependencia</p>
+                    </div>
+                    
+                    <!-- Descripción -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Descripción Dependencia *</label>
+                        <input 
+                            type="text" 
+                            x-model="dependenciaEdicion.descripcion_dependencia" 
+                            @input="dependenciaEdicion.descripcion_dependencia = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg" 
+                            placeholder="Ej: CONTABILIDAD"
+                            required
+                        >
+                    </div>
+                    
+                    <!-- Sedes Asociadas (Multi-select) -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Sedes Asociadas * (Seleccione una o más)</label>
+                        <div class="border rounded-lg p-4 max-h-48 overflow-y-auto">
+                            <template x-for="sede in sedes" :key="sede.id">
+                                <label 
+                                    class="flex items-center py-2 px-2 rounded"
+                                    :class="sede.estado === 'ACTIVO' ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-50 cursor-not-allowed bg-gray-50'"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        :value="sede.id"
+                                        :checked="dependenciaEdicion.sedes && dependenciaEdicion.sedes.includes(sede.id)"
+                                        @change="toggleSedeDependencia(sede.id)"
+                                        :disabled="sede.estado !== 'ACTIVO'"
+                                        class="mr-3 w-4 h-4"
+                                        :class="sede.estado !== 'ACTIVO' ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                    >
+                                    <span class="text-sm flex-1" x-text="sede.codigo_sede + ' - ' + sede.descripcion_sede"></span>
+                                    <span 
+                                        x-show="sede.estado !== 'ACTIVO'" 
+                                        class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full ml-2"
+                                    >
+                                        INACTIVA
+                                    </span>
+                                </label>
+                            </template>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Seleccione las sedes donde estará disponible esta dependencia (solo sedes activas)</p>
+                    </div>
+                    
+                    <!-- Estado -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Estado *</label>
+                        <select x-model="dependenciaEdicion.estado" class="w-full px-4 py-3 border rounded-lg" required>
+                            <option value="ACTIVO">ACTIVO</option>
+                            <option value="INACTIVO">INACTIVO</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                <button @click="cerrarModalDependencia()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition">
+                    Cancelar
+                </button>
+                <button @click="guardarDependencia()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function adminApp() {
+            return {
+                usuario: {},
+                seccion: 'inicio',
+                estadisticas: {
+                    total_visitas: 0,
+                    en_instalaciones: 0,
+                    salieron: 0,
+                    hoy: { total: 0, en_instalaciones: 0 }
+                },
+                sedes: [],
+                usuarios: [],
+                dependencias: [],
+                mostrarModalUsuario: false,
+                mostrarModalSede: false,
+                mostrarModalDependencia: false,
+                usuarioEdicion: {},
+                sedeEdicion: {},
+                dependenciaEdicion: {},
+                filtrosReporte: {
+                    fecha_inicio: '',
+                    fecha_fin: ''
+                },
+                configuraciones: {
+                    dias_vigencia_autorizacion: 1,
+                    max_intentos_login: 10,
+                    tiempo_sesion_minutos: 45,
+                    nombre_empresa: ''
+                },
+                
+                get tituloSeccion() {
+                    const titulos = {
+                        'inicio': 'Dashboard',
+                        'usuarios': 'Gestión de Usuarios',
+                        'sedes': 'Gestión de Sedes',
+                        'dependencias': 'Gestión de Dependencias',
+                        'reportes': 'Reportes y Estadísticas',
+                        'configuracion': 'Configuración del Sistema'
+                    };
+                    return titulos[this.seccion] || 'Panel de Administración';
+                },
+                
+                get sedesActivas() {
+                    return this.sedes.filter(s => s.estado === 'ACTIVO');
+                },
+                
+                get sedesInactivas() {
+                    return this.sedes.filter(s => s.estado !== 'ACTIVO');
+                },
+                
+                async init() {
+                    sessionManager.init();
+                    await this.verificarAuth();
+                    await this.cargarEstadisticas();
+                    await this.cargarSedes();
+                    await this.cargarUsuarios();
+                    await this.cargarDependencias();
+                    await this.cargarConfiguraciones();
+                    this.inicializarFechas();
+                },
+                
+                async verificarAuth() {
+                    const usuarioLocal = localStorage.getItem('usuario');
+                    if (!usuarioLocal) {
+                        this.redirigirAlLogin();
+                        return;
+                    }
+                    this.usuario = JSON.parse(usuarioLocal);
+                    
+                    if (this.usuario.rol !== 'usuario_master') {
+                        alert('No tiene permisos de administrador');
+                        window.location.href = 'operador.html';
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.auth.checkSession();
+                        if (!response.authenticated) {
+                            this.redirigirAlLogin();
+                        }
+                    } catch (error) {
+                        console.error('Error verificando sesión:', error);
+                        this.redirigirAlLogin();
+                    }
+                },
+                
+                async logout() {
+                    try {
+                        await apiClient.auth.logout();
+                    } catch (error) {
+                        console.error('Error en logout:', error);
+                    } finally {
+                        this.redirigirAlLogin();
+                    }
+                },
+                
+                redirigirAlLogin() {
+                    localStorage.removeItem('usuario');
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                },
+                
+                async cargarEstadisticas() {
+                    try {
+                        const hoy = new Date();
+                        const hace30dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        
+                        const response = await apiClient.reportes.obtenerEstadisticas(
+                            hace30dias.toISOString().split('T')[0],
+                            hoy.toISOString().split('T')[0]
+                        );
+                        
+                        if (response.success) {
+                            this.estadisticas = response.estadisticas;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar estadísticas:', error);
+                    }
+                },
+                
+                async cargarSedes() {
+                    try {
+                        const response = await apiClient.sedes.listar();
+                        if (response.success) {
+                            this.sedes = response.sedes;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar sedes:', error);
+                    }
+                },
+                
+                // ========== Funciones de Gestión de Sedes ==========
+                abrirModalSede() {
+                    this.sedeEdicion = {
+                        codigo_sede: '',
+                        descripcion_sede: '',
+                        direccion_sede: '',
+                        estado: 'ACTIVO'
+                    };
+                    this.mostrarModalSede = true;
+                },
+                
+                cerrarModalSede() {
+                    this.mostrarModalSede = false;
+                    this.sedeEdicion = {};
+                },
+                
+                editarSede(sede) {
+                    this.sedeEdicion = { ...sede };
+                    this.mostrarModalSede = true;
+                },
+                
+                async guardarSede() {
+                    try {
+                        // Validar campos requeridos
+                        if (!this.sedeEdicion.codigo_sede || !this.sedeEdicion.descripcion_sede || !this.sedeEdicion.direccion_sede) {
+                            alert('Todos los campos son requeridos');
+                            return;
+                        }
+                        
+                        let response;
+                        if (this.sedeEdicion.id) {
+                            // Actualizar sede existente
+                            response = await apiClient.sedes.actualizar(this.sedeEdicion.id, this.sedeEdicion);
+                        } else {
+                            // Crear nueva sede
+                            response = await apiClient.sedes.crear(this.sedeEdicion);
+                        }
+                        
+                        if (response.success) {
+                            alert(this.sedeEdicion.id ? 'Sede actualizada exitosamente' : 'Sede creada exitosamente');
+                            this.cerrarModalSede();
+                            await this.cargarSedes();
+                        } else {
+                            alert(response.message || 'Error al guardar sede');
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar sede:', error);
+                        alert(error.message || 'Error al guardar sede');
+                    }
+                },
+                
+                async cambiarEstadoSede(sede) {
+                    const nuevoEstado = sede.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+                    const accion = nuevoEstado === 'ACTIVO' ? 'activar' : 'inactivar';
+                    
+                    if (!confirm(`¿Está seguro de ${accion} la sede ${sede.codigo_sede}?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const dataActualizada = { ...sede, estado: nuevoEstado };
+                        const response = await apiClient.sedes.actualizar(sede.id, dataActualizada);
+                        
+                        if (response.success) {
+                            alert(`Sede ${accion === 'activar' ? 'activada' : 'inactivada'} exitosamente`);
+                            await this.cargarSedes();
+                        } else {
+                            alert(response.message || `Error al ${accion} sede`);
+                        }
+                    } catch (error) {
+                        console.error('Error al cambiar estado:', error);
+                        alert(error.message || 'Error al cambiar estado de la sede');
+                    }
+                },
+                
+                async eliminarSede(sede) {
+                    if (!confirm(`¿Está seguro de ELIMINAR permanentemente la sede ${sede.codigo_sede} - ${sede.descripcion_sede}?\n\nEsta acción NO se puede deshacer.`)) {
+                        return;
+                    }
+                    
+                    // Confirmación adicional para acción crítica
+                    if (!confirm('Esta acción eliminará la sede de forma permanente. ¿Desea continuar?')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.sedes.eliminar(sede.id);
+                        
+                        if (response.success) {
+                            alert('Sede eliminada exitosamente');
+                            await this.cargarSedes();
+                        } else {
+                            alert(response.message || 'Error al eliminar sede');
+                        }
+                    } catch (error) {
+                        console.error('Error al eliminar sede:', error);
+                        alert(error.message || 'Error al eliminar sede');
+                    }
+                },
+                
+                // ========== Funciones de Gestión de Dependencias ==========
+                async cargarDependencias() {
+                    try {
+                        const response = await apiClient.dependencias.listar();
+                        if (response.success) {
+                            this.dependencias = response.dependencias;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar dependencias:', error);
+                        alert('Error al cargar lista de dependencias');
+                    }
+                },
+                
+                abrirModalDependencia() {
+                    this.dependenciaEdicion = {
+                        prefijo_dependencia: '',
+                        descripcion_dependencia: '',
+                        sedes: [],
+                        estado: 'ACTIVO'
+                    };
+                    this.mostrarModalDependencia = true;
+                },
+                
+                cerrarModalDependencia() {
+                    this.mostrarModalDependencia = false;
+                    this.dependenciaEdicion = {};
+                },
+                
+                editarDependencia(dep) {
+                    // Extraer IDs de sedes asociadas
+                    const sedesIds = dep.sedes ? dep.sedes.map(s => s.id) : [];
+                    this.dependenciaEdicion = { 
+                        ...dep,
+                        sedes: sedesIds
+                    };
+                    this.mostrarModalDependencia = true;
+                },
+                
+                toggleSedeDependencia(sedeId) {
+                    if (!this.dependenciaEdicion.sedes) {
+                        this.dependenciaEdicion.sedes = [];
+                    }
+                    
+                    // Validar que la sede esté activa
+                    const sede = this.sedes.find(s => s.id === sedeId);
+                    if (sede && sede.estado !== 'ACTIVO') {
+                        alert('No se puede asociar una sede inactiva');
+                        return;
+                    }
+                    
+                    const index = this.dependenciaEdicion.sedes.indexOf(sedeId);
+                    if (index > -1) {
+                        this.dependenciaEdicion.sedes.splice(index, 1);
+                    } else {
+                        this.dependenciaEdicion.sedes.push(sedeId);
+                    }
+                },
+                
+                async guardarDependencia() {
+                    try {
+                        // Validar campos requeridos
+                        if (!this.dependenciaEdicion.prefijo_dependencia || !this.dependenciaEdicion.descripcion_dependencia) {
+                            alert('Prefijo y descripción son requeridos');
+                            return;
+                        }
+                        
+                        if (!this.dependenciaEdicion.sedes || this.dependenciaEdicion.sedes.length === 0) {
+                            alert('Debe asociar al menos una sede');
+                            return;
+                        }
+                        
+                        let response;
+                        if (this.dependenciaEdicion.id) {
+                            // Actualizar dependencia existente
+                            response = await apiClient.dependencias.actualizar(this.dependenciaEdicion.id, this.dependenciaEdicion);
+                        } else {
+                            // Crear nueva dependencia
+                            response = await apiClient.dependencias.crear(this.dependenciaEdicion);
+                        }
+                        
+                        if (response.success) {
+                            alert(this.dependenciaEdicion.id ? 'Dependencia actualizada exitosamente' : 'Dependencia creada exitosamente');
+                            this.cerrarModalDependencia();
+                            await this.cargarDependencias();
+                        } else {
+                            alert(response.message || 'Error al guardar dependencia');
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar dependencia:', error);
+                        alert(error.message || 'Error al guardar dependencia');
+                    }
+                },
+                
+                async cambiarEstadoDependencia(dep) {
+                    const nuevoEstado = dep.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+                    const accion = nuevoEstado === 'ACTIVO' ? 'activar' : 'inactivar';
+                    
+                    if (!confirm(`¿Está seguro de ${accion} la dependencia ${dep.prefijo_dependencia}?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const dataActualizada = { ...dep, estado: nuevoEstado };
+                        const response = await apiClient.dependencias.actualizar(dep.id, dataActualizada);
+                        
+                        if (response.success) {
+                            alert(`Dependencia ${accion === 'activar' ? 'activada' : 'inactivada'} exitosamente`);
+                            await this.cargarDependencias();
+                        } else {
+                            alert(response.message || `Error al ${accion} dependencia`);
+                        }
+                    } catch (error) {
+                        console.error('Error al cambiar estado:', error);
+                        alert(error.message || 'Error al cambiar estado de la dependencia');
+                    }
+                },
+                
+                async eliminarDependencia(dep) {
+                    if (!confirm(`¿Está seguro de ELIMINAR permanentemente la dependencia ${dep.prefijo_dependencia} - ${dep.descripcion_dependencia}?\n\nEsta acción NO se puede deshacer.`)) {
+                        return;
+                    }
+                    
+                    // Confirmación adicional para acción crítica
+                    if (!confirm('Esta acción eliminará la dependencia de forma permanente. ¿Desea continuar?')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.dependencias.eliminar(dep.id);
+                        
+                        if (response.success) {
+                            alert('Dependencia eliminada exitosamente');
+                            await this.cargarDependencias();
+                        } else {
+                            alert(response.message || 'Error al eliminar dependencia');
+                        }
+                    } catch (error) {
+                        console.error('Error al eliminar dependencia:', error);
+                        alert(error.message || 'Error al eliminar dependencia');
+                    }
+                },
+                
+                // ========== Funciones de Gestión de Usuarios ==========
+                async cargarUsuarios() {
+                    try {
+                        const response = await apiClient.usuarios.listar();
+                        if (response.success) {
+                            this.usuarios = response.usuarios;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar usuarios:', error);
+                        alert('Error al cargar lista de usuarios');
+                    }
+                },
+                
+                abrirModalUsuario() {
+                    this.usuarioEdicion = {
+                        tipo_identificacion: '',
+                        num_identificacion: '',
+                        primer_nombre: '',
+                        segundo_nombre: '',
+                        primer_apellido: '',
+                        segundo_apellido: '',
+                        num_telefono: '',
+                        dir_correo: '',
+                        sede_id: '',
+                        rol: '',
+                        usuario: '',
+                        password: ''
+                    };
+                    this.mostrarModalUsuario = true;
+                },
+                
+                cerrarModalUsuario() {
+                    this.mostrarModalUsuario = false;
+                    this.usuarioEdicion = {};
+                },
+                
+                editarUsuario(usr) {
+                    this.usuarioEdicion = { ...usr };
+                    this.mostrarModalUsuario = true;
+                },
+                
+                async guardarUsuario() {
+                    try {
+                        // Validar que el usuario no cambie su propio rol
+                        if (this.usuarioEdicion.id && this.usuarioEdicion.id === this.usuario.id) {
+                            const usuarioOriginal = this.usuarios.find(u => u.id === this.usuarioEdicion.id);
+                            if (usuarioOriginal && usuarioOriginal.rol !== this.usuarioEdicion.rol) {
+                                alert('No puedes cambiar tu propio rol. Solicita a otro administrador que realice el cambio.');
+                                return;
+                            }
+                        }
+                        
+                        // Validar campos requeridos
+                        const camposRequeridos = [
+                            'tipo_identificacion', 'num_identificacion', 
+                            'primer_nombre', 'primer_apellido',
+                            'num_telefono', 'dir_correo', 'rol'
+                        ];
+                        
+                        // sede_id es requerido solo para operadores y funcionarios
+                        if (this.usuarioEdicion.rol !== 'usuario_master') {
+                            camposRequeridos.push('sede_id');
+                        }
+                        
+                        if (!this.usuarioEdicion.id) {
+                            camposRequeridos.push('usuario', 'password');
+                        }
+                        
+                        for (const campo of camposRequeridos) {
+                            if (!this.usuarioEdicion[campo]) {
+                                alert(`El campo ${campo.replace(/_/g, ' ')} es requerido`);
+                                return;
+                            }
+                        }
+                        
+                        // Validar email
+                        if (!utils.validarEmail(this.usuarioEdicion.dir_correo)) {
+                            alert('El correo electrónico no es válido');
+                            return;
+                        }
+                        
+                        // Validar contraseña solo al crear
+                        if (!this.usuarioEdicion.id && this.usuarioEdicion.password.length < 8) {
+                            alert('La contraseña debe tener al menos 8 caracteres');
+                            return;
+                        }
+                        
+                        let response;
+                        if (this.usuarioEdicion.id) {
+                            // Actualizar usuario existente
+                            response = await apiClient.usuarios.actualizar(this.usuarioEdicion.id, this.usuarioEdicion);
+                        } else {
+                            // Crear nuevo usuario
+                            response = await apiClient.usuarios.crear(this.usuarioEdicion);
+                        }
+                        
+                        if (response.success) {
+                            alert(this.usuarioEdicion.id ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
+                            this.cerrarModalUsuario();
+                            await this.cargarUsuarios();
+                        } else {
+                            alert(response.message || 'Error al guardar usuario');
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar usuario:', error);
+                        alert(error.message || 'Error al guardar usuario');
+                    }
+                },
+                
+                async resetearPassword(usr) {
+                    const nuevaPassword = prompt(`Ingrese la nueva contraseña para ${usr.usuario}:\n(Mínimo 8 caracteres)`);
+                    
+                    if (!nuevaPassword) {
+                        return;
+                    }
+                    
+                    if (nuevaPassword.length < 8) {
+                        alert('La contraseña debe tener al menos 8 caracteres');
+                        return;
+                    }
+                    
+                    if (!confirm(`¿Está seguro de resetear la contraseña para ${usr.usuario}?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.usuarios.resetearPassword(usr.id, nuevaPassword);
+                        if (response.success) {
+                            alert('Contraseña reseteada exitosamente');
+                        } else {
+                            alert(response.message || 'Error al resetear contraseña');
+                        }
+                    } catch (error) {
+                        console.error('Error al resetear contraseña:', error);
+                        alert(error.message || 'Error al resetear contraseña');
+                    }
+                },
+                
+                async desbloquearUsuario(usr) {
+                    if (!confirm(`¿Está seguro de desbloquear al usuario ${usr.usuario}?\n\nEsto restablecerá el contador de intentos fallidos y permitirá que el usuario pueda iniciar sesión nuevamente.`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.usuarios.desbloquear(usr.id);
+                        if (response.success) {
+                            alert(`✓ Usuario ${usr.usuario} desbloqueado exitosamente`);
+                            await this.cargarUsuarios();
+                        } else {
+                            alert(response.message || 'Error al desbloquear usuario');
+                        }
+                    } catch (error) {
+                        console.error('Error al desbloquear usuario:', error);
+                        alert(error.message || 'Error al desbloquear usuario');
+                    }
+                },
+                
+                async cambiarEstadoUsuario(usr) {
+                    const nuevoEstado = usr.estado === 'ACTIVO' ? 'BLOQUEADO' : 'ACTIVO';
+                    const accion = nuevoEstado === 'ACTIVO' ? 'activar' : 'bloquear';
+                    
+                    if (!confirm(`¿Está seguro de ${accion} al usuario ${usr.usuario}?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const dataActualizada = { ...usr, estado: nuevoEstado };
+                        const response = await apiClient.usuarios.actualizar(usr.id, dataActualizada);
+                        
+                        if (response.success) {
+                            alert(`Usuario ${accion === 'activar' ? 'activado' : 'bloqueado'} exitosamente`);
+                            await this.cargarUsuarios();
+                        } else {
+                            alert(response.message || `Error al ${accion} usuario`);
+                        }
+                    } catch (error) {
+                        console.error('Error al cambiar estado:', error);
+                        alert(error.message || 'Error al cambiar estado del usuario');
+                    }
+                },
+                
+                async cargarConfiguraciones() {
+                    try {
+                        const response = await apiClient.configuracion.listar();
+                        if (response.success) {
+                            // Convertir array a objeto
+                            response.configuraciones.forEach(config => {
+                                this.configuraciones[config.clave] = config.valor;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar configuraciones:', error);
+                    }
+                },
+                
+                async guardarConfiguracion(clave) {
+                    try {
+                        const valor = this.configuraciones[clave];
+                        let tipoDato = 'string';
+                        
+                        // Determinar tipo de dato
+                        if (typeof valor === 'number') {
+                            tipoDato = 'int';
+                        } else if (typeof valor === 'boolean') {
+                            tipoDato = 'bool';
+                        }
+                        
+                        const response = await apiClient.configuracion.actualizar(clave, valor, '', tipoDato);
+                        
+                        if (response.success) {
+                            alert('✓ Configuración guardada correctamente');
+                            await this.cargarConfiguraciones();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar configuración:', error);
+                        alert('Error al guardar la configuración: ' + error.message);
+                    }
+                },
+                
+                async guardarConfiguracionSeguridad() {
+                    try {
+                        const configuraciones = [
+                            {
+                                clave: 'max_intentos_login',
+                                valor: this.configuraciones.max_intentos_login,
+                                tipo_dato: 'int'
+                            },
+                            {
+                                clave: 'tiempo_sesion_minutos',
+                                valor: this.configuraciones.tiempo_sesion_minutos,
+                                tipo_dato: 'int'
+                            }
+                        ];
+                        
+                        const response = await apiClient.configuracion.actualizarBatch(configuraciones);
+                        
+                        if (response.success) {
+                            alert('✓ Configuración de seguridad guardada correctamente');
+                            await this.cargarConfiguraciones();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    } catch (error) {
+                        console.error('Error al guardar configuración de seguridad:', error);
+                        alert('Error al guardar: ' + error.message);
+                    }
+                },
+                
+                inicializarFechas() {
+                    const hoy = new Date();
+                    const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    
+                    this.filtrosReporte.fecha_inicio = hace7dias.toISOString().split('T')[0];
+                    this.filtrosReporte.fecha_fin = hoy.toISOString().split('T')[0];
+                },
+                
+                async generarReporteExcel() {
+                    alert('Función de reporte Excel implementada en el backend. Requiere selección de visitas.');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

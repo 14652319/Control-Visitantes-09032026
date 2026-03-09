@@ -1,0 +1,3010 @@
+software
+CONTROL DE VISITANTES SUPERTIENDAS CAÑAVERAL SAS
+El software debe estar diseñado en Python con base de datos sqlprogres
+
+el sotware debe contener 3 roles: usuario_operador, usuario_master y usuario_funcionario
+
+debe contener tablas de base de datos una par los usuario_operador, usuario_master y usuario_funcionario
+
+
+usuario
+id
+tipo_identificacion campo obligatorio si, cadena de texto de 50 longitud
+num_identificacion  campo obligatorio si, cadena de texto de 50 longitud
+1er_nombre          campo obligatorio si, cadena de texto de 100 longitud
+2do_nombre          campo obligatorio no, cadena de texto de 100 longitud
+1er_apellido        campo obligatorio si, cadena de texto de 100 longitud
+2do_apellido        campo obligatorio no, cadena de texto de 100 longitud
+num_telefono        campo obligatorio si, cadena de texto de 100 longitud
+Dir_correo          campo obligatorio si, cadena de texto de 100 longitud
+sede                campo obligatorio si, cadena de texto de 100 longitud
+rol                 campo obligatorio si, cadena de texto de 100 longitud
+estado              campo obligatorio si, cadena de texto de 100 longitud
+usuario             campo obligatorio si, cadena de texto de 100 longitud
+contraseña          has con bicry (8 longitud, mayúsculas, minúsculas, números, carácter especial)
+
+
+
+Roles
+usuario_master      tiene acceso al sistema y a todas las configuraciones, borrar modificar, consultar, generar reportes tiene acceso a todas las sedes. Puede gestionar autorizaciones previas de ingreso.
+usuario_operador    tiene acceso al sistema y a registrar datos de los formularios, tiene acceso solo a la sede asignada. Puede consultar y aplicar autorizaciones previas al registrar visitantes.
+usuario_funcionario tiene acceso limitado para crear autorizaciones previas de ingreso de visitantes. Solo puede gestionar autorizaciones de su dependencia asignada. No puede registrar visitantes directamente.
+
+
+
+
+
+sedes
+id
+codigo_sede
+descripcion_sede
+direccion_sede
+
+
+dependencias
+id                    
+prefijo_dependencia     campo obligatorio si, cadena de texto de 50 longitud
+descricion_dependencia  campo obligatorio si, cadena de texto de 50 longitud
+estado                  campo obligatorio si, cadena de texto de 50 longitud
+
+en estatabla dependencias dependería de la sede ya que algunas sedes no tienen lasm ismas dependenciashabri forma de que en elmomento de crear la dependencia se asociara a una sede para que solo esa sede o varias sedes peudan usarla?
+
+
+autorizaciones_ingreso
+id
+tipo_identificacion     campo obligatorio si, cadena de texto de 50 longitud
+num_identificacion      campo obligatorio si, cadena de texto de 50 longitud
+primer_nombre           campo obligatorio si, cadena de texto de 100 longitud
+segundo_nombre          campo obligatorio no, cadena de texto de 100 longitud
+primer_apellido         campo obligatorio si, cadena de texto de 100 longitud
+segundo_apellido        campo obligatorio no, cadena de texto de 100 longitud
+num_telefono            campo obligatorio si, cadena de texto de 100 longitud
+dir_correo              campo obligatorio si, cadena de texto de 100 longitud
+empresa                 campo obligatorio si, cadena de texto de 100 longitud
+nit_empresa             campo obligatorio si, cadena de texto de 50 longitud
+prefijo_dependencia     campo obligatorio si, cadena de texto de 50 longitud
+descripcion_dependencia campo obligatorio si, cadena de texto de 200 longitud
+funcionario_autoriza    campo obligatorio si, cadena de texto de 200 longitud (nombre del funcionario que recibirá)
+observaciones           campo obligatorio no, cadena de texto de 5000 longitud
+estado                  campo obligatorio si, cadena de texto de 50 longitud (PENDIENTE, UTILIZADA, VENCIDA, CANCELADA)
+fecha_vencimiento       campo obligatorio si, fecha dd/mm/aaaa (validez de 7 días desde creación)
+usuario_id             campo obligatorio si, entero (FK a usuarios - quién creó la autorización)
+sede_id                 campo obligatorio si, entero (FK a sedes)
+fecha_creacion          campo obligatorio si, timestamp
+fecha_utilizacion       campo obligatorio no, timestamp (cuándo se usó)
+utilizada_en_log_id     campo obligatorio no, entero (FK a log_visitantes cuando se utiliza)
+
+Esta tabla permite que funcionarios de dependencias creen autorizaciones previas de ingreso.
+El operador al registrar un visitante verá si existe una autorización pendiente y podrá aplicarla automáticamente.
+
+
+visitantes
+id
+tipo_identificacion campo obligatorio si, cadena de texto de 50 longitud
+num_identificacion  campo obligatorio si, cadena de texto de 50 longitud
+1er_nombre          campo obligatorio si, cadena de texto de 100 longitud
+2do_nombre          campo obligatorio no, cadena de texto de 100 longitud
+1er_apellido        campo obligatorio si, cadena de texto de 100 longitud
+2do_apellido        campo obligatorio no, cadena de texto de 100 longitud
+num_telefono        campo obligatorio si, cadena de texto de 100 longitud
+dir_correo          campo obligatorio si, cadena de texto de 100 longitud
+empresa             campo obligatorio si, cadena de texto de 100 longitud
+nit_empresa         campo obligatorio si, cadena de texto de 50 longitud
+estado              campo obligatorio si, cadena de texto de 50 longitud
+
+
+log_visitantes
+id
+fecha_ingreso       campo obligatorio si, fecha dd/mm/aaa
+hora_ingreso        campo obligatorio si, hh:mm:ss
+tipo_identificacion campo obligatorio si, cadena de texto de 50 longitud
+num_identificacion  campo obligatorio si, cadena de texto de 50 longitud
+1er_nombre          campo obligatorio si, cadena de texto de 100 longitud
+2do_nombre          campo obligatorio no, cadena de texto de 100 longitud
+1er_apellido        campo obligatorio si, cadena de texto de 100 longitud
+2do_apellido        campo obligatorio no, cadena de texto de 100 longitud
+num_telefono        campo obligatorio si, cadena de texto de 100 longitud
+dir_correo          campo obligatorio si, cadena de texto de 100 longitud
+empresa             campo obligatorio si, cadena de texto de 100 longitud
+nit_empresa         campo obligatorio si, cadena de texto de 50 longitud
+observaciones1      campo obligatorio no, cadena de texto de 5000 longitud
+prefijo_dependencia     campo obligatorio si, cadena de texto de 50 longitud
+descricion_dependencia  campo obligatorio si, cadena de texto de 50 longitud
+funcionario_recibe      campo obligatorio si, cadena de texto de 200 longitud (nombre del funcionario que recibe al visitante)
+funcionario_autoriza    campo obligatorio si, cadena de texto de 200 longitud (nombre del funcionario que autoriza el ingreso - NUEVO CAMPO)
+autorizacion_previa_id  campo obligatorio no, entero (FK a autorizaciones_ingreso - si se usó una autorización previa - NUEVO CAMPO)
+observaciones1          campo obligatorio no, cadena de texto de 5000 longitud
+check1
+check2
+check3
+check4
+check5
+fotografia_visitante campo obligatorio no, cadena de texto de 5000 longitud (gauardara la ruta donde se guardara la foto del visitante)
+fecha_salida        campo obligatorio si, fecha dd/mm/aaa
+hora_salida         campo obligatorio si, hh:mm:ss
+
+/carpeta/visitantes/
+prefijo tipo de identificación + numero de identificación + fecha dd/mm/aaaa y hora hh:mm:ss
+numero_carnet        campo obligatorio no, numerico 10 longitud
+
+
+
+Log_eventos
+id
+fecha               campo obligatorio si, fecha dd/mm/aaa
+hora                campo obligatorio si, hh:mm:ss
+usuario
+
+incluir en este los la mayor cantidad de eventos ue puedas imaginarte de forma ordenada para futuras auditorias
+
+
+
+la lógica de el sistema es la siguiente:
+
+El usuario operador ingresa al sistema con su usuario y contraseña
+encontrara una interface que en la parte superior tendrá un botón de salir que al presionarlo cerrara la seccion y redirigirá al login
+al aldo del botón tendrá el nombre del usuario con la palabra Hola! {usuario}
+
+al ingresar en la interface encontrara un botón que indicara registrar visitante
+que al presionarlo abra una interface donde aparezca el formulario donde
+traiga por defecto la fecha y la hora
+un botón de regresar o volver y al presionarlo lo lleve de nuevo a la interface deregistrar visitante
+traiga el formulario para ingresar los datos del visitante
+un campo selector de tipos de identificación (tipo_identificacion)
+
+RC-REGISTRO CIVIL
+TI-TARJETA DE IDENTIDAD
+CC-CEDULA CIUDADANIA
+CE-CEDULA EXTRANJERIA
+PS-PASAPORTE
+CT-CONTRASEÑA
+
+campo para la registrar numero de identificación (num_identificacion)
+
+al registrar el tipo de identificación y el numero de identificación al presionar enter o tabular avance entre los campos
+al registrar el numero del documento y el tipo de documento los valide en la base de datos y 
+si existe
+rellene en el formulario los campos que le corresponden y que están al ojados en la base de datos las tablas
+
+y si no existe entonces active un botón que indique que el visitante no esta registrado, si desea registrarlo, 
+al presionar el boton 
+abra un cuadro de dialogo o interface flotante en el que este el formulario para registrar al visitante con los campos que pide la base de datos visitantes
+
+
+
+Tipo identificacion        = tipo_identificacion campo obligatorio si, cadena de texto de 50 longitud
+Numero Identificaacion     = num_identificacion  campo obligatorio si, cadena de texto de 50 longitud
+Primer Nombre              = 1er_nombre          campo obligatorio si, cadena de texto de 100 longitud
+Segundo Nombre             = 2do_nombre          campo obligatorio no, cadena de texto de 100 longitud
+Primer Apellido            = 1er_apellido        campo obligatorio si, cadena de texto de 100 longitud
+Segundo Apellido           = 2do_apellido        campo obligatorio no, cadena de texto de 100 longitud
+Numero Celular             = num_telefono        campo obligatorio si, cadena de texto de 100 longitud
+Correo Electronico         = dir_correo          campo obligatorio si, cadena de texto de 100 longitud
+Empresa a la que pertenece = empresa             campo obligatorio si, cadena de texto de 100 longitud
+
+
+Que el campo de Tipo de identificación y Numero de identificación ya vengan diligenciados con el numero que se registro y se valido
+
+Al diligienciar todos estos campos se active un botón que permita guardar, antes de guardar genere un mensaje indicando que se va a guardar y 
+muestre la información que va a guardar. si presiona cancelar entonces no haga nada y si presiona aceptar  guarde los datos en la tabla y campos correspondiente a visitantes. 
+
+y redirija a la interface de registrar visitante
+al se redirijido y como ya creo al visitante ya traiga el tipo de documento con elnuemro deldocumento registrado anterioemnte y como ya existe el visitante entonces traiga lso datos del visitante en el formulario de datos del visitante
+al llenarlo los datos de visitante tega un botón de limpiar formulario por si quiere cambiar los datos del formulario antes de guardarlos.
+
+después de eel bloque de datos de lvisitante sigue un bloque que al presionar un símbolo de (+) se despliegue hacia abajo un formulario que indique 
+con una lista deplegable escoja la dependencia donde va dirigido el visitante (lista desde talba de dependencias las cuales monstrara solo las dependencis asociadas a
+la sede desde donde el usuario operador esta registrado. campo obligatorio
+
+también un campo donde deba ubicar funcionario de supertiendas que lo recibirá campo obligatorio (ampo de texto para escribir 100 caracteres)
+
+cuente con un campo de observación para escribir 5000 caracteres
+
+al terminar de diligenciar este campo mas abajo este otro (+) que al presionarlo contraiga el aprtatado anterior y expnada el siguiente aprtedo que corresponde a implemnetos  ingresar
+
+al iniciar esteapartado tenga un chek enla pregunta, ingresa algún elemento tecnológico
+si marca e lchek entonces se active un campo para redactar que tipo de implemento tecnológico y la marca
+
+otro chek que pregunte ingresa armas de fuego
+
+ingresa otro elemnto a reportar si marca el chek entonces abra un campo para redactar cual ? con extencio nde 500 caracteres
+ingresa herramienta si marca el chek entonces abra el campo para redactar que herramienta ingresa
+
+al terminar estas dos preguntas exista (+) queal presionarlo se despliegue la ultimo apartado donde es para tomar una foto esta opción debe estr activa paro no es obligatori en el momento , pero que tenga un botón en ese aprtado que solicite tomar la fotografía e ine intricciones clara que debe solicitar acercarse a la cámara , retirase cubre cabezas y /o lentes y mirar de fernee a la cámara, el operador esta viendo cuando el visitante tenga una posición adecauda y tomara la foto, al tomarla esta se mostrara la imange que fue tomada, en ccaso que la imagen no sea acorde a als políticas de lacompañia y deba ser tomada denuevo tenga la opción de eliminar y volver a tomar la foto, si la foto esta bien tomada tenga un botón para guardar, 
+al presionar e lboton para guardar se active un campo para escribir el numero de el carnet de visitante (esta opción no será obligatori en el momento)
+
+y tambine se activara un ultimo botón registrar visitante al presionarlo este guardara la información de los diferentes formularios diligenciasdos en cada aprtado incluyendo la imagen si fuera tomada y el numero de carnet si fuera escrito.
+
+al ser guardado se mostrara en una lista visitantes donde aparecerá el 
+numero de carnet ,prefio tipo de identificacione lnumeor de identificación nombres y aellidos, nit de empresa y empresa fecha y hora de ingreso fecha y hora de salida tambine mostrara el estado si salió o permanece en las intalaciones , y que ordene en la parte superior aquellos que aun están en la instalaciones y al final lo que ya salieron y los que ya slaiero nesten de un clor verde y los que no esten de colore amarillo .. que el listao cuente con check deselcion con el fin de poder selcionar uno o varios y generar un listado en Excel oseaque al seleccionar uno o varios se active un boron de descargar en Excel(este permiso lo l otendra el usuario administrador o maestro)
+
+cada visitante en el listado cuente con un botón para que al momento de salir el operador pueda presionarlo y marque la fehca la hora de salida al presionarlo este guardara 
+en la tabla log_visitantes la fecah y hora de salida, al presionarlo se habilitara otro botón que se llama reingreso, que al presionarlo abrirá el mismo formulario de visitantes con todas los campos diligenciados, esto po si el visitante regresa y trae lo mismo con el fin de dar agilidd al proceso de ingreso, lo que si será obligatorio cuando este activo será tomar denuevo la foto, claro esta que el operador podrá modificar la inforamcion delormulario de llegar areuerirlo exepto la información personla e ltercero, 
+
+y podrá escribir u nuev onumero de carnet y tendrá habilitado el botón de registrar visitante al presionarlo esto generara un nuevo registro en la base de datos con todos lso datos ya regstrados en el formulario.
+
+
+
+
+
+Reglas
+las secciones se cerraran despues de 45 minutos sin tener interacción del usuario y lo redirigirá a el login
+que el usuario se bloquee al escribir incorrectamente la contraseña 10 veces
+todos los campos de lso formualriosd eben ser en mayúsculas exepto el de correo allí si asi lo escriban en mayuscuas lo convierta minúsculas
+al rgistrar los datos del formulario de visitantes cuando el visitante ya existe yse rellenan los campos automaticamnete incluyendo le campo de nit dela empresa y la razón social de la empresa este campo pueda ser modificado por el operador si el visitante define ue esa ya no es la emprea a la caul el pertenece.
+receurdadisieñarlo conlas mejores peracticas de la programación, 
+
+Pregunta, consideras que se bebería llevar un consecutivo de las visitas diarios o no es necesario ?
+Preguntar si se darán gabetes o carnes de visitantes con un numero definido esto con el fin de escribir el numero del carnes t entregado a lvisitante en el formulario
+llegado el caso de que el usuario se bloque por exceso de contraseña invalida el usuarioadministrado o maestro lo desbloqueara o reseteara la contraseña
+
+el suario maestro a lingresar en después de loguearse encontrara un panel de control en la parte superor un botón de salir y el nombre y el rol del usuario logueado
+donde podrá crear usuario_operador al rpesionar un botos de crear usuarios traiga loscmpos de la tabla que va a limnetar de la tabla usuario_operador
+quetambien pueda crear sedes y al presionar el botón tenga la opción de diligenciar los campos de la tabla sedes
+
+tener en cneta crear todo con lso colores institucionales de supertiendas cañaveral sas
+craer todo de fomra profesional full stack
+
+lo que se requeire
+contruccion total del sistema, crear la base de datos. las diferentes tablas en sqlposgre
+la calve del sql es G3st0radm$2025.
+
+postgresql://postgres: G3st0radm$2025.@localhost:5432
+
+tenr encuenta esto para diseñar los frontend 
+loscolores y las testuras 
+
+
+ACONTUNACION ES UN GUIA DE COMO PODRIA VERSE LSO DISEÑOS
+
+# 🎨 GUÍA COMPLETA DE DISEÑO VISUAL - REPLICACIÓN DE ESTILO
+## Sistema de Gestión Administrativa - Supertiendas Cañaveral SAS
+
+---
+
+## 📌 INTRODUCCIÓN
+
+Este documento contiene TODAS las especificaciones de diseño visual necesarias para replicar el estilo, colores, tipografía y componentes del Sistema de Gestión Administrativa en otro proyecto nuevo.
+
+**Destino:** `D:\Desktop\Ricardo\3. Proyectos\x`
+
+---
+
+## 🛠️ STACK TÉCNICO
+
+### Frameworks y Librerías (CDN)
+```html
+<!-- TailwindCSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<!-- Font Awesome 6.4.0 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- Chart.js (opcional - para gráficas) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- SheetJS (opcional - para exportar Excel) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+```
+
+---
+
+## 🎨 PALETA DE COLORES COMPLETA
+
+### 🟢 VERDE CORPORATIVO (Color Principal)
+```css
+/* Verde - Identidad de marca */
+bg-green-50      /* #F0FDF4 - Fondos muy claros */
+bg-green-100     /* #DCFCE7 - Fondos claros, hover */
+bg-green-600     /* #16A34A - Botones principales */
+bg-green-700     /* #15803D - Hover botones, activos */
+bg-green-800     /* #166534 - Sidebar inicio */
+bg-green-900     /* #14532D - Sidebar fin */
+
+text-green-600   /* Títulos, íconos */
+text-green-700   /* Enlaces, destacados */
+text-green-800   /* Textos en badges */
+
+border-green-200 /* Bordes suaves */
+border-green-500 /* Bordes importantes */
+border-green-700 /* Bordes sidebar */
+```
+
+**Usos del Verde:**
+- Login: `from-green-50 to-green-100` (fondo degradado)
+- Botones principales: `bg-green-600 hover:bg-green-700 text-white`
+- Sidebar admin: `bg-gradient-to-b from-green-800 to-green-900`
+- Enlaces activos: `text-green-700`
+- Mensajes éxito: `bg-green-50 border-green-200 text-green-700`
+
+### 🔵 AZUL (Información)
+```css
+bg-blue-50       /* #EFF6FF - Paneles informativos */
+bg-indigo-100    /* Registro */
+text-blue-600    /* #2563EB - Enlaces informativos */
+text-blue-700    /* Textos info */
+border-blue-200  /* Bordes info */
+```
+
+**Usos del Azul:**
+- Registro: `from-blue-50 to-indigo-100` (fondo degradado)
+- Paneles informativos: `bg-blue-50 border-blue-200`
+- Botones secundarios: `bg-indigo-600 hover:bg-indigo-700`
+
+### 🟡 AMARILLO (Advertencias/Pendientes)
+```css
+bg-yellow-50     /* #FEFCE8 - Advertencias suaves */
+bg-yellow-100    /* #FEF9C3 - Estados pendientes */
+bg-yellow-400    /* #FACC15 - Badges notificación */
+text-yellow-800  /* #854D0E - Texto pendientes */
+text-yellow-300  /* #FDE047 - Texto sobre verde oscuro */
+```
+
+**Usos del Amarillo:**
+- Estados pendientes: `bg-yellow-100 text-yellow-800`
+- Badges notificación: `bg-yellow-400 text-yellow-900`
+- Texto sidebar: `text-yellow-300`
+
+### 🔴 ROJO (Errores/Rechazos)
+```css
+bg-red-50        /* #FEF2F2 - Mensajes error */
+bg-red-100       /* #FEE2E2 - Estados rechazados */
+bg-red-600       /* #DC2626 - Botones destructivos */
+text-red-700     /* #B91C1C - Textos error */
+border-red-200   /* #FECACA - Bordes error */
+```
+
+**Usos del Rojo:**
+- Mensajes error: `bg-red-50 border-red-200 text-red-700`
+- Cerrar sesión: `bg-red-600 hover:bg-red-700`
+- Estados rechazados: `bg-red-100 text-red-800`
+
+### ⚫ GRISES (Estructura)
+```css
+bg-gray-50       /* #F9FAFB - Fondo body */
+bg-gray-100      /* #F3F4F6 - Headers tabla, secciones */
+bg-gray-200      /* #E5E7EB - Disabled, separadores */
+bg-gray-300      /* #D1D5DB - Botones cancelar */
+text-gray-600    /* #4B5563 - Texto secundario */
+text-gray-700    /* #374151 - Texto principal */
+text-gray-800    /* #1F2937 - Títulos */
+border-gray-200  /* #E5E7EB - Bordes principales */
+border-gray-300  /* #D1D5DB - Bordes inputs */
+```
+
+### ⚪ BLANCO
+```css
+bg-white         /* #FFFFFF - Tarjetas, modales */
+bg-white/95      /* Blanco con 95% opacidad */
+text-white       /* Texto sobre fondos oscuros */
+```
+
+---
+
+## 🖋️ TIPOGRAFÍA
+
+### Sistema de Fuentes
+```css
+font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+```
+
+### Tamaños de Texto (Tailwind)
+```css
+text-xs          /* 0.75rem (12px) - Metadatos, badges */
+text-sm          /* 0.875rem (14px) - Texto secundario */
+text-base        /* 1rem (16px) - Texto normal */
+text-lg          /* 1.125rem (18px) - Subtítulos */
+text-xl          /* 1.25rem (20px) - Títulos sección */
+text-2xl         /* 1.5rem (24px) - Títulos principales */
+text-3xl         /* 1.875rem (30px) - Títulos grandes */
+text-4xl         /* 2.25rem (36px) - Headers */
+```
+
+### Pesos de Fuente
+```css
+font-normal      /* 400 - Texto normal */
+font-medium      /* 500 - Texto destacado */
+font-semibold    /* 600 - Subtítulos */
+font-bold        /* 700 - Títulos principales */
+```
+
+### Conversión Automática a Mayúsculas
+```css
+/* Convertir inputs a mayúsculas (excepto contraseñas) */
+input[type="text"]:not([readonly]),
+input[type="email"] {
+    text-transform: uppercase;
+}
+```
+
+---
+
+## 🖼️ FONDO Y TEXTURAS
+
+### Patrón de Fondo (caña de azúcar)
+```html
+<style>
+    body {
+        background-image: url('assets/images/cana-pattern.svg');
+        background-size: 400px 400px;
+        background-repeat: repeat;
+        background-attachment: fixed;
+    }
+</style>
+```
+
+**Nota:** El archivo `cana-pattern.svg` es un patrón sutil de textura que simula cañas de azúcar. Debe estar en `assets/images/`.
+
+---
+
+## 🎯 COMPONENTES PRINCIPALES
+
+### 1. PÁGINA DE LOGIN
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema</title>
+    
+    <!-- CDN's aquí -->
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            background-image: url('assets/images/cana-pattern.svg');
+            background-size: 400px 400px;
+            background-repeat: repeat;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div x-data="loginApp()" class="w-full max-w-md" x-cloak>
+        <!-- Logo y Título -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-3 bg-white rounded-2xl shadow-lg mb-4">
+                <img src="assets/images/logo.png" alt="Logo" class="h-16 w-auto">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Nombre del Sistema</h1>
+            <p class="text-gray-600 font-medium">Nombre de la Empresa</p>
+        </div>
+        
+        <!-- Tarjeta de Login -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Iniciar Sesión</h2>
+            
+            <!-- Formulario aquí -->
+        </div>
+    </div>
+</body>
+</html>
+```
+
+### 2. PÁGINA DE REGISTRO
+
+```html
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div x-data="registroApp()" class="w-full max-w-2xl" x-cloak>
+        <!-- Logo y Título -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-3 bg-white rounded-2xl shadow-lg mb-4">
+                <img src="assets/images/logo.png" alt="Logo" class="h-16 w-auto">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Registro</h1>
+            <p class="text-gray-600 font-medium">Nombre de la Empresa</p>
+        </div>
+        
+        <!-- Tarjeta de Registro -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <!-- Formulario aquí -->
+        </div>
+    </div>
+</body>
+```
+
+### 3. PANEL ADMINISTRATIVO (Dashboard)
+
+#### Estructura Base
+```html
+<body class="bg-gray-50" x-data="adminApp()" x-init="init()" x-cloak>
+    
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Overlay móvil -->
+        <div 
+            x-show="menuMovilAbierto" 
+            @click="menuMovilAbierto = false"
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+        ></div>
+        
+        <!-- Sidebar -->
+        <aside class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-green-800 to-green-900 text-white flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-green-700">
+                <div class="flex flex-col items-center space-y-2">
+                    <div class="bg-white rounded-lg p-2 shadow-md">
+                        <img src="../assets/images/logo.png" alt="Logo" class="h-12 w-auto">
+                    </div>
+                    <div class="text-center">
+                        <h1 class="font-bold text-lg">Panel Admin</h1>
+                        <p class="text-xs text-yellow-300">Nombre Empresa</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navegación -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button 
+                    @click="seccion = 'inicio'"
+                    :class="seccion === 'inicio' ? 'bg-green-700' : 'hover:bg-green-700'"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                >
+                    <i class="fas fa-home w-5"></i>
+                    <span>Inicio</span>
+                </button>
+                <!-- Más botones aquí -->
+            </nav>
+            
+            <!-- Footer con usuario y cerrar sesión -->
+            <div class="p-4 border-t border-green-700">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-user-circle text-2xl"></i>
+                        <div>
+                            <p class="font-medium text-sm" x-text="usuario.nombre"></p>
+                            <p class="text-xs text-yellow-300" x-text="usuario.rol"></p>
+                        </div>
+                    </div>
+                </div>
+                <button 
+                    @click="logout()"
+                    class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Contenido Principal -->
+        <main class="flex-1 overflow-auto">
+            <!-- Header -->
+            <header class="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-30">
+                <div class="flex items-center justify-between p-4">
+                    <button 
+                        @click="menuMovilAbierto = !menuMovilAbierto"
+                        class="lg:hidden text-gray-600 hover:text-gray-900"
+                    >
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold text-gray-800">Título Sección</h1>
+                </div>
+            </header>
+            
+            <!-- Contenido -->
+            <div class="p-6">
+                <!-- Contenido dinámico aquí -->
+            </div>
+        </main>
+        
+    </div>
+</body>
+```
+
+---
+
+## 🧩 COMPONENTES REUTILIZABLES
+
+### Tarjeta Básica
+```html
+<div class="bg-white rounded-xl shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">Título</h3>
+    <!-- Contenido -->
+</div>
+```
+
+### Botón Principal (Verde)
+```html
+<button class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+    <i class="fas fa-check"></i>
+    <span>Aceptar</span>
+</button>
+```
+
+### Botón Secundario (Índigo)
+```html
+<button class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition">
+    Secundario
+</button>
+```
+
+### Botón Cancelar (Gris)
+```html
+<button class="px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium transition">
+    Cancelar
+</button>
+```
+
+### Botón Peligro (Rojo)
+```html
+<button class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+    <i class="fas fa-trash"></i>
+    <span>Eliminar</span>
+</button>
+```
+
+### Input de Texto
+```html
+<div class="mb-4">
+    <label class="block text-gray-700 font-medium mb-2">
+        <i class="fas fa-user mr-2"></i>Etiqueta *
+    </label>
+    <input 
+        type="text" 
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+        placeholder="Escribe aquí..."
+        required
+    >
+</div>
+```
+
+### Select/Dropdown
+```html
+<div class="mb-4">
+    <label class="block text-gray-700 font-medium mb-2">
+        <i class="fas fa-list mr-2"></i>Selecciona *
+    </label>
+    <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+        <option value="">Seleccione...</option>
+        <option value="1">Opción 1</option>
+        <option value="2">Opción 2</option>
+    </select>
+</div>
+```
+
+### Mensaje de Éxito
+```html
+<div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+    <p class="text-green-700 text-sm flex items-center gap-2">
+        <i class="fas fa-check-circle"></i>
+        <span>Operación exitosa</span>
+    </p>
+</div>
+```
+
+### Mensaje de Error
+```html
+<div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+    <p class="text-red-700 text-sm flex items-center gap-2">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>Error al procesar</span>
+    </p>
+</div>
+```
+
+### Mensaje de Advertencia
+```html
+<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+    <div class="flex items-start gap-2">
+        <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+        <div class="text-sm text-yellow-800">
+            <p class="font-semibold">Advertencia</p>
+            <p class="mt-1">Mensaje de advertencia aquí</p>
+        </div>
+    </div>
+</div>
+```
+
+### Mensaje Informativo
+```html
+<div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+    <div class="flex items-start gap-2">
+        <i class="fas fa-info-circle text-blue-500"></i>
+        <div class="text-sm text-blue-800">
+            <p class="font-semibold">Información</p>
+            <p class="mt-1">Mensaje informativo aquí</p>
+        </div>
+    </div>
+</div>
+```
+
+### Badge de Estado - Aprobado
+```html
+<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+    <i class="fas fa-check-circle mr-1"></i>Aprobado
+</span>
+```
+
+### Badge de Estado - Pendiente
+```html
+<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+    <i class="fas fa-clock mr-1"></i>Pendiente
+</span>
+```
+
+### Badge de Estado - Rechazado
+```html
+<span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
+    <i class="fas fa-times-circle mr-1"></i>Rechazado
+</span>
+```
+
+### Badge de Notificación
+```html
+<span class="px-2 py-0.5 bg-yellow-400 text-yellow-900 rounded-full text-xs font-bold">
+    5
+</span>
+```
+
+### Tabla Responsive
+```html
+<div class="bg-white rounded-xl shadow overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Columna 1
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Columna 2
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 text-sm text-gray-700">Dato 1</td>
+                    <td class="px-6 py-4 text-sm text-gray-700">Dato 2</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+```
+
+### Modal/Overlay
+```html
+<!-- Overlay -->
+<div 
+    x-show="modalAbierto"
+    @click="modalAbierto = false"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+>
+    <!-- Modal -->
+    <div 
+        @click.stop
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-90"
+        x-transition:enter-end="opacity-100 transform scale-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 transform scale-100"
+        x-transition:leave-end="opacity-0 transform scale-90"
+        class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+    >
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-700 to-green-600 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+            <h3 class="text-xl font-bold">Título del Modal</h3>
+            <button @click="modalAbierto = false" class="text-white hover:text-gray-200">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Contenido -->
+        <div class="p-6">
+            <!-- Contenido del modal -->
+        </div>
+        
+        <!-- Footer -->
+        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+            <button @click="modalAbierto = false" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                Cancelar
+            </button>
+            <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+```
+
+### Tabs (Pestañas)
+```html
+<div class="flex mb-6 bg-gray-100 rounded-lg p-1">
+    <button 
+        @click="tab = 'tab1'"
+        :class="tab === 'tab1' ? 'bg-white shadow' : 'hover:bg-gray-200'"
+        class="flex-1 py-2 px-4 rounded-md transition-all duration-200 font-medium"
+    >
+        <i class="fas fa-home mr-2"></i>Tab 1
+    </button>
+    <button 
+        @click="tab = 'tab2'"
+        :class="tab === 'tab2' ? 'bg-white shadow' : 'hover:bg-gray-200'"
+        class="flex-1 py-2 px-4 rounded-md transition-all duration-200 font-medium"
+    >
+        <i class="fas fa-cog mr-2"></i>Tab 2
+    </button>
+</div>
+
+<!-- Contenido de tabs -->
+<div x-show="tab === 'tab1'">Contenido Tab 1</div>
+<div x-show="tab === 'tab2'">Contenido Tab 2</div>
+```
+
+### Loading Spinner
+```html
+<div class="text-center py-12">
+    <i class="fas fa-spinner fa-spin text-4xl text-green-600 mb-3"></i>
+    <p class="text-gray-600">Cargando...</p>
+</div>
+```
+
+### Toggle Switch (Alpine.js)
+```html
+<label class="flex items-center cursor-pointer gap-3">
+    <div class="relative">
+        <input 
+            type="checkbox" 
+            x-model="activado"
+            class="sr-only"
+        >
+        <div :class="activado ? 'bg-green-600' : 'bg-gray-300'" class="w-14 h-8 rounded-full shadow-inner transition"></div>
+        <div :class="activado ? 'translate-x-6' : 'translate-x-0'" class="absolute top-1 left-1 bg-white w-6 h-6 rounded-full shadow transition-transform"></div>
+    </div>
+    <span class="text-sm font-medium" :class="activado ? 'text-green-700' : 'text-gray-500'" x-text="activado ? 'Activado' : 'Desactivado'"></span>
+</label>
+```
+
+---
+
+## 🎭 TRANSICIONES Y ANIMACIONES
+
+### Fade In/Out
+```html
+x-transition:enter="transition ease-out duration-300"
+x-transition:enter-start="opacity-0"
+x-transition:enter-end="opacity-100"
+x-transition:leave="transition ease-in duration-200"
+x-transition:leave-start="opacity-100"
+x-transition:leave-end="opacity-0"
+```
+
+### Scale Up/Down (Modal)
+```html
+x-transition:enter="transition ease-out duration-300"
+x-transition:enter-start="opacity-0 transform scale-90"
+x-transition:enter-end="opacity-100 transform scale-100"
+x-transition:leave="transition ease-in duration-200"
+x-transition:leave-start="opacity-100 transform scale-100"
+x-transition:leave-end="opacity-0 transform scale-90"
+```
+
+### Slide In/Out (Sidebar móvil)
+```html
+x-transition:enter="transition-transform ease-in-out duration-300"
+x-transition:enter-start="-translate-x-full"
+x-transition:enter-end="translate-x-0"
+x-transition:leave="transition-transform ease-in-out duration-300"
+x-transition:leave-start="translate-x-0"
+x-transition:leave-end="-translate-x-full"
+```
+
+---
+
+## 📐 ESPACIADO Y LAYOUT
+
+### Contenedores
+```css
+max-w-md        /* 28rem (448px) - Login */
+max-w-2xl       /* 42rem (672px) - Registro, modal */
+max-w-7xl       /* 80rem (1280px) - Dashboard contenido */
+
+p-4            /* padding: 1rem (16px) */
+p-6            /* padding: 1.5rem (24px) */
+p-8            /* padding: 2rem (32px) */
+
+space-y-2      /* gap vertical: 0.5rem entre elementos */
+space-y-4      /* gap vertical: 1rem entre elementos */
+space-x-3      /* gap horizontal: 0.75rem entre elementos */
+
+gap-2          /* flexbox/grid gap: 0.5rem */
+gap-4          /* flexbox/grid gap: 1rem */
+```
+
+### Bordes Redondeados
+```css
+rounded-lg     /* 0.5rem (8px) - Botones, inputs */
+rounded-xl     /* 0.75rem (12px) - Tarjetas */
+rounded-2xl    /* 1rem (16px) - Modales, contenedores */
+rounded-full   /* 9999px - Badges, avatares */
+```
+
+### Sombras
+```css
+shadow         /* Sombra estándar - Tarjetas */
+shadow-sm      /* Sombra sutil - Headers */
+shadow-lg      /* Sombra grande - Logo */
+shadow-2xl     /* Sombra muy grande - Modales */
+```
+
+---
+
+## 🎬 ESTADOS INTERACTIVOS
+
+### Hover
+```css
+hover:bg-green-700       /* Cambio de color al pasar mouse */
+hover:shadow-lg          /* Aumentar sombra */
+hover:scale-105          /* Aumentar tamaño (con transition) */
+transition               /* Transición suave para hover */
+```
+
+### Focus (Inputs)
+```css
+focus:ring-2                    /* Anillo de enfoque */
+focus:ring-green-500            /* Color del anillo */
+focus:border-transparent        /* Sin borde al enfocar */
+focus:outline-none              /* Sin outline predeterminado */
+```
+
+### Disabled
+```css
+disabled:bg-gray-400            /* Fondo gris cuando disabled */
+disabled:cursor-not-allowed     /* Cursor prohibido */
+```
+
+---
+
+## 📱 RESPONSIVE DESIGN
+
+### Breakpoints
+```css
+/* Mobile first (por defecto) */
+sm:   /* >= 640px */
+md:   /* >= 768px */
+lg:   /* >= 1024px */
+xl:   /* >= 1280px */
+```
+
+### Ejemplos Responsive
+```css
+/* Sidebar: oculto en móvil, visible en desktop */
+class="hidden lg:block"
+
+/* Grid: 1 columna en móvil, 2 en tablet, 3 en desktop */
+class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+
+/* Texto: pequeño en móvil, grande en desktop */
+class="text-sm md:text-base lg:text-lg"
+
+/* Padding: menor en móvil, mayor en desktop */
+class="p-4 md:p-6 lg:p-8"
+```
+
+---
+
+## 🖌️ ICONOS (Font Awesome 6.4.0)
+
+### Iconos Comunes
+```html
+<!-- Autenticación -->
+<i class="fas fa-user"></i>
+<i class="fas fa-lock"></i>
+<i class="fas fa-sign-in-alt"></i>
+<i class="fas fa-sign-out-alt"></i>
+
+<!-- Navegación -->
+<i class="fas fa-home"></i>
+<i class="fas fa-bars"></i>
+<i class="fas fa-times"></i>
+<i class="fas fa-arrow-left"></i>
+
+<!-- Acciones -->
+<i class="fas fa-check"></i>
+<i class="fas fa-plus"></i>
+<i class="fas fa-edit"></i>
+<i class="fas fa-trash"></i>
+<i class="fas fa-save"></i>
+<i class="fas fa-download"></i>
+<i class="fas fa-upload"></i>
+<i class="fas fa-sync-alt"></i>
+
+<!-- Estados -->
+<i class="fas fa-check-circle"></i>
+<i class="fas fa-times-circle"></i>
+<i class="fas fa-exclamation-circle"></i>
+<i class="fas fa-exclamation-triangle"></i>
+<i class="fas fa-info-circle"></i>
+<i class="fas fa-clock"></i>
+
+<!-- Documentos -->
+<i class="fas fa-file"></i>
+<i class="fas fa-file-pdf"></i>
+<i class="fas fa-clipboard-list"></i>
+<i class="fas fa-folder"></i>
+
+<!-- Comunicación -->
+<i class="fas fa-envelope"></i>
+<i class="fas fa-phone"></i>
+<i class="fas fa-bell"></i>
+
+<!-- Sistema -->
+<i class="fas fa-cog"></i>
+<i class="fas fa-shield-alt"></i>
+<i class="fas fa-database"></i>
+<i class="fas fa-search"></i>
+<i class="fas fa-filter"></i>
+
+<!-- Loading -->
+<i class="fas fa-spinner fa-spin"></i>
+```
+
+---
+
+## 📦 ASSETS NECESARIOS
+
+### Estructura de Carpetas
+```
+assets/
+├── images/
+│   ├── logo.png          (Logo de la empresa - PNG transparente)
+│   └── cana-pattern.svg  (Patrón de fondo - SVG)
+```
+
+### Logo
+- **Formato:** PNG con fondo transparente
+- **Tamaño recomendado:** 200x200px mínimo
+- **Ubicación:** `assets/images/logo.png`
+
+### Patrón de Fondo
+- **Formato:** SVG
+- **Descripción:** Patrón sutil repetible (simula textura de caña)
+- **Tamaño:** 400x400px
+- **Opacidad:** Muy sutil (no debe distraer del contenido)
+- **Ubicación:** `assets/images/cana-pattern.svg`
+
+**Nota:** Si no tienes el patrón SVG, puedes usar un color sólido:
+```html
+<body class="bg-gray-50">
+    <!-- Sin imagen de fondo -->
+</body>
+```
+
+---
+
+## 🚀 INSTRUCCIONES PARA EL NUEVO PROYECTO
+
+### 1. Configuración Inicial
+```bash
+cd "D:\Desktop\Ricardo\3. Proyectos\x"
+mkdir frontend
+cd frontend
+mkdir assets
+mkdir assets/images
+mkdir css
+mkdir js
+```
+
+### 2. Copiar Assets
+```bash
+# Copiar logo y patrón desde el proyecto original
+copy "D:\Desktop\Ricardo\3. Proyectos\1.2. Gesto dministrativo - Incapacidades\frontend\assets\images\*.*" "assets/images/"
+```
+
+### 3. Crear HTML Base (login.html)
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - [Nombre del Sistema]</title>
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        body {
+            background-image: url('assets/images/cana-pattern.svg');
+            background-size: 400px 400px;
+            background-repeat: repeat;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div x-data="loginApp()" class="w-full max-w-md" x-cloak>
+        <!-- Logo y Título -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-3 bg-white rounded-2xl shadow-lg mb-4">
+                <img src="assets/images/logo.png" alt="Logo" class="h-16 w-auto">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">[Nombre del Sistema]</h1>
+            <p class="text-gray-600 font-medium">[Nombre de la Empresa]</p>
+        </div>
+        
+        <!-- Tarjeta de Login -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Iniciar Sesión</h2>
+            
+            <form @submit.prevent="login()">
+                <!-- Usuario -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-user mr-2"></i>Usuario *
+                    </label>
+                    <input 
+                        type="text" 
+                        x-model="form.usuario"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                        placeholder="Ingrese su usuario"
+                        required
+                    >
+                </div>
+                
+                <!-- Contraseña -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-lock mr-2"></i>Contraseña *
+                    </label>
+                    <input 
+                        type="password" 
+                        x-model="form.password"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                        placeholder="Ingrese su contraseña"
+                        required
+                    >
+                </div>
+                
+                <!-- Botón Iniciar Sesión -->
+                <button 
+                    type="submit"
+                    class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+                >
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Iniciar Sesión</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function loginApp() {
+            return {
+                form: {
+                    usuario: '',
+                    password: ''
+                },
+                async login() {
+                    console.log('Login:', this.form);
+                    // Lógica de login aquí
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+```
+
+### 4. Colores Personalizados (Opcional)
+Si quieres personalizar los colores más allá del verde:
+
+```html
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'primary': '#16A34A',  // Verde principal
+                    'primary-dark': '#15803D',
+                }
+            }
+        }
+    }
+</script>
+```
+
+---
+
+## ✅ CHECKLIST DE IMPLEMENTACIÓN
+
+### Inicial
+- [ ] Crear estructura de carpetas
+- [ ] Copiar logo y patrón de fondo
+- [ ] Crear página de login con colores verde
+- [ ] Verificar que Alpine.js y Tailwind funcionen
+- [ ] Probar responsive en móvil
+
+### Componentes
+- [ ] Implementar botones (principal, secundario, cancelar, peligro)
+- [ ] Crear mensajes de éxito/error/advertencia/info
+- [ ] Implementar inputs y selects
+- [ ] Crear badges de estado
+- [ ] Implementar tablas responsive
+- [ ] Crear modal reutilizable
+
+### Panel Admin (si aplica)
+- [ ] Implementar sidebar con gradiente verde
+- [ ] Crear navegación con iconos
+- [ ] Implementar header sticky
+- [ ] Crear menú móvil con overlay
+- [ ] Implementar cerrar sesión en rojo
+
+### Detalles Finales
+- [ ] Verificar conversión automática a mayúsculas en inputs
+- [ ] Probar todas las transiciones
+- [ ] Verificar focus en inputs (anillo verde)
+- [ ] Validar colores en todos los estados
+- [ ] Probar en diferentes navegadores
+
+---
+
+## 📝 NOTAS IMPORTANTES
+
+1. **Alpine.js:** Usado para interactividad sin JavaScript complejo
+2. **Tailwind CDN:** No requiere instalación, pero es más pesado. Para producción, considera usar build
+3. **Mayúsculas automáticas:** Se aplica a todos los inputs de texto excepto contraseñas
+4. **Patrón de fondo:** Es completamente opcional, puedes usar solo colores sólidos
+5. **Responsive:** Todo es Mobile First con Tailwind
+6. **Colores:** El verde (#16A34A) es el color corporativo principal
+7. **Font Awesome:** Versión 6.4.0 con iconos sólidos (fas)
+
+---
+
+## 🎯 INSTRUCCIONES PARA EL AGENTE
+
+**Prompt sugerido para el nuevo proyecto:**
+
+```
+Necesito crear un sistema web con el mismo diseño visual de Supertiendas Cañaveral:
+
+- Color principal: Verde (#16A34A / green-600 en Tailwind)
+- Framework: TailwindCSS + Alpine.js
+- Login: Fondo degradado from-green-50 to-green-100
+- Tarjetas: bg-white rounded-2xl shadow-2xl
+- Botones principales: bg-green-600 hover:bg-green-700 text-white
+- Sidebar admin: bg-gradient-to-b from-green-800 to-green-900
+- Tipografía: System fonts, inputs en mayúsculas automáticas
+- Iconos: Font Awesome 6.4.0
+- Responsive: Mobile first
+
+Componentes necesarios:
+1. Página de login centrada con logo
+2. Panel administrativo con sidebar verde oscuro
+3. Mensajes de éxito (verde), error (rojo), advertencia (amarillo)
+4. Tablas responsive con hover
+5. Modales con overlay
+6. Badges de estado
+
+Consulta el archivo [ESTA GUÍA] para especificaciones detalladas.
+```
+
+---
+
+**Fecha de creación:** 4 de marzo de 2026  
+**Proyecto base:** Sistema de Gestión Administrativa - Supertiendas Cañaveral SAS  
+**Destino:** `D:\Desktop\Ricardo\3. Proyectos\x`
+
+---
+
+## 🆘 SOPORTE
+
+Si necesitas más ayuda o ejemplos específicos de componentes, consulta los archivos originales:
+- `frontend/login.html`
+- `frontend/registro.html`
+- `frontend/admin/dashboard.html`
+- `PALETA_COLORES_COMPLETA.md`
+
+
+los lsitados debenquedar fijos en larte uperior del fronten
+
+================================================================================
+================================================================================
+📋 SECCIÓN DE ADICIONES Y MEJORAS IMPLEMENTADAS
+================================================================================
+================================================================================
+
+FECHA DE ACTUALIZACIÓN: 06 de marzo de 2026
+
+Esta sección documenta TODAS las adiciones, mejoras y cambios implementados 
+al plan original, manteniendo la trazabilidad del proyecto.
+
+================================================================================
+1. IDENTIDAD CORPORATIVA - LOGO
+================================================================================
+
+✅ IMPLEMENTADO: Integración del Logo de Supertiendas Cañaveral
+
+Ubicación del archivo:
+- Ruta original: C:\Users\Usuario\Pictures\logo.png
+- Ruta en proyecto: frontend/assets/img/logo-canaveral.png
+
+Integración en las páginas:
+1. index.html (Login): 
+   - Logo de 80px de altura (h-20)
+   - Dentro de contenedor blanco con sombra
+   - Reemplaza ícono de Font Awesome
+
+2. operador.html (Panel Operador):
+   - Logo de 48px de altura (h-12)
+   - En header horizontal junto al título
+
+3. admin.html (Panel Administrador):
+   - Logo de 64px de altura (h-16)
+   - En sidebar, centrado verticalmente
+
+4. funcionario.html (Panel Funcionario):
+   - Logo de 48px de altura (h-12)
+   - En header horizontal junto al título
+
+Características:
+- Formato PNG con transparencia
+- Tamaños responsivos y proporcionales
+- Integrado con paleta de colores verde corporativa
+- No intrusivo, diseño profesional
+
+
+================================================================================
+2. NUEVA TABLA: CONFIGURACION_SISTEMA
+================================================================================
+
+✅ IMPLEMENTADA: Tabla para gestión de configuraciones del sistema
+
+Estructura:
+id                      entero, clave primaria, autoincremental
+clave                   cadena de texto de 100 longitud, único, indexado, campo obligatorio
+valor                   cadena de texto de 500 longitud, campo obligatorio
+descripcion             texto, campo opcional
+tipo_dato               cadena de texto de 50 longitud, campo obligatorio (default: 'string')
+                        Valores: 'string', 'int', 'bool', 'float'
+fecha_creacion          timestamp, campo obligatorio, default: fecha actual
+fecha_modificacion      timestamp, campo obligatorio, se actualiza automáticamente
+
+Funcionalidades:
+- Método obtener_valor(clave, valor_defecto): Obtiene y convierte valores según tipo
+- Método establecer_valor(clave, valor, descripcion, tipo_dato): Crea o actualiza configuración
+- Conversión automática de tipos de datos
+
+Configuraciones actuales del sistema:
+1. dias_vigencia_autorizacion: Días de vigencia para autorizaciones (default: 1 día)
+2. requiere_foto_visitante: Si es obligatorio tomar foto (default: false)
+3. requiere_numero_carnet: Si es obligatorio número de carnet (default: false)
+4. nombre_sistema: Nombre del sistema
+5. version_sistema: Versión actual
+6. mantenimiento_activo: Modo mantenimiento
+
+Endpoints API implementados:
+- GET /api/configuracion/ - Lista todas las configuraciones (solo usuario_master)
+- GET /api/configuracion/<clave> - Obtiene una configuración específica
+- PUT /api/configuracion/<clave> - Actualiza una configuración (solo usuario_master)
+- PUT /api/configuracion/batch - Actualización masiva (solo usuario_master)
+
+
+================================================================================
+3. MEJORAS EN TABLA: AUTORIZACIONES_INGRESO
+================================================================================
+
+✅ CAMBIOS IMPLEMENTADOS:
+
+A) Vigencia Configurable:
+   - ANTES: fecha_vencimiento fija a 7 días desde creación
+   - AHORA: Vigencia configurable desde tabla configuracion_sistema
+   - Default: 1 día (24 horas)
+   - Se calcula automáticamente al crear la autorización
+   - Constructor __init__ consulta ConfiguracionSistema
+
+B) Nuevo campo agregado:
+   fecha_modificacion      timestamp, se actualiza automáticamente en cada cambio
+
+C) Métodos mejorados:
+   - marcar_como_utilizada(log_visitante_id): Marca autorización como usada
+   - cancelar(): Permite cancelar autorizaciones pendientes
+   - verificar_vencimiento(): Actualiza estado si está vencida
+   - esta_activa (property): Verifica si está pendiente y vigente
+
+D) Estados de autorización (sin cambios):
+   - PENDIENTE: Creada, esperando ser utilizada
+   - UTILIZADA: Ya fue aplicada en un registro de visitante
+   - VENCIDA: Pasó la fecha de vencimiento sin ser utilizada
+   - CANCELADA: Cancelada manualmente por el funcionario
+
+E) Relaciones agregadas:
+   - Relación con log_visitantes (utilizada_en_log_id)
+   - Backref 'registro_uso' en AutorizacionIngreso
+
+F) Funcionalidad completa:
+   - Búsqueda por identificación del visitante
+   - Búsqueda con filtros (estado, sede, fechas)
+   - Aplicación automática al registrar visitante
+   - Estadísticas de autorizaciones por funcionario
+
+
+================================================================================
+4. MEJORAS EN TABLA: LOG_VISITANTES
+================================================================================
+
+✅ ADICIONES IMPLEMENTADAS:
+
+A) Sistema de elementos ingresados expandido:
+   ANTES: check1, check2, check3, check4 (4 checks)
+   AHORA: check1, check2, check3, check4, check5 (5 checks)
+
+   Estructura actual:
+   check1_elemento_tecnologico    boolean, default false
+   check1_descripcion             cadena de texto de 500 longitud
+   
+   check2_arma_fuego             boolean, default false
+   check2_descripcion            cadena de texto de 500 longitud
+   
+   check3_otro_elemento          boolean, default false
+   check3_descripcion            cadena de texto de 500 longitud
+   
+   check4_herramienta            boolean, default false
+   check4_descripcion            cadena de texto de 500 longitud
+   
+   check5_adicional              boolean, default false (NUEVO)
+   check5_descripcion            cadena de texto de 500 longitud (NUEVO)
+
+B) Campos de autorización previa:
+   funcionario_autoriza           cadena de texto de 200 longitud, campo obligatorio
+   autorizacion_previa_id         entero, FK a autorizaciones_ingreso, campo opcional
+
+C) Nuevo campo agregado:
+   fecha_modificacion             timestamp, se actualiza automáticamente
+
+D) Campo estado_visita:
+   estado_visita                  cadena de texto de 50 longitud, campo obligatorio
+                                  default: 'EN_INSTALACIONES'
+                                  Valores: 'EN_INSTALACIONES', 'SALIO'
+
+E) Métodos implementados:
+   - get_nombre_completo(): Retorna nombre completo del visitante
+   - marcar_salida(): Registra fecha/hora de salida y cambia estado
+
+
+================================================================================
+5. MEJORAS EN TABLA: USUARIOS
+================================================================================
+
+✅ CAMBIOS IMPLEMENTADOS:
+
+A) Sede opcional para usuario_master:
+   sede_id                        entero, FK a sedes, AHORA NULLABLE (antes obligatorio)
+   Motivo: usuario_master tiene acceso global a todas las sedes
+
+B) Nuevo campo agregado:
+   fecha_modificacion             timestamp, se actualiza automáticamente
+
+C) Tercer rol implementado:
+   rol                            cadena de texto de 100 longitud
+   Valores: 
+   - 'usuario_master': Acceso total, todas las sedes
+   - 'usuario_operador': Registro de visitantes, sede específica
+   - 'usuario_funcionario': Crea autorizaciones previas, dependencia específica (NUEVO)
+
+D) Usuario_funcionario características:
+   - Sede asignada (sede_id): Requerida
+   - NO puede registrar visitantes directamente
+   - Crea y gestiona autorizaciones de ingreso
+   - Solo ve autorizaciones de su sede/dependencia
+   - Pantalla específica: funcionario.html
+
+E) Endpoints adicionales:
+   - POST /api/usuarios/<id>/desbloquear - Desbloquea usuario (solo master)
+
+
+================================================================================
+6. NUEVA FUNCIONALIDAD: BÚSQUEDA POR NIT
+================================================================================
+
+✅ IMPLEMENTADO: Búsqueda de visitantes por NIT de empresa
+
+Endpoint: GET /api/visitantes/buscar-por-nit
+Parámetros: 
+  - nit: Número de identificación tributaria de la empresa
+
+Retorna:
+  - Lista de visitantes asociados a ese NIT
+  - Datos ordenados por fecha de última visita
+  - Incluye información de la empresa
+
+Uso en frontend:
+  - Autocompletar datos cuando se ingresa NIT conocido
+  - Mostrar historial de visitantes de una empresa
+  - Agilizar registro de visitantes recurrentes de misma empresa
+
+
+================================================================================
+7. SISTEMA DE REPORTES Y ESTADÍSTICAS
+================================================================================
+
+✅ IMPLEMENTADO: Sistema completo de reportes
+
+A) Reportes de visitas:
+   Endpoint: GET /api/reportes/visitas
+   Filtros disponibles:
+   - fecha_inicio / fecha_fin: Rango de fechas
+   - sede_id: Filtrar por sede
+   - estado: EN_INSTALACIONES / SALIO
+   - tipo_identificacion: Tipo de documento
+   - num_identificacion: Documento específico
+   - empresa: Nombre de empresa
+   - dependencia: Dependencia específica
+   
+   Retorna: Lista completa de visitas con todos los datos
+
+B) Exportación a Excel:
+   Endpoint: POST /api/reportes/visitas/excel
+   Genera archivo Excel (.xlsx) con:
+   - Todas las columnas de log_visitantes
+   - Formato profesional con encabezados
+   - Filtros aplicados
+   - Nombre de archivo con timestamp
+
+C) Estadísticas del sistema:
+   Endpoint: GET /api/reportes/estadisticas
+   Retorna:
+   - Total de visitas (hoy, semana, mes, total)
+   - Visitantes únicos
+   - Visitantes actualmente en instalaciones
+   - Top 5 empresas con más visitas
+   - Top 5 dependencias más visitadas
+   - Visitas por sede
+   - Gráficas de tendencias
+
+D) Estadísticas de autorizaciones:
+   Endpoint: GET /api/autorizaciones/estadisticas
+   Retorna:
+   - Total autorizaciones por estado
+   - Autorizaciones por funcionario
+   - Tasa de utilización
+   - Autorizaciones vencidas vs utilizadas
+
+
+================================================================================
+8. MEJORAS EN FUNCIONALIDAD DE AUTORIZACIONES
+================================================================================
+
+✅ IMPLEMENTADO: Sistema completo de autorizaciones previas
+
+A) Creación de autorizaciones:
+   Endpoint: POST /api/autorizaciones/
+   Acceso: usuario_funcionario y usuario_master
+   Validaciones:
+   - Datos completos del visitante
+   - Dependencia válida
+   - Sede válida
+   - Vigencia automática según configuración
+
+B) Búsqueda de autorizaciones activas:
+   Endpoint: GET /api/autorizaciones/buscar
+   Parámetros:
+   - tipo_identificacion
+   - num_identificacion
+   - sede_id
+   
+   Retorna: Autorizaciones PENDIENTES y vigentes para ese visitante
+
+C) Aplicación de autorización al registrar visitante:
+   - El operador ve si existe autorización pendiente
+   - Puede aplicarla automáticamente
+   - Prellenado de formulario con datos de la autorización
+   - Marca autorización como UTILIZADA
+   - Vincula log_visitante con autorización
+
+D) Gestión de autorizaciones:
+   - GET /api/autorizaciones/ - Lista con filtros
+   - GET /api/autorizaciones/<id> - Detalle
+   - PUT /api/autorizaciones/<id> - Actualizar (solo PENDIENTES)
+   - DELETE /api/autorizaciones/<id> - Cancelar
+   - POST /api/autorizaciones/<id>/aplicar - Marcar como aplicada
+
+E) Filtros disponibles:
+   - estado: PENDIENTE, UTILIZADA, VENCIDA, CANCELADA
+   - sede_id: Por sede
+   - usuario_id: Por funcionario creador
+   - fecha_desde / fecha_hasta: Rango de fechas
+   - vigentes: Solo autorizaciones activas
+
+F) Interfaz funcionario.html:
+   - Panel completo para gestión de autorizaciones
+   - Crear nueva autorización
+   - Ver mis autorizaciones
+   - Filtrar por estado
+   - Ver detalle y estadísticas
+
+
+================================================================================
+9. TABLA: DEPENDENCIAS - RELACIÓN CON SEDES
+================================================================================
+
+✅ IMPLEMENTADO: Relación many-to-many entre sedes y dependencias
+
+A) Tabla de relación: sede_dependencia
+   sede_id                entero, FK a sedes, campo obligatorio
+   dependencia_id         entero, FK a dependencias, campo obligatorio
+   Primary Key: (sede_id, dependencia_id)
+
+B) Funcionalidad:
+   - Una dependencia puede pertenecer a múltiples sedes
+   - Una sede puede tener múltiples dependencias
+   - Al crear dependencia se asignan sedes
+   - Al listar dependencias se filtra por sede del usuario
+
+C) En modelo Dependencia:
+   sedes = db.relationship('Sede', secondary='sede_dependencia', backref='dependencias')
+
+D) En modelo Sede:
+   # Backref automático: sede.dependencias
+
+E) Endpoints con filtro de sede:
+   GET /api/dependencias/?sede_id=X
+   - Muestra solo dependencias de esa sede
+   - Usuario operador ve solo dependencias de su sede
+   - Usuario master puede filtrar por cualquier sede
+
+
+================================================================================
+10. LOGS Y AUDITORÍA MEJORADA
+================================================================================
+
+✅ IMPLEMENTADO: Sistema completo de auditoría
+
+A) Tipos de eventos (log_eventos):
+   Eventos implementados (26 tipos):
+   
+   Autenticación:
+   - LOGIN_EXITOSO
+   - LOGIN_FALLIDO
+   - LOGOUT
+   - SESION_EXPIRADA
+   - USUARIO_BLOQUEADO
+   - USUARIO_DESBLOQUEADO
+   
+   Usuarios:
+   - USUARIO_CREADO
+   - USUARIO_MODIFICADO
+   - PASSWORD_RESETEADO
+   
+   Visitantes:
+   - VISITANTE_REGISTRADO
+   - VISITANTE_INGRESO
+   - VISITANTE_SALIDA
+   - VISITANTE_REINGRESO
+   - FOTO_CAPTURADA
+   
+   Autorizaciones:
+   - AUTORIZACION_CREADA
+   - AUTORIZACION_MODIFICADA
+   - AUTORIZACION_CANCELADA
+   - AUTORIZACION_UTILIZADA
+   - AUTORIZACION_VENCIDA
+   
+   Configuración:
+   - SEDE_CREADA
+   - SEDE_MODIFICADA
+   - DEPENDENCIA_CREADA
+   - DEPENDENCIA_MODIFICADA
+   - CONFIGURACION_MODIFICADA
+   
+   Reportes:
+   - REPORTE_GENERADO
+   - EXCEL_EXPORTADO
+
+B) Información registrada en cada evento:
+   - Fecha y hora exacta
+   - Usuario que realiza la acción
+   - Tipo de evento
+   - Nivel de severidad (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+   - IP del usuario
+   - User-Agent (navegador)
+   - Datos adicionales en JSON (detalles del evento)
+
+C) Campo fecha_modificacion:
+   Agregado a todas las tablas principales:
+   - usuarios
+   - sedes
+   - dependencias
+   - visitantes
+   - log_visitantes
+   - autorizaciones_ingreso
+   - configuracion_sistema
+   
+   Permite rastrear cuándo fue la última modificación de cada registro
+
+
+================================================================================
+11. ALMACENAMIENTO DE FOTOGRAFÍAS
+================================================================================
+
+✅ IMPLEMENTADO: Sistema de almacenamiento de fotos de visitantes
+
+A) Estructura de carpetas:
+   Ruta base: uploads/visitantes/
+   
+   Nomenclatura de archivos:
+   [prefijo_tipo_identificacion]-[num_identificacion]-[fecha]_[hora].jpg
+   
+   Ejemplo:
+   CC-12345678-20260306_143052.jpg
+   TI-98765432-20260306_150230.jpg
+
+B) Características:
+   - Formato: JPG
+   - Tamaño máximo: 5MB (configurable en config.py)
+   - Validación de formato (png, jpg, jpeg permitidos)
+   - Nombre único por timestamp
+   - Organización por tipo de documento
+
+C) Endpoint:
+   POST /api/visitantes/foto/<log_id>
+   - Recibe imagen en base64 o FormData
+   - Valida formato y tamaño
+   - Guarda en carpeta uploads/visitantes/
+   - Actualiza campo fotografia_visitante en log_visitantes
+
+D) Configuración (config.py):
+   UPLOAD_FOLDER = '../uploads/visitantes'
+   MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
+   ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+E) Frontend (operador.html):
+   - Captura de cámara web con webcam.js o getUserMedia
+   - Preview antes de guardar
+   - Opción de retomar foto
+   - Instrucciones claras al visitante
+   - No es obligatorio (configurable)
+
+
+================================================================================
+12. VALIDACIONES Y SEGURIDAD ADICIONALES
+================================================================================
+
+✅ IMPLEMENTADAS: Mejoras de seguridad
+
+A) Validación de campos:
+   - Todos los inputs de texto convertidos a mayúsculas (excepto email y password)
+   - Validación de formato de email
+   - Validación de longitud de campos
+   - Sanitización de inputs para prevenir SQL injection
+   - Validación de tipos de datos
+
+B) Control de sesiones:
+   - Timeout: 45 minutos de inactividad
+   - Verificación de sesión activa en cada request
+   - Cierre automático al expirar
+   - Renovación al interactuar
+
+C) Control de accesos por rol:
+   Decoradores implementados:
+   - @login_required: Requiere autenticación
+   - @role_required('usuario_master'): Solo master
+   - @role_required('usuario_operador'): Solo operador
+   - @role_required('usuario_funcionario'): Solo funcionario
+   - Múltiples roles: @role_required(['usuario_master', 'usuario_operador'])
+
+D) Rate limiting:
+   - Login: Máximo 5 intentos por minuto
+   - API general: Máximo 100 requests por minuto
+   - Bloqueo automático después de 10 intentos fallidos
+
+E) CORS configurado:
+   - Origins permitidos configurables
+   - Métodos HTTP autorizados
+   - Headers permitidos
+
+
+================================================================================
+13. MEJORAS EN INTERFAZ DE USUARIO (FRONTEND)
+================================================================================
+
+✅ IMPLEMENTADAS: Mejoras UX/UI
+
+A) Diseño responsive:
+   - Mobile first con TailwindCSS
+   - Adaptable a tablets y móviles
+   - Sidebar colapsable en móvil
+   - Tablas scrollables horizontalmente
+
+B) Feedback visual:
+   - Mensajes de éxito (verde)
+   - Mensajes de error (rojo)
+   - Mensajes de advertencia (amarillo)
+   - Mensajes informativos (azul)
+   - Spinners de carga
+   - Transiciones suaves
+
+C) Validación en tiempo real:
+   - Verificación de campos requeridos
+   - Formato de email
+   - Longitud de contraseña
+   - Búsqueda mientras escribe
+
+D) Componentes colapsables:
+   - Formularios por secciones (+/-)
+   - Información del visitante
+   - Destino en instalaciones
+   - Elementos ingresados
+   - Captura de fotografía
+
+E) Listados mejorados:
+   - Paginación
+   - Ordenamiento por columnas
+   - Filtros múltiples
+   - Búsqueda rápida
+   - Estados con colores:
+     * Verde: Visitante salió
+     * Amarillo: En instalaciones
+   - Ordenamiento automático: En instalaciones primero
+
+F) Autocompletado:
+   - Datos de visitante al buscar por identificación
+   - Datos de empresa al ingresar NIT
+   - Autollenado con autorización previa
+
+G) Confirmaciones:
+   - Diálogos antes de guardar
+   - Confirmación antes de eliminar
+   - Preview de datos a guardar
+
+
+================================================================================
+14. FUNCIONALIDAD DE REINGRESO
+================================================================================
+
+✅ IMPLEMENTADO: Sistema de reingreso rápido
+
+A) Flujo de reingreso:
+   1. Visitante registra salida (botón "Marcar Salida")
+   2. Se activa botón "Reingreso"
+   3. Al presionar "Reingreso":
+      - Abre formulario prellenado con datos anteriores
+      - Mantiene: Datos personales, empresa, NIT
+      - Permite modificar: Dependencia, funcionario, observaciones, elementos
+      - OBLIGATORIO: Tomar nueva fotografía
+      - Genera NUEVO registro en log_visitantes
+
+B) Datos que se mantienen:
+   - Tipo y número de identificación
+   - Nombres y apellidos
+   - Teléfono y correo
+   - Empresa y NIT
+
+C) Datos que se pueden modificar:
+   - Dependencia destino
+   - Funcionario que recibe
+   - Funcionario que autoriza
+   - Observaciones
+   - Elementos ingresados (checks)
+   - Número de carnet
+
+D) Datos nuevos obligatorios:
+   - Fotografía (siempre nueva)
+   - Fecha y hora de ingreso (automáticas)
+
+E) Ventajas:
+   - Agiliza proceso de reingreso
+   - Reduce errores de digitación
+   - Mantiene trazabilidad (registros separados)
+   - Permite cambios si es necesario
+
+
+================================================================================
+15. CONFIGURACIONES DEL SISTEMA
+================================================================================
+
+✅ IMPLEMENTADAS: Configuraciones centralizadas
+
+A) Archivo config.py:
+   
+   Configuración de Flask:
+   - SECRET_KEY: Clave secreta para sesiones
+   - DEBUG: Modo depuración
+   - ENV: Entorno (development/production)
+   
+   Base de Datos:
+   - SQLALCHEMY_DATABASE_URI: 
+     postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes
+   - SQLALCHEMY_TRACK_MODIFICATIONS: False
+   - SQLALCHEMY_ECHO: False (True para debug SQL)
+   
+   JWT y Sesiones:
+   - JWT_SECRET_KEY: Para tokens
+   - JWT_ACCESS_TOKEN_EXPIRES: 45 minutos
+   - SESSION_TIMEOUT: 45 minutos
+   - SESSION_COOKIE_SECURE: True en producción
+   - SESSION_COOKIE_HTTPONLY: True
+   
+   Seguridad:
+   - MAX_LOGIN_ATTEMPTS: 10 intentos
+   - PASSWORD_MIN_LENGTH: 8 caracteres
+   
+   Archivos:
+   - UPLOAD_FOLDER: ../uploads/visitantes
+   - MAX_CONTENT_LENGTH: 5MB
+   - ALLOWED_EXTENSIONS: png, jpg, jpeg
+   
+   CORS:
+   - CORS_ORIGINS: http://localhost:5000, http://127.0.0.1:5000
+   - CORS_METHODS: GET, POST, PUT, DELETE, OPTIONS
+   - CORS_ALLOW_CREDENTIALS: True
+
+B) Variables de entorno (.env):
+   DATABASE_URL=postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes
+   SECRET_KEY=clave-secreta-produccion
+   JWT_SECRET_KEY=jwt-clave-secreta
+   FLASK_ENV=production
+   MAX_LOGIN_ATTEMPTS=10
+   SESSION_TIMEOUT=45
+   MAX_FILE_SIZE=5242880
+
+
+================================================================================
+16. ESTRUCTURA DE ARCHIVOS DEL PROYECTO
+================================================================================
+
+✅ ESTRUCTURA IMPLEMENTADA:
+
+backend/
+├── app/
+│   ├── __init__.py                 # Factory de aplicación
+│   ├── extensions.py               # Extensiones Flask (db, login_manager, etc.)
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── usuario.py              # Modelo Usuario
+│   │   ├── sede.py                 # Modelo Sede
+│   │   ├── dependencia.py          # Modelo Dependencia
+│   │   ├── visitante.py            # Modelo Visitante
+│   │   ├── log_visitante.py        # Modelo LogVisitante
+│   │   ├── log_evento.py           # Modelo LogEvento
+│   │   ├── autorizacion_ingreso.py # Modelo AutorizacionIngreso
+│   │   └── configuracion_sistema.py # Modelo ConfiguracionSistema
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── auth.py                 # Autenticación
+│   │   ├── usuarios.py             # Gestión usuarios
+│   │   ├── sedes.py                # Gestión sedes
+│   │   ├── dependencias.py         # Gestión dependencias
+│   │   ├── visitantes.py           # Gestión visitantes
+│   │   ├── autorizaciones.py       # Gestión autorizaciones (NUEVO)
+│   │   ├── reportes.py             # Reportes y estadísticas
+│   │   └── configuracion.py        # Configuraciones sistema (NUEVO)
+│   └── services/                   # Servicios (futuro)
+│       └── __init__.py
+├── config.py                       # Configuración
+├── run.py                          # Punto de entrada
+├── requirements.txt                # Dependencias Python
+├── init_db.py                      # Inicialización BD
+├── create_database.py              # Creación BD
+├── crear_usuario_funcionario.py   # Script crear funcionarios (NUEVO)
+└── verificar_funcionario.py       # Script verificar funcionarios (NUEVO)
+
+frontend/
+├── assets/
+│   ├── img/
+│   │   └── logo-canaveral.png     # Logo corporativo (NUEVO)
+│   └── js/
+│       └── app.js                  # Lógica JavaScript compartida
+├── index.html                      # Login
+├── admin.html                      # Panel Administrador (usuario_master)
+├── operador.html                   # Panel Operador (usuario_operador)
+└── funcionario.html                # Panel Funcionario (usuario_funcionario) (NUEVO)
+
+uploads/
+└── visitantes/                     # Fotografías de visitantes
+    └── [archivos .jpg]
+
+Documentación:
+├── README.md                       # Documentación principal
+├── RESUMEN_COMPLETO.md            # Resumen técnico completo
+├── COMANDOS_RAPIDOS.md            # Comandos útiles
+├── INICIO_RAPIDO.md               # Guía de inicio
+├── INSTRUCCIONES.md               # Instrucciones de uso
+├── CONFIGURACION_FOTOS.md         # Config fotografías
+├── CONSULTAS_SQL.sql              # Consultas SQL útiles
+└── Levantamiento de requerimientos control visitantes.txt  # Este archivo
+
+
+================================================================================
+17. SCRIPTS ADICIONALES CREADOS
+================================================================================
+
+✅ SCRIPTS IMPLEMENTADOS:
+
+A) crear_usuario_funcionario.py
+   Propósito: Crear usuarios con rol usuario_funcionario
+   Uso: python crear_usuario_funcionario.py
+   Solicita:
+   - Tipo y número de identificación
+   - Nombres y apellidos
+   - Teléfono y correo
+   - Sede asignada
+   - Usuario y contraseña
+   Genera: Usuario funcionario activo en BD
+
+B) verificar_funcionario.py
+   Propósito: Verificar datos de un funcionario
+   Uso: python verificar_funcionario.py <usuario>
+   Muestra:
+   - Datos completos del funcionario
+   - Sede asignada
+   - Estado de la cuenta
+   - Fecha de creación
+
+C) check_users.py
+   Propósito: Listar todos los usuarios del sistema
+   Muestra: ID, usuario, rol, estado, sede
+
+D) check_tables.py
+   Propósito: Verificar estructura de tablas
+   Muestra: Tablas existentes y columnas
+
+E) show_passwords.py
+   Propósito: (Solo desarrollo) Ver usuarios y estados
+   Nota: NO usar en producción
+
+
+================================================================================
+18. MEJORAS EN EXPORTACIÓN A EXCEL
+================================================================================
+
+✅ IMPLEMENTADO: Exportación profesional
+
+A) Biblioteca utilizada:
+   - openpyxl (Python backend)
+   - SheetJS/xlsx (JavaScript frontend)
+
+B) Características del Excel generado:
+   - Encabezados en negrita
+   - Formato de fechas: DD/MM/YYYY
+   - Formato de horas: HH:MM:SS
+   - Ancho de columnas automático
+   - Filtros en encabezados
+   - Filas alternadas con color
+   - Nombre descriptivo: visitas_YYYYMMDD_HHMMSS.xlsx
+
+C) Columnas incluidas:
+   1. ID
+   2. Fecha Ingreso
+   3. Hora Ingreso
+   4. Tipo ID
+   5. Número ID
+   6. Nombre Completo
+   7. Teléfono
+   8. Correo
+   9. Empresa
+   10. NIT Empresa
+   11. Dependencia
+   12. Funcionario Recibe
+   13. Funcionario Autoriza
+   14. Observaciones
+   15. Elementos Ingresados
+   16. Número Carnet
+   17. Fecha Salida
+   18. Hora Salida
+   19. Estado
+   20. Sede
+
+D) Endpoint:
+   POST /api/reportes/visitas/excel
+   Body: { filtros } (mismo formato que reporte de visitas)
+   Response: Archivo .xlsx para descargar
+
+
+================================================================================
+19. PANEL ESPECÍFICO: FUNCIONARIO.HTML
+================================================================================
+
+✅ IMPLEMENTADO: Interfaz completa para usuario_funcionario
+
+A) Características principales:
+   - Header con logo y datos del funcionario
+   - Botón "Nueva Autorización"
+   - Lista de "Mis Autorizaciones"
+   - Filtros por estado
+   - Búsqueda de autorizaciones
+   - Tarjetas de estadísticas
+
+B) Formulario de nueva autorización:
+   Campos incluidos:
+   - Datos del visitante (tipo ID, número ID, nombres, apellidos)
+   - Teléfono y correo (opcional)
+   - Empresa y NIT
+   - Dependencia destino
+   - Funcionario que recibirá
+   - Observaciones
+   - Fecha de vencimiento (calculada automática)
+   
+   Validaciones:
+   - Campos obligatorios marcados con *
+   - Verificación antes de guardar
+   - Conversión a mayúsculas
+
+C) Lista de autorizaciones:
+   Muestra:
+   - Estado con badge de color
+   - Datos del visitante
+   - Empresa
+   - Dependencia
+   - Fecha de vencimiento
+   - Acciones (ver, editar, cancelar)
+   
+   Estados visuales:
+   - PENDIENTE: Amarillo
+   - UTILIZADA: Verde
+   - VENCIDA: Rojo
+   - CANCELADA: Gris
+
+D) Acciones disponibles:
+   - Ver detalle de autorización
+   - Editar (solo PENDIENTES)
+   - Cancelar (solo PENDIENTES)
+   - Filtrar por estado
+   - Buscar por identificación
+
+E) Estadísticas mostradas:
+   - Total autorizaciones creadas
+   - Autorizaciones pendientes
+   - Autorizaciones utilizadas
+   - Tasa de utilización
+
+
+================================================================================
+20. VALIDACIONES DE CONTRASEÑA
+================================================================================
+
+✅ IMPLEMENTADAS: Requisitos de contraseña
+
+Requisitos al crear/cambiar contraseña:
+- Longitud mínima: 8 caracteres
+- Al menos 1 mayúscula
+- Al menos 1 minúscula
+- Al menos 1 número
+- Al menos 1 caracter especial (!@#$%^&*()_+-=[]{}|;:,.<>?)
+
+Validación en backend (Python):
+def validar_password(password):
+    if len(password) < 8:
+        return False, "Mínimo 8 caracteres"
+    if not re.search("[a-z]", password):
+        return False, "Debe contener minúsculas"
+    if not re.search("[A-Z]", password):
+        return False, "Debe contener mayúsculas"
+    if not re.search("[0-9]", password):
+        return False, "Debe contener números"
+    if not re.search("[!@#$%^&*()_+-=[\]{}|;:,.<>?]", password):
+        return False, "Debe contener caracteres especiales"
+    return True, "Válida"
+
+Hashing:
+- Biblioteca: bcrypt
+- Rounds: 12
+- Salt automático
+
+Almacenamiento:
+- Campo: password_hash (255 caracteres)
+- NUNCA se almacena contraseña en texto plano
+- NUNCA se retorna en respuestas JSON
+
+
+================================================================================
+21. TIPOS DE IDENTIFICACIÓN SOPORTADOS
+================================================================================
+
+✅ IMPLEMENTADOS: 6 tipos de identificación
+
+Lista completa:
+1. RC - REGISTRO CIVIL
+2. TI - TARJETA DE IDENTIDAD
+3. CC - CÉDULA DE CIUDADANÍA
+4. CE - CÉDULA DE EXTRANJERÍA
+5. PS - PASAPORTE
+6. CT - CONTRASEÑA (Documento temporal)
+
+Implementación frontend:
+<select name="tipo_identificacion">
+    <option value="">Seleccione...</option>
+    <option value="RC">RC - REGISTRO CIVIL</option>
+    <option value="TI">TI - TARJETA DE IDENTIDAD</option>
+    <option value="CC">CC - CÉDULA DE CIUDADANÍA</option>
+    <option value="CE">CE - CÉDULA DE EXTRANJERÍA</option>
+    <option value="PS">PS - PASAPORTE</option>
+    <option value="CT">CT - CONTRASEÑA</option>
+</select>
+
+Validación backend:
+TIPOS_IDENTIFICACION_VALIDOS = ['RC', 'TI', 'CC', 'CE', 'PS', 'CT']
+
+Indexación:
+- tipo_identificacion + num_identificacion indexados juntos
+- Búsqueda optimizada
+- Combinación única por tipo
+
+
+================================================================================
+22. MEJORAS EN BÚSQUEDA DE VISITANTES
+================================================================================
+
+✅ IMPLEMENTADAS: Búsquedas optimizadas
+
+A) Búsqueda por identificación:
+   Endpoint: GET /api/visitantes/buscar
+   Parámetros:
+   - tipo_identificacion (obligatorio)
+   - num_identificacion (obligatorio)
+   
+   Retorna:
+   - Datos del visitante si existe
+   - null si no existe
+   - Última visita registrada
+   - Total de visitas históricas
+
+B) Verificación de autorización previa:
+   Al buscar visitante, también busca:
+   - Autorizaciones PENDIENTES para ese visitante
+   - En la sede del operador
+   - Vigentes (no vencidas)
+   
+   Si encuentra autorización:
+   - Muestra notificación al operador
+   - Opción de aplicar autorización
+   - Prellenado automático de datos
+
+C) Autocompletado inteligente:
+   - Mientras escribe, sugiere visitantes existentes
+   - Muestra últimas visitas
+   - Datos de empresa se precargan
+
+D) Historial de visitas:
+   - Al seleccionar visitante, muestra historial
+   - Últimas 10 visitas
+   - Dependencias visitadas
+   - Frecuencia
+
+
+================================================================================
+23. GESTIÓN DE NÚMERO DE CARNET
+================================================================================
+
+✅ IMPLEMENTADO: Sistema de carnets
+
+A) Campo en log_visitantes:
+   numero_carnet    cadena de texto de 50 longitud, campo OPCIONAL
+
+B) Configuración:
+   En configuracion_sistema:
+   - requiere_numero_carnet: bool (default: false)
+   - Si true: Campo obligatorio
+   - Si false: Campo opcional
+
+C) Flujo en frontend:
+   1. Después de tomar fotografía
+   2. Se muestra campo para número de carnet
+   3. Si configurado como obligatorio: validación antes de guardar
+   4. Si opcional: puede dejarse vacío
+
+D) Uso sugerido:
+   - Si empresa maneja carnets físicos de visitante
+   - Número secuencial o código del carnet
+   - Facilita control de carnets prestados
+   - Reporte de carnets pendientes de devolución
+
+E) Validaciones:
+   - Solo acepta alfanuméricos
+   - Longitud máxima: 50 caracteres
+   - Convertido a mayúsculas
+   - Puede incluir guiones y espacios
+
+
+================================================================================
+24. ÍNDICES Y OPTIMIZACIÓN DE BASE DE DATOS
+================================================================================
+
+✅ IMPLEMENTADOS: Índices para performance
+
+A) Tabla usuarios:
+   - UNIQUE INDEX: num_identificacion
+   - UNIQUE INDEX: dir_correo
+   - UNIQUE INDEX: usuario
+   - INDEX: rol
+   - INDEX: estado
+
+B) Tabla visitantes:
+   - INDEX: (tipo_identificacion, num_identificacion)
+   - INDEX: nit_empresa
+   - INDEX: estado
+
+C) Tabla log_visitantes:
+   - INDEX: fecha_ingreso
+   - INDEX: (tipo_identificacion, num_identificacion)
+   - INDEX: estado_visita
+   - INDEX: sede_id
+   - INDEX: fecha_registro
+   - FOREIGN KEY indexes automáticos
+
+D) Tabla autorizaciones_ingreso:
+   - INDEX: (tipo_identificacion, num_identificacion)
+   - INDEX: estado
+   - INDEX: fecha_vencimiento
+   - INDEX: fecha_creacion
+   - INDEX: sede_id
+   - INDEX: usuario_id
+
+E) Tabla log_eventos:
+   - INDEX: fecha
+   - INDEX: usuario_id
+   - INDEX: tipo_evento
+   - INDEX: nivel
+
+F) Tabla sedes:
+   - UNIQUE INDEX: codigo_sede
+   - INDEX: descripcion_sede
+
+G) Tabla dependencias:
+   - INDEX: prefijo_dependencia
+   - INDEX: estado
+
+H) Tabla configuracion_sistema:
+   - UNIQUE INDEX: clave
+
+Beneficios:
+- Búsquedas rápidas por identificación
+- Filtros de fecha optimizados
+- Joins eficientes
+- Reporting con buen performance
+
+
+================================================================================
+25. NIVELES DE ACCESO POR ROL - DETALLADO
+================================================================================
+
+✅ IMPLEMENTADO: Control granular de accesos
+
+A) USUARIO_MASTER (Administrador)
+   Acceso COMPLETO a:
+   ✅ Todas las sedes
+   ✅ Crear/editar/eliminar usuarios
+   ✅ Crear/editar/eliminar sedes
+   ✅ Crear/editar/eliminar dependencias
+   ✅ Ver todos los visitantes de todas las sedes
+   ✅ Generar reportes de cualquier sede
+   ✅ Exportar Excel de todas las sedes
+   ✅ Ver estadísticas globales
+   ✅ Ver/gestionar todas las autorizaciones
+   ✅ Modificar configuraciones del sistema
+   ✅ Ver logs de eventos completos
+   ✅ Desbloquear usuarios
+   ✅ Resetear contraseñas
+   
+   Restricciones:
+   ❌ Ninguna
+
+B) USUARIO_OPERADOR (Operador de sede)
+   Acceso a:
+   ✅ Registrar visitantes en su sede
+   ✅ Marcar ingreso de visitantes
+   ✅ Marcar salida de visitantes
+   ✅ Ver visitantes de su sede
+   ✅ Tomar fotografías
+   ✅ Registrar elementos ingresados
+   ✅ Ver autorizaciones pendientes de su sede
+   ✅ Aplicar autorizaciones al registrar visitante
+   ✅ Ver dependencias de su sede
+   ✅ Generar reportes de su sede
+   
+   Restricciones:
+   ❌ No puede acceder a otras sedes
+   ❌ No puede crear/editar usuarios
+   ❌ No puede crear/editar sedes
+   ❌ No puede crear/editar dependencias
+   ❌ No puede crear autorizaciones
+   ❌ No puede modificar configuraciones
+   ❌ No puede exportar Excel (configurable)
+   ❌ No ve estadísticas globales
+
+C) USUARIO_FUNCIONARIO (Funcionario que autoriza)
+   Acceso a:
+   ✅ Crear autorizaciones de ingreso
+   ✅ Ver sus propias autorizaciones
+   ✅ Editar autorizaciones PENDIENTES
+   ✅ Cancelar autorizaciones PENDIENTES
+   ✅ Ver estadísticas de sus autorizaciones
+   ✅ Ver dependencias de su sede
+   ✅ Buscar autorizaciones por visitante
+   
+   Restricciones:
+   ❌ No puede registrar visitantes directamente
+   ❌ No puede ver el panel de operador
+   ❌ No puede marcar ingresos/salidas
+   ❌ No puede acceder a otras sedes
+   ❌ No puede crear/editar usuarios
+   ❌ No puede crear/editar sedes/dependencias
+   ❌ No puede modificar configuraciones
+   ❌ Solo ve sus autorizaciones (no las de otros funcionarios)
+   ❌ No puede ver autorizaciones ya UTILIZADAS de otros
+
+
+================================================================================
+26. DEPENDENCIAS DE PYTHON (REQUIREMENTS.TXT)
+================================================================================
+
+✅ LIBRERÍAS IMPLEMENTADAS:
+
+Flask==3.0.0                    # Framework web
+Flask-Login==0.6.3              # Gestión de sesiones
+Flask-SQLAlchemy==3.1.1         # ORM
+Flask-CORS==4.0.0               # Cross-Origin Resource Sharing
+Flask-Limiter==3.5.0            # Rate limiting
+psycopg2-binary==2.9.9          # Driver PostgreSQL
+bcrypt==4.1.2                   # Hash de contraseñas
+python-dotenv==1.0.0            # Variables de entorno
+openpyxl==3.1.2                 # Generación de Excel
+Pillow==10.2.0                  # Procesamiento de imágenes
+Werkzeug==3.0.1                 # Utilidades WSGI
+MarkupSafe==2.1.3               # Escapado seguro de HTML
+gunicorn==21.2.0                # Servidor WSGI producción (Linux)
+waitress==2.1.2                 # Servidor WSGI producción (Windows)
+
+Instalación:
+pip install -r requirements.txt
+
+Actualización:
+pip freeze > requirements.txt
+
+
+================================================================================
+27. COMANDOS PARA EJECUCIÓN DEL SISTEMA
+================================================================================
+
+✅ COMANDOS DOCUMENTADOS:
+
+A) Iniciar Base de Datos (primera vez):
+   python backend/create_database.py
+   python backend/init_db.py
+
+B) Iniciar Backend (desarrollo):
+   cd backend
+   python run.py
+   
+   URL: http://localhost:5000
+
+C) Iniciar Backend (producción Windows):
+   waitress-serve --host=0.0.0.0 --port=5000 --call app:create_app
+
+D) Iniciar Backend (producción Linux):
+   gunicorn --bind 0.0.0.0:5000 --workers 4 "app:create_app()"
+
+E) Frontend:
+   Abrir frontend/index.html en navegador
+   O servir con servidor web:
+   
+   python -m http.server 8080 --directory frontend
+   URL: http://localhost:8080
+
+F) Crear usuario master:
+   python backend/crear_usuario_master.py
+
+G) Crear usuario funcionario:
+   python backend/crear_usuario_funcionario.py
+
+H) Verificar usuarios:
+   python backend/check_users.py
+
+I) Verificar tablas:
+   python backend/check_tables.py
+
+
+================================================================================
+28. CONFIGURACIÓN DE URLs Y ENDPOINTS
+================================================================================
+
+✅ BASE URL: http://localhost:5000/api
+
+A) Autenticación (/api/auth):
+   POST   /auth/login           - Iniciar sesión
+   POST   /auth/logout          - Cerrar sesión
+   GET    /auth/me              - Usuario actual
+   GET    /auth/check-session   - Verificar sesión
+
+B) Usuarios (/api/usuarios):
+   GET    /usuarios/                      - Listar (solo master)
+   GET    /usuarios/<id>                  - Obtener uno (solo master)
+   POST   /usuarios/                      - Crear (solo master)
+   PUT    /usuarios/<id>                  - Actualizar (solo master)
+   POST   /usuarios/<id>/resetear-password - Resetear password (solo master)
+   POST   /usuarios/<id>/desbloquear      - Desbloquear (solo master)
+
+C) Visitantes (/api/visitantes):
+   GET    /visitantes/buscar              - Buscar por identificación
+   GET    /visitantes/buscar-por-nit      - Buscar por NIT empresa
+   POST   /visitantes/registrar           - Crear visitante
+   POST   /visitantes/ingreso             - Registrar ingreso
+   PUT    /visitantes/salida/<id>         - Registrar salida
+   GET    /visitantes/listar              - Listar visitas
+   POST   /visitantes/foto/<id>           - Guardar fotografía
+
+D) Sedes (/api/sedes):
+   GET    /sedes/                - Listar (solo master)
+   GET    /sedes/<id>            - Obtener una (solo master)
+   POST   /sedes/                - Crear (solo master)
+   PUT    /sedes/<id>            - Actualizar (solo master)
+   DELETE /sedes/<id>            - Eliminar (solo master)
+
+E) Dependencias (/api/dependencias):
+   GET    /dependencias/         - Listar (filtro por sede)
+   GET    /dependencias/<id>     - Obtener una
+   POST   /dependencias/         - Crear (solo master)
+   PUT    /dependencias/<id>     - Actualizar (solo master)
+   DELETE /dependencias/<id>     - Eliminar (solo master)
+
+F) Autorizaciones (/api/autorizaciones):
+   GET    /autorizaciones/              - Listar con filtros
+   GET    /autorizaciones/buscar        - Buscar por identificación
+   POST   /autorizaciones/              - Crear autorización
+   GET    /autorizaciones/<id>          - Obtener una
+   PUT    /autorizaciones/<id>          - Actualizar (solo PENDIENTES)
+   DELETE /autorizaciones/<id>          - Cancelar
+   POST   /autorizaciones/<id>/aplicar  - Marcar como aplicada
+   GET    /autorizaciones/estadisticas  - Estadísticas
+
+G) Reportes (/api/reportes):
+   GET    /reportes/visitas              - Reporte con filtros
+   POST   /reportes/visitas/excel        - Exportar Excel
+   GET    /reportes/estadisticas         - Estadísticas generales
+
+H) Configuración (/api/configuracion):
+   GET    /configuracion/               - Listar todas (solo master)
+   GET    /configuracion/<clave>        - Obtener una
+   PUT    /configuracion/<clave>        - Actualizar (solo master)
+   PUT    /configuracion/batch          - Actualización masiva (solo master)
+
+
+================================================================================
+29. CAMPOS ADICIONALES Y MODIFICACIONES DE ESQUEMA
+================================================================================
+
+✅ LISTA COMPLETA DE CAMBIOS EN ESQUEMAS:
+
+A) usuarios:
+   CAMBIO: sede_id ahora es NULLABLE (antes era NOT NULL)
+   NUEVO: fecha_modificacion
+
+B) sedes:
+   NUEVO: fecha_modificacion
+
+C) dependencias:
+   NUEVA RELACIÓN: many-to-many con sedes (tabla sede_dependencia)
+   NUEVO: fecha_modificacion
+
+D) visitantes:
+   NUEVO: fecha_modificacion
+
+E) log_visitantes:
+   NUEVO: funcionario_autoriza (además de funcionario_recibe)
+   NUEVO: autorizacion_previa_id (FK a autorizaciones_ingreso)
+   NUEVO: check5_adicional (5to checkbox)
+   NUEVO: check5_descripcion
+   NUEVO: estado_visita (EN_INSTALACIONES / SALIO)
+   NUEVO: fecha_modificacion
+
+F) autorizaciones_ingreso:
+   TABLA COMPLETA NUEVA (no existía en plan original con este detalle)
+   Todos los campos implementados según especificación
+   CAMBIO: Vigencia configurable (antes 7 días fijos)
+   NUEVO: fecha_modificacion
+
+G) configuracion_sistema:
+   TABLA COMPLETAMENTE NUEVA (no existía en plan original)
+   Sistema completo de configuraciones dinámicas
+
+H) log_eventos:
+   Sin cambios significativos, implementada según especificación
+
+
+================================================================================
+30. RESUMEN EJECUTIVO DE ADICIONES
+================================================================================
+
+✅ RESUMEN DE LO IMPLEMENTADO ADICIONAL AL PLAN ORIGINAL:
+
+1. ✅ Logo corporativo integrado en todas las páginas
+2. ✅ Tabla configuracion_sistema completamente funcional
+3. ✅ Sistema de autorizaciones previas completo
+4. ✅ Rol usuario_funcionario plenamente operativo
+5. ✅ Interface funcionario.html con todas sus funcionalidades
+6. ✅ Vigencia de autorizaciones configurable (vs 7 días fijos)
+7. ✅ Búsqueda por NIT de empresa
+8. ✅ Sistema completo de reportes y estadísticas
+9. ✅ Exportación a Excel profesional
+10. ✅ Sistema de reingreso rápido
+11. ✅ 5 checkboxes para elementos (vs 4 originales)
+12. ✅ Campo fecha_modificacion en todas las tablas
+13. ✅ Relación many-to-many sedes-dependencias
+14. ✅ 26 tipos de eventos en log_eventos (bien definidos)
+15. ✅ Sede nullable para usuario_master
+16. ✅ Campo funcionario_autoriza en log_visitantes
+17. ✅ Campo autorizacion_previa_id en log_visitantes
+18. ✅ Estado de visita (EN_INSTALACIONES / SALIO)
+19. ✅ Scripts de administración adicionales
+20. ✅ Índices optimizados en todas las tablas
+21. ✅ Rate limiting y seguridad mejorada
+22. ✅ Validaciones de contraseña robustas
+23. ✅ Sistema de autocompletado inteligente
+24. ✅ Aplicación de autorizaciones al registrar visitante
+25. ✅ Gestión de número de carnet configurable
+
+
+================================================================================
+31. INTERFAZ CON PESTAÑAS EN OPERADOR.HTML
+================================================================================
+
+✅ IMPLEMENTADO: Sistema de pestañas para mejor UX
+
+A) Cambio de diseño:
+   ANTES: Formulario y listado mostrados verticalmente (scroll largo)
+   AHORA: Sistema de pestañas (tabs) para navegar entre secciones
+
+B) Pestañas implementadas:
+   1. PESTAÑA "REGISTRAR VISITANTE":
+      - Botón principal siempre visible
+      - Formulario completo de registro
+      - Captura de fotografía
+      - Verificación de autorización previa
+      - Botón guardar
+   
+   2. PESTAÑA "VISITANTES DE HOY":
+      - Lista de visitantes
+      - Filtros de búsqueda
+      - Paginación
+      - Acciones (marcar salida, reingreso)
+      - Contador de visitantes con badge
+
+C) Características de las pestañas:
+   - Variable de estado: tabActiva ('registro' | 'listado')
+   - Transiciones suaves con Alpine.js (x-transition)
+   - Badge con contador en pestaña "Visitantes de Hoy"
+   - Diseño limpio sin botones adicionales para mostrar/ocultar
+   - Primera pestaña activa por defecto
+   - Estilo visual: pestaña activa en verde, inactivas en gris
+
+D) Ventajas UX:
+   - Elimina scroll vertical excesivo
+   - Interfaz más organizada y clara
+   - Separación visual de funciones
+   - Más intuitivo para operadores
+   - Mejor uso del espacio en pantalla
+   - Navegación rápida entre registro y consulta
+
+E) Implementación técnica:
+   <div class="flex border-b">
+     <button @click="tabActiva = 'registro'" 
+             :class="tabActiva === 'registro' ? 'border-green-600 text-green-600' : 'border-transparent'">
+       REGISTRAR VISITANTE
+     </button>
+     <button @click="tabActiva = 'listado'"
+             :class="tabActiva === 'listado' ? 'border-green-600 text-green-600' : 'border-transparent'">
+       VISITANTES DE HOY
+       <span x-show="totalVisitas > 0" class="badge">{{totalVisitas}}</span>
+     </button>
+   </div>
+   
+   <div x-show="tabActiva === 'registro'" x-transition>
+     <!-- Formulario de registro -->
+   </div>
+   
+   <div x-show="tabActiva === 'listado'" x-transition>
+     <!-- Listado de visitantes -->
+   </div>
+
+
+================================================================================
+32. CONFIGURACIÓN CENTRALIZADA DE FOTOGRAFÍAS
+================================================================================
+
+✅ IMPLEMENTADO: Sistema de almacenamiento configurable
+
+A) Configuración en .env:
+   UPLOAD_FOLDER=../uploads/visitantes
+   
+   Características:
+   - Ruta configurable sin modificar código
+   - Puede ser ruta relativa o absoluta
+   - Creación automática de directorio si no existe
+   - Fácil cambio para diferentes ambientes (dev/prod)
+
+B) Nuevo formato de nombres de archivos:
+   ANTES: {DEPENDENCIA}_{TIPO_ID}_{NUM_ID}_{FECHA}_{HORA}.jpg
+   AHORA: {TIPO_ID}-{NUM_ID}-{DDMMYYYY}_{HHMMSS}.jpg
+   
+   Ejemplos:
+   - CC-12345678-06032026_143052.jpg
+   - TI-98765432-06032026_150230.jpg
+   - PS-AB123456-06032026_161545.jpg
+   
+   Ventajas del nuevo formato:
+   - Más compacto y limpio
+   - Búsqueda fácil por tipo y número de documento
+   - Fecha y hora claramente separadas
+   - No depende de nombre de dependencia
+   - Ordenamiento cronológico natural
+   - Compatible con sistemas de archivos Windows/Linux
+
+C) Implementación en backend:
+   Archivo: backend/app/routes/visitantes.py
+   
+   ```python
+   # Obtener carpeta desde .env
+   upload_folder = os.getenv('UPLOAD_FOLDER', '../uploads/visitantes')
+   
+   # Crear directorio si no existe
+   os.makedirs(upload_folder, exist_ok=True)
+   
+   # Generar nombre de archivo
+   timestamp = datetime.now()
+   fecha = timestamp.strftime('%d%m%Y')
+   hora = timestamp.strftime('%H%M%S')
+   nombre_archivo = f"{tipo_id}-{num_id}-{fecha}_{hora}.jpg"
+   ruta_completa = os.path.join(upload_folder, nombre_archivo)
+   ```
+
+D) Configuración MAX_FILE_SIZE:
+   MAX_FILE_SIZE=5242880  # 5MB en bytes
+   Validación de tamaño antes de guardar
+
+E) Documentación:
+   Archivo: CONFIGURACION_FOTOS.md
+   - Instrucciones de configuración
+   - Explicación del formato de nombres
+   - Troubleshooting común
+   - Migración de fotos antiguas
+
+
+================================================================================
+33. SISTEMA AVANZADO DE BÚSQUEDA Y FILTROS EN LISTADO
+================================================================================
+
+✅ IMPLEMENTADO: Filtros y paginación en listado de visitantes
+
+A) BÚSQUEDA POR IDENTIFICACIÓN:
+   - Campo de búsqueda con debounce de 500ms
+   - Búsqueda parcial (ILIKE) en:
+     * Número de identificación
+     * Primer nombre
+     * Primer apellido
+   - Case-insensitive
+   - Actualización automática al escribir
+   
+   Ejemplo: Al escribir "123" encuentra:
+   - Identificación: 12345678
+   - Nombre: Juan 1234
+   - Apellido: González123
+
+B) FILTRO DE RANGO DE FECHAS:
+   Campos:
+   - Fecha Desde (fecha_desde)
+   - Fecha Hasta (fecha_hasta)
+   
+   Comportamiento:
+   - DEFAULT: Ambas fechas en DÍA ACTUAL
+   - Permite seleccionar cualquier rango
+   - Búsquedas históricas ilimitadas
+   - Validación: fecha_desde <= fecha_hasta
+   - Formato: YYYY-MM-DD (input type="date")
+   
+   Uso típico:
+   - Por defecto: Ver visitantes de hoy
+   - Histórico: Cambiar fechas para auditorías
+   - Rango: Semana pasada, mes anterior, etc.
+
+C) FILTRO POR ESTADO:
+   Opciones:
+   - "Todos los visitantes" (sin filtro)
+   - "Solo en instalaciones" (estado = EN_INSTALACIONES)
+   - "Solo los que salieron" (estado = SALIO)
+   
+   Permite:
+   - Ver quién está actualmente en instalaciones
+   - Ver histórico completo de ingresos/egresos
+   - Auditorías específicas por estado
+
+D) PAGINACIÓN:
+   Características:
+   - 100 registros por página (configurable)
+   - Navegación con botones:
+     * "Anterior" (deshabilitado en página 1)
+     * Números de página (máximo 5 botones visibles)
+     * "Siguiente" (deshabilitado en última página)
+   - Información: "Página X de Y"
+   - Total de registros: "Mostrando: X visitantes"
+   - Scroll automático al inicio al cambiar página
+   
+   Comportamiento inteligente:
+   - Si hay ≤5 páginas: Muestra todos los números
+   - Si hay >5 páginas: Muestra solo 5 números alrededor de página actual
+   - Primera y última página siempre accesibles
+
+E) BOTÓN "LIMPIAR FILTROS":
+   Acción:
+   - Restablece búsqueda a vacío
+   - Restablece fechas al día actual
+   - Restablece estado a "todos"
+   - Regresa a página 1
+   - Recarga lista automáticamente
+   
+   Ubicación: Al lado de los controles de filtro
+
+F) CONTADOR TOTAL:
+   - Badge en pestaña: "VISITANTES DE HOY (X)"
+   - Muestra total de registros encontrados
+   - Se actualiza con cada filtro
+   - Tooltip informativo
+
+G) IMPLEMENTACIÓN BACKEND:
+   Endpoint: GET /api/visitantes/listar
+   
+   Parámetros:
+   - fecha_desde: string (YYYY-MM-DD)
+   - fecha_hasta: string (YYYY-MM-DD)
+   - busqueda: string (opcional)
+   - estado: string (EN_INSTALACIONES | SALIO | null)
+   - pagina: integer (default: 1)
+   - por_pagina: integer (default: 100)
+   
+   Respuesta JSON:
+   {
+     "success": true,
+     "total": 523,
+     "pagina": 1,
+     "por_pagina": 100,
+     "total_paginas": 6,
+     "visitas": [...]
+   }
+   
+   Query SQL optimizada:
+   ```python
+   query = LogVisitante.query.filter(
+       LogVisitante.sede_id == sede_id,
+       LogVisitante.fecha_ingreso.between(fecha_desde, fecha_hasta)
+   )
+   
+   if busqueda:
+       query = query.filter(db.or_(
+           LogVisitante.num_identificacion.ilike(f'%{busqueda}%'),
+           LogVisitante.primer_nombre.ilike(f'%{busqueda}%'),
+           LogVisitante.primer_apellido.ilike(f'%{busqueda}%')
+       ))
+   
+   if estado:
+       query = query.filter(LogVisitante.estado_visita == estado)
+   
+   pagination = query.order_by(
+       LogVisitante.fecha_ingreso.desc()
+   ).paginate(page=pagina, per_page=por_pagina, error_out=False)
+   ```
+
+H) IMPLEMENTACIÓN FRONTEND:
+   Archivo: frontend/operador.html
+   
+   Estado Alpine.js:
+   ```javascript
+   filtrosListado: {
+       busqueda: '',
+       fecha_desde: new Date().toISOString().split('T')[0],
+       fecha_hasta: new Date().toISOString().split('T')[0],
+       estado: ''
+   },
+   paginaActual: 1,
+   totalPaginas: 1,
+   totalVisitas: 0
+   ```
+   
+   Métodos:
+   - cargarVisitas(): Carga lista con filtros y paginación
+   - limpiarFiltros(): Resetea todos los filtros
+   - cambiarPagina(pagina): Navega a página específica
+   - obtenerRangoPaginas(): Calcula botones visibles (max 5)
+   
+   Debounce en búsqueda:
+   ```javascript
+   let timeout;
+   clearTimeout(timeout);
+   timeout = setTimeout(() => {
+       this.cargarVisitas();
+   }, 500);
+   ```
+
+I) RESETEO AUTOMÁTICO DE PAGINACIÓN:
+   La paginación se resetea a página 1 cuando:
+   - Se registra un nuevo visitante
+   - Se marca salida de visitante
+   - Se cambia cualquier filtro
+   - Se limpia filtros
+   
+   Implementación:
+   ```javascript
+   async registrarVisita() {
+       // ... lógica de registro
+       this.paginaActual = 1;
+       await this.cargarVisitas();
+   }
+   
+   async marcarSalida(logId) {
+       // ... lógica de salida
+       this.paginaActual = 1;
+       await this.cargarVisitas();
+   }
+   ```
+
+J) VENTAJAS DEL SISTEMA:
+   ✅ Performance: Máximo 100 registros cargados a la vez
+   ✅ Escalabilidad: Funciona con miles de registros
+   ✅ Usabilidad: Búsqueda intuitiva y rápida
+   ✅ Flexibilidad: Múltiples criterios combinables
+   ✅ Default inteligente: Día actual es el caso más común
+   ✅ Histórico completo: Sin límite de fechas hacia atrás
+   ✅ Auditoría: Filtros facilitan revisiones específicas
+
+K) CASOS DE USO:
+   1. Operador revisando visitantes de hoy:
+      → Usa filtros por defecto
+   
+   2. Buscar visitante específico hoy:
+      → Escribe identificación en búsqueda
+   
+   3. Ver quién está actualmente en instalaciones:
+      → Filtra por estado "En instalaciones"
+   
+   4. Auditoría de semana pasada:
+      → Cambia rango de fechas
+   
+   5. Buscar todas las visitas de persona X:
+      → Amplía rango de fechas + busca por identificación
+   
+   6. Generar reporte mensual:
+      → Selecciona mes completo en rango de fechas
+
+
+================================================================================
+CONCLUSIÓN
+================================================================================
+
+El proyecto ha sido implementado con éxito siguiendo el plan original y 
+agregando mejoras significativas. Todas las adiciones están documentadas en 
+esta sección sin eliminar el contenido original.
+
+El sistema está COMPLETO, FUNCIONAL y LISTO PARA PRODUCCIÓN.
+
+Todas las funcionalidades requeridas han sido implementadas y probadas.
+
+El sistema incluye características adicionales que mejoran la usabilidad,
+seguridad, mantenibilidad y experiencia del usuario.
+
+ÚLTIMAS ACTUALIZACIONES (06 de marzo de 2026):
+- Sistema de pestañas en interfaz de operador
+- Configuración centralizada de fotografías en .env
+- Sistema avanzado de búsqueda, filtros y paginación
+- Mejoras significativas en UX y performance
+
+================================================================================
+FIN DE LA SECCIÓN DE ADICIONES
+================================================================================

@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operador - Control de Visitantes</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="operadorApp()" x-init="init()" x-cloak>
+    
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-green-800 to-green-900 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <img src="assets/img/logo-canaveral.png" alt="Logo Cañaveral" class="h-12 w-auto">
+                    <div>
+                        <h1 class="text-2xl font-bold">Control de Visitantes</h1>
+                        <p class="text-sm text-green-200">Supertiendas Cañaveral SAS</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-sm text-green-200">¡Hola!</p>
+                        <p class="font-semibold" x-text="usuario.nombre_completo"></p>
+                        <p class="text-xs text-green-200" x-text="usuario.sede"></p>
+                    </div>
+                    <button 
+                        @click="logout()"
+                        class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition flex items-center gap-2"
+                    >
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Salir</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Contenido Principal -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- Sistema de Pestañas -->
+        <div class="mb-6">
+            <div class="flex bg-white rounded-lg shadow-md p-1 gap-2">
+                <button 
+                    @click="tabActiva = 'registro'"
+                    :class="tabActiva === 'registro' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    class="flex-1 py-3 px-6 rounded-md transition-all duration-200 font-semibold flex items-center justify-center gap-2"
+                >
+                    <i class="fas fa-user-plus"></i>
+                    <span>Registrar Visitante</span>
+                </button>
+                <button 
+                    @click="tabActiva = 'listado'"
+                    :class="tabActiva === 'listado' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                    class="flex-1 py-3 px-6 rounded-md transition-all duration-200 font-semibold flex items-center justify-center gap-2"
+                >
+                    <i class="fas fa-list"></i>
+                    <span>Visitantes de Hoy</span>
+                    <span 
+                        x-show="totalVisitas > 0" 
+                        class="px-2 py-0.5 rounded-full text-xs font-bold"
+                        :class="tabActiva === 'listado' ? 'bg-white text-green-600' : 'bg-green-600 text-white'"
+                        x-text="totalVisitas"
+                    ></span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Contenido Pestaña: Formulario de Registro -->
+        <div x-show="tabActiva === 'registro'" x-transition>
+            <div class="bg-white rounded-xl shadow-xl p-6">
+                
+                <!-- Header del formulario -->
+                <div class="mb-6 pb-4 border-b">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-plus text-green-600 mr-2"></i>
+                        Registro de Visitante
+                    </h2>
+                </div>
+                
+                <!-- Fecha y Hora -->
+                <div class="bg-green-50 p-4 rounded-lg mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <i class="fas fa-calendar text-green-600 mr-2"></i>
+                            <span class="font-semibold" x-text="fechaHora.fecha"></span>
+                        </div>
+                        <div>
+                            <i class="fas fa-clock text-green-600 mr-2"></i>
+                            <span class="font-semibold" x-text="fechaHora.hora"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Búsqueda de Visitante -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-4">1. Identificación del Visitante</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Tipo de Identificación *</label>
+                            <select 
+                                x-model="form.tipo_identificacion"
+                                @change="buscarVisitante()"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                            >
+                                <option value="">Seleccione...</option>
+                                <template x-for="tipo in tiposId" :key="tipo.value">
+                                    <option :value="tipo.value" x-text="tipo.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Número de Identificación *</label>
+                            <input 
+                                type="text"
+                                x-model="form.num_identificacion"
+                                @keyup.enter="buscarVisitante()"
+                                @blur="buscarVisitante()"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 uppercase"
+                                placeholder="Número de documento"
+                            >
+                        </div>
+                    </div>
+                    
+                    <!-- Mensaje si no existe -->
+                    <div x-show="visitanteNoExiste" class="mt-4">
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                            <p class="text-yellow-800 font-semibold">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                Visitante no registrado
+                            </p>
+                            <button 
+                                @click="mostrarModalRegistro = true"
+                                class="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
+                            >
+                                <i class="fas fa-user-plus mr-2"></i>Registrar Visitante
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Datos del visitante (si existe) -->
+                <div x-show="visitanteEncontrado" class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-4">Datos del Visitante</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Nombre Completo</p>
+                            <p class="font-semibold" x-text="visitanteActual.nombre_completo"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Teléfono</p>
+                            <p class="font-semibold" x-text="visitanteActual.num_telefono"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Correo</p>
+                            <p class="font-semibold" x-text="visitanteActual.dir_correo"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Empresa</p>
+                            <p class="font-semibold" x-text="visitanteActual.empresa"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">NIT Empresa</p>
+                            <p class="font-semibold" x-text="visitanteActual.nit_empresa"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NUEVO: Banner de Autorizaciones Pendientes -->
+                <div x-show="autorizacionesPendientes.length > 0" class="mb-6">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-clipboard-check text-blue-600 text-2xl"></i>
+                                <div>
+                                    <p class="text-blue-800 font-bold">
+                                        <span x-text="autorizacionesPendientes.length"></span> autorización(es) pendiente(s)
+                                    </p>
+                                    <p class="text-blue-700 text-sm">Este visitante tiene autorizaciones previas</p>
+                                </div>
+                            </div>
+                            <button 
+                                @click="abrirModalAutorizaciones()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2"
+                            >
+                                <i class="fas fa-eye"></i>
+                                <span>Ver Autorizaciones</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Destino y Observaciones -->
+                <div x-show="visitanteEncontrado" class="mb-6 p-4 border rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-4 cursor-pointer" @click="seccionesAbiertas.destino = !seccionesAbiertas.destino">
+                        <i class="fas" :class="seccionesAbiertas.destino ? 'fa-minus' : 'fa-plus'"></i>
+                        2. Destino en la Empresa
+                    </h3>
+                    <div x-show="seccionesAbiertas.destino" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Dependencia *</label>
+                            <select 
+                                x-model="form.prefijo_dependencia"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                required
+                            >
+                                <option value="">Seleccione una dependencia...</option>
+                                <template x-for="dep in dependencias" :key="dep.id">
+                                    <option :value="dep.prefijo_dependencia" x-text="dep.prefijo_dependencia + ' - ' + dep.descripcion_dependencia"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Funcionario que Recibe *</label>
+                            <input 
+                                type="text"
+                                x-model="form.funcionario_recibe"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 uppercase"
+                                placeholder="Nombre del funcionario"
+                                required
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">
+                                Funcionario que Autoriza *
+                                <span x-show="autorizacionAplicada" class="text-blue-600 text-xs ml-2">
+                                    <i class="fas fa-check"></i> (Autorización aplicada)
+                                </span>
+                            </label>
+                            <input 
+                                type="text"
+                                x-model="form.funcionario_autoriza"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 uppercase"
+                                placeholder="Nombre del funcionario que autoriza"
+                                required
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Observaciones</label>
+                            <textarea 
+                                x-model="form.observaciones1"
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 uppercase"
+                                rows="3"
+                                maxlength="5000"
+                                placeholder="Observaciones adicionales..."
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Elementos que Ingresa -->
+                <div x-show="visitanteEncontrado" class="mb-6 p-4 border rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-4 cursor-pointer" @click="seccionesAbiertas.elementos = !seccionesAbiertas.elementos">
+                        <i class="fas" :class="seccionesAbiertas.elementos ? 'fa-minus' : 'fa-plus'"></i>
+                        3. Elementos que Ingresa
+                    </h3>
+                    <div x-show="seccionesAbiertas.elementos" class="space-y-3">
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" x-model="form.check1_elemento_tecnologico" class="mt-1">
+                            <div class="flex-1">
+                                <label class="font-medium">¿Ingresa elemento tecnológico?</label>
+                                <input 
+                                    x-show="form.check1_elemento_tecnologico"
+                                    type="text"
+                                    x-model="form.check1_descripcion"
+                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
+                                    placeholder="Especifique tipo y marca"
+                                    maxlength="500"
+                                >
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" x-model="form.check2_arma_fuego" class="mt-1">
+                            <div class="flex-1">
+                                <label class="font-medium">¿Ingresa arma de fuego?</label>
+                                <input 
+                                    x-show="form.check2_arma_fuego"
+                                    type="text"
+                                    x-model="form.check2_descripcion"
+                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
+                                    placeholder="Especifique"
+                                    maxlength="500"
+                                >
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" x-model="form.check4_herramienta" class="mt-1">
+                            <div class="flex-1">
+                                <label class="font-medium">¿Ingresa herramientas?</label>
+                                <input 
+                                    x-show="form.check4_herramienta"
+                                    type="text"
+                                    x-model="form.check4_descripcion"
+                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
+                                    placeholder="Especifique qué herramientas"
+                                    maxlength="500"
+                                >
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" x-model="form.check3_otro_elemento" class="mt-1">
+                            <div class="flex-1">
+                                <label class="font-medium">¿Ingresa otro elemento?</label>
+                                <input 
+                                    x-show="form.check3_otro_elemento"
+                                    type="text"
+                                    x-model="form.check3_descripcion"
+                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
+                                    placeholder="Especifique"
+                                    maxlength="500"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Número de Carnet -->
+                <div x-show="visitanteEncontrado" class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">Número de Carnet (Opcional)</label>
+                    <input 
+                        type="text"
+                        x-model="form.numero_carnet"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 uppercase"
+                        placeholder="Número del carnet asignado"
+                        maxlength="50"
+                    >
+                </div>
+                
+                <!-- Fotografía del Visitante -->
+                <div x-show="visitanteEncontrado" class="mb-6 p-4 border rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-4 cursor-pointer" @click="seccionesAbiertas.fotografia = !seccionesAbiertas.fotografia">
+                        <i class="fas" :class="seccionesAbiertas.fotografia ? 'fa-minus' : 'fa-plus'"></i>
+                        4. Fotografía del Visitante (Opcional)
+                    </h3>
+                    <div x-show="seccionesAbiertas.fotografia" class="space-y-4">
+                        
+                        <!-- Botones para capturar foto -->
+                        <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <button 
+                                @click="activarCamara()"
+                                type="button"
+                                class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+                                :disabled="camaraActiva || fotoCapturada"
+                            >
+                                <i class="fas fa-camera"></i>
+                                <span x-text="camaraActiva ? 'Cámara Activa' : 'Usar Cámara Web'"></span>
+                            </button>
+                            <label 
+                                class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2 cursor-pointer"
+                                :class="{'opacity-50 cursor-not-allowed': camaraActiva || fotoCapturada}"
+                            >
+                                <i class="fas fa-upload"></i>
+                                <span>Subir Foto</span>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    @change="subirFotoArchivo($event)"
+                                    class="hidden"
+                                    :disabled="camaraActiva || fotoCapturada"
+                                >
+                            </label>
+                        </div>
+                        
+                        <!-- Video preview de la cámara -->
+                        <div x-show="camaraActiva" class="relative bg-black rounded-lg overflow-hidden">
+                            <video 
+                                x-ref="video"
+                                autoplay
+                                playsinline
+                                class="w-full max-h-96 object-contain"
+                            ></video>
+                            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+                                <button 
+                                    @click="capturarFoto()"
+                                    type="button"
+                                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-lg"
+                                >
+                                    <i class="fas fa-camera mr-2"></i>Capturar
+                                </button>
+                                <button 
+                                    @click="detenerCamara()"
+                                    type="button"
+                                    class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-lg"
+                                >
+                                    <i class="fas fa-times mr-2"></i>Cancelar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Canvas oculto para captura -->
+                        <canvas x-ref="canvas" class="hidden"></canvas>
+                        
+                        <!-- Preview de la foto capturada -->
+                        <div x-show="fotoCapturada" class="relative">
+                            <img 
+                                :src="fotoCapturada"
+                                class="w-full max-h-96 object-contain border rounded-lg"
+                            >
+                            <button 
+                                @click="eliminarFoto()"
+                                type="button"
+                                class="absolute top-2 right-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-lg"
+                            >
+                                <i class="fas fa-trash mr-2"></i>Eliminar
+                            </button>
+                        </div>
+                        
+                        <!-- Info -->
+                        <div x-show="!fotoCapturada && !camaraActiva" class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                            <p class="text-blue-900 text-sm font-medium">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>Recomendado:</strong> Use el botón verde <strong>"Subir Foto"</strong> para seleccionar una imagen desde su equipo.
+                            </p>
+                            <p class="text-blue-700 text-xs mt-1 ml-6">
+                                (La cámara web puede no funcionar en HTTP. Solo funciona en HTTPS o con permisos especiales)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones de acción -->
+                <div x-show="visitanteEncontrado" class="flex gap-4 justify-end">
+                    <button 
+                        @click="limpiarFormulario()"
+                        type="button"
+                        class="px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium"
+                    >
+                        <i class="fas fa-eraser mr-2"></i>Limpiar
+                    </button>
+                    <button 
+                        @click="registrarIngreso()"
+                        type="button"
+                        :disabled="cargando"
+                        class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400"
+                    >
+                        <i class="fas" :class="cargando ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                        <span class="ml-2" x-text="cargando ? 'Registrando...' : 'Registrar Ingreso'"></span>
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+        <!-- Fin Pestaña: Formulario de Registro -->
+        
+        <!-- Contenido Pestaña: Listado de Visitantes -->
+        <div x-show="tabActiva === 'listado'" x-transition>
+            <div class="bg-white rounded-xl shadow-xl p-6">
+                <!-- Filtros -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-list text-green-600 mr-2"></i>
+                            Listado de Visitantes
+                        </h2>
+                        <button 
+                            @click="cargarVisitas()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                        >
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Actualizar</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Controles de Filtro -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Búsqueda por Identificación -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-search mr-1"></i>Buscar Visitante
+                                </label>
+                                <input 
+                                    type="text" 
+                                    x-model="filtrosListado.busqueda"
+                                    @input.debounce.500ms="cargarVisitas()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="Núm. identificación o nombre"
+                                >
+                            </div>
+                            
+                            <!-- Fecha Desde -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-alt mr-1"></i>Fecha Desde
+                                </label>
+                                <input 
+                                    type="date" 
+                                    x-model="filtrosListado.fecha_desde"
+                                    @change="cargarVisitas()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                            </div>
+                            
+                            <!-- Fecha Hasta -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-alt mr-1"></i>Fecha Hasta
+                                </label>
+                                <input 
+                                    type="date" 
+                                    x-model="filtrosListado.fecha_hasta"
+                                    @change="cargarVisitas()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                            </div>
+                            
+                            <!-- Estado -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-filter mr-1"></i>Estado
+                                </label>
+                                <select 
+                                    x-model="filtrosListado.estado"
+                                    @change="cargarVisitas()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="EN_INSTALACIONES">En Instalaciones</option>
+                                    <option value="SALIO">Salió</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de acción -->
+                        <div class="flex justify-between items-center mt-4">
+                            <button 
+                                @click="limpiarFiltros()"
+                                class="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                            >
+                                <i class="fas fa-times-circle"></i>
+                                <span>Limpiar Filtros</span>
+                            </button>
+                            <div class="text-sm text-gray-600">
+                                <span class="font-semibold" x-text="totalVisitas"></span> visita(s) encontrada(s)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+            <!-- Sin resultados -->
+            <div x-show="visitas.length === 0" class="text-center py-12 text-gray-500">
+                <i class="fas fa-inbox text-6xl mb-4"></i>
+                <p class="text-lg">No se encontraron visitas con los filtros aplicados</p>
+            </div>
+            
+            <!-- Tabla de visitas -->
+            <div x-show="visitas.length > 0">
+                <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Sede</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Carnet</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Identificación</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Nombre</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Empresa</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Ingreso</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Salida</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Estado</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <template x-for="visita in visitas" :key="visita.id">
+                            <tr :class="visita.estado_visita === 'EN_INSTALACIONES' ? 'bg-yellow-50' : 'bg-green-50'">
+                                <td class="px-4 py-3 text-sm font-semibold text-blue-700" x-text="visita.codigo_sede || '-'"></td>
+                                <td class="px-4 py-3 text-sm" x-text="visita.numero_carnet || '-'"></td>
+                                <td class="px-4 py-3 text-sm" x-text="visita.tipo_identificacion + ' ' + visita.num_identificacion"></td>
+                                <td class="px-4 py-3 text-sm font-medium" x-text="visita.nombre_completo"></td>
+                                <td class="px-4 py-3 text-sm" x-text="visita.empresa"></td>
+                                <td class="px-4 py-3 text-sm">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium" x-text="visita.fecha_ingreso"></span>
+                                        <span class="text-xs text-gray-600" x-text="visita.hora_ingreso"></span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-sm" x-text="visita.hora_salida || '-'"></td>
+                                <td class="px-4 py-3">
+                                    <span 
+                                        :class="visita.estado_visita === 'EN_INSTALACIONES' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'"
+                                        class="px-2 py-1 rounded-full text-xs font-semibold"
+                                        x-text="visita.estado_visita === 'EN_INSTALACIONES' ? 'En Instalaciones' : 'Salió'"
+                                    ></span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <button 
+                                        x-show="visita.estado_visita === 'EN_INSTALACIONES'"
+                                        @click="marcarSalida(visita.id)"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                                    >
+                                        <i class="fas fa-sign-out-alt mr-1"></i>Salida
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            <div x-show="totalPaginas > 1" class="mt-6 flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    Página <span class="font-semibold" x-text="paginaActual"></span> de <span class="font-semibold" x-text="totalPaginas"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button 
+                        @click="cambiarPagina(paginaActual - 1)"
+                        :disabled="paginaActual === 1"
+                        :class="paginaActual === 1 ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                        class="px-4 py-2 text-white rounded-lg transition"
+                    >
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    
+                    <!-- Números de página -->
+                    <template x-for="pagina in obtenerRangoPaginas()" :key="pagina">
+                        <button 
+                            @click="cambiarPagina(pagina)"
+                            :class="pagina === paginaActual ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                            class="px-3 py-2 rounded-lg transition"
+                            x-text="pagina"
+                        ></button>
+                    </template>
+                    
+                    <button 
+                        @click="cambiarPagina(paginaActual + 1)"
+                        :disabled="paginaActual === totalPaginas"
+                        :class="paginaActual === totalPaginas ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                        class="px-4 py-2 text-white rounded-lg transition"
+                    >
+                        Siguiente <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+        <!-- Fin Pestaña: Listado de Visitantes -->
+        
+    </main>
+    
+    <!-- Modal Registro de Visitante -->
+    <div 
+        x-show="mostrarModalRegistro"
+        x-transition
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+        @click.self="mostrarModalRegistro = false"
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-green-700 to-green-600 text-white px-6 py-4 flex items-center justify-between sticky top-0">
+                <h3 class="text-xl font-bold">Registrar Nuevo Visitante</h3>
+                <button @click="mostrarModalRegistro = false" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Primer Nombre *</label>
+                        <input type="text" x-model="formRegistro.primer_nombre" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Segundo Nombre</label>
+                        <input type="text" x-model="formRegistro.segundo_nombre" class="w-full px-4 py-3 border rounded-lg uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Primer Apellido *</label>
+                        <input type="text" x-model="formRegistro.primer_apellido" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Segundo Apellido</label>
+                        <input type="text" x-model="formRegistro.segundo_apellido" class="w-full px-4 py-3 border rounded-lg uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Teléfono *</label>
+                        <input type="text" x-model="formRegistro.num_telefono" class="w-full px-4 py-3 border rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Correo Electrónico *</label>
+                        <input type="email" x-model="formRegistro.dir_correo" class="w-full px-4 py-3 border rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            NIT Empresa *
+                            <span x-show="buscandoNit" class="text-sm text-green-600">
+                                <i class="fas fa-spinner fa-spin"></i> Buscando...
+                            </span>
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="formRegistro.nit_empresa" 
+                            @input.debounce.500ms="buscarPorNit()" 
+                            class="w-full px-4 py-3 border rounded-lg uppercase" 
+                            placeholder="Ej: 900123456-7"
+                            required
+                        >
+                        <p x-show="nitEncontrado" class="text-xs text-green-600 mt-1">
+                            <i class="fas fa-check-circle"></i> Empresa encontrada y autocompletada
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Empresa/Razón Social *</label>
+                        <input 
+                            type="text" 
+                            x-model="formRegistro.empresa" 
+                            class="w-full px-4 py-3 border rounded-lg uppercase" 
+                            placeholder="Nombre de la empresa"
+                            required
+                        >
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+                <button @click="mostrarModalRegistro = false" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                    Cancelar
+                </button>
+                <button @click="registrarNuevoVisitante()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                    <i class="fas fa-save mr-2"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NUEVO: Modal Autorizaciones Pendientes -->
+    <div 
+        x-show="mostrarModalAutorizaciones"
+        x-transition
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+        @click.self="cerrarModalAutorizaciones()"
+    >
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-blue-700 to-blue-600 text-white px-6 py-4 flex items-center justify-between sticky top-0">
+                <h3 class="text-xl font-bold">
+                    <i class="fas fa-clipboard-check mr-2"></i>
+                    Autorizaciones Pendientes
+                </h3>
+                <button @click="cerrarModalAutorizaciones()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4">
+                    <p class="text-blue-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Se encontraron <strong x-text="autorizacionesPendientes.length"></strong> autorización(es) pendiente(s) para este visitante. 
+                        Puede aplicar una de ellas para autocompletar el formulario.
+                    </p>
+                </div>
+                
+                <div class="space-y-4">
+                    <template x-for="auth in autorizacionesPendientes" :key="auth.id">
+                        <div class="border rounded-lg p-4 hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h4 class="text-lg font-bold text-gray-800" x-text="auth.nombre_completo"></h4>
+                                    <p class="text-sm text-gray-600" x-text="auth.tipo_identificacion + ' ' + auth.num_identificacion"></p>
+                                </div>
+                                <span 
+                                    class="px-3 py-1 text-xs font-semibold rounded-full"
+                                    :class="{
+                                        'bg-blue-100 text-blue-800': auth.estado === 'PENDIENTE',
+                                        'bg-green-100 text-green-800': auth.dias_restantes > 3,
+                                        'bg-yellow-100 text-yellow-800': auth.dias_restantes <= 3 && auth.dias_restantes > 1,
+                                        'bg-red-100 text-red-800': auth.dias_restantes <= 1
+                                    }"
+                                    x-text="auth.dias_restantes + ' día(s) restante(s)'"
+                                ></span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-3 text-sm">
+                                <div>
+                                    <p class="text-gray-500">Empresa</p>
+                                    <p class="font-semibold" x-text="auth.empresa"></p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">NIT</p>
+                                    <p class="font-semibold" x-text="auth.nit_empresa || 'N/A'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Dependencia</p>
+                                    <p class="font-semibold" x-text="auth.prefijo_dependencia"></p>
+                                    <p class="text-xs text-gray-600" x-text="auth.descripcion_dependencia"></p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Autorizado por</p>
+                                    <p class="font-semibold" x-text="auth.funcionario_autoriza"></p>
+                                </div>
+                            </div>
+                            
+                            <div x-show="auth.observaciones" class="mb-3 text-sm">
+                                <p class="text-gray-500">Observaciones</p>
+                                <p class="text-gray-700" x-text="auth.observaciones"></p>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button 
+                                    @click="aplicarAutorizacion(auth)"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2"
+                                >
+                                    <i class="fas fa-check"></i>
+                                    <span>Aplicar Autorización</span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function operadorApp() {
+            return {
+                usuario: {},
+                tabActiva: 'registro',  // Pestaña activa: 'registro' o 'listado'
+                mostrarModalRegistro: false,
+                visitanteNoExiste: false,
+                visitanteEncontrado: false,
+                visitanteActual: {},
+                dependencias: [],
+                visitas: [],
+                totalVisitas: 0,
+                paginaActual: 1,
+                totalPaginas: 1,
+                porPagina: 100,
+                cargando: false,
+                buscandoNit: false,
+                nitEncontrado: false,
+                fechaHora: { fecha: '', hora: '' },
+                tiposId: TIPOS_IDENTIFICACION,
+                filtrosListado: {
+                    busqueda: '',
+                    fecha_desde: new Date().toISOString().split('T')[0],  // Fecha actual por defecto
+                    fecha_hasta: new Date().toISOString().split('T')[0],  // Fecha actual por defecto
+                    estado: ''
+                },
+                seccionesAbiertas: {
+                    destino: false,
+                    elementos: false,
+                    fotografia: false
+                },
+                // Variables para autorizaciones
+                autorizacionesPendientes: [],
+                autorizacionAplicada: null,
+                mostrarModalAutorizaciones: false,
+                // Variables para captura de foto
+                camaraActiva: false,
+                fotoCapturada: null,
+                streamCamara: null,
+                fotoBlob: null,
+                ultimoLogId: null,  // Para guardar el ID del último log creado
+                
+                form: {
+                    tipo_identificacion: '',
+                    num_identificacion: '',
+                    prefijo_dependencia: '',
+                    funcionario_recibe: '',
+                    funcionario_autoriza: '',  // NUEVO: campo para el funcionario que autoriza
+                    observaciones1: '',
+                    check1_elemento_tecnologico: false,
+                    check1_descripcion: '',
+                    check2_arma_fuego: false,
+                    check2_descripcion: '',
+                    check3_otro_elemento: false,
+                    check3_descripcion: '',
+                    check4_herramienta: false,
+                    check4_descripcion: '',
+                    numero_carnet: ''
+                },
+                
+                formRegistro: {
+                    tipo_identificacion: '',
+                    num_identificacion: '',
+                    primer_nombre: '',
+                    segundo_nombre: '',
+                    primer_apellido: '',
+                    segundo_apellido: '',
+                    num_telefono: '',
+                    dir_correo: '',
+                    empresa: '',
+                    nit_empresa: ''
+                },
+                
+                async init() {
+                    sessionManager.init();
+                    await this.verificarAuth();
+                    await this.cargarDependencias();
+                    await this.cargarVisitas();
+                    this.actualizarFechaHora();
+                    setInterval(() => this.actualizarFechaHora(), 1000);
+                },
+                
+                async verificarAuth() {
+                    const usuarioLocal = localStorage.getItem('usuario');
+                    if (!usuarioLocal) {
+                        this.redirigirAlLogin();
+                        return;
+                    }
+                    this.usuario = JSON.parse(usuarioLocal);
+                    
+                    // Verificar sesión en el servidor
+                    try {
+                        const response = await apiClient.auth.checkSession();
+                        if (!response.authenticated) {
+                            this.redirigirAlLogin();
+                        }
+                    } catch (error) {
+                        console.error('Error verificando sesión:', error);
+                        this.redirigirAlLogin();
+                    }
+                },
+                
+                async logout() {
+                    try {
+                        await apiClient.auth.logout();
+                    } catch (error) {
+                        console.error('Error en logout:', error);
+                    } finally {
+                        this.redirigirAlLogin();
+                    }
+                },
+                
+                redirigirAlLogin() {
+                    localStorage.removeItem('usuario');
+                    sessionStorage.clear();
+                    window.location.replace('index.html');
+                },
+                
+                actualizarFechaHora() {
+                    const ahora = new Date();
+                    this.fechaHora.fecha = ahora.toLocaleDateString('es-CO', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    this.fechaHora.hora = ahora.toLocaleTimeString('es-CO');
+                },
+                
+                limpiarFormulario() {
+                    this.form = {
+                        tipo_identificacion: '',
+                        num_identificacion: '',
+                        prefijo_dependencia: '',
+                        funcionario_recibe: '',
+                        funcionario_autoriza: '',  // NUEVO
+                        observaciones1: '',
+                        check1_elemento_tecnologico: false,
+                        check1_descripcion: '',
+                        check2_arma_fuego: false,
+                        check2_descripcion: '',
+                        check3_otro_elemento: false,
+                        check3_descripcion: '',
+                        check4_herramienta: false,
+                        check4_descripcion: '',
+                        numero_carnet: ''
+                    };
+                    this.visitanteNoExiste = false;
+                    this.visitanteEncontrado = false;
+                    this.visitanteActual = {};
+                    // NUEVO: Resetear variables de autorización
+                    this.autorizacionesPendientes = [];
+                    this.autorizacionAplicada = null;
+                    this.mostrarModalAutorizaciones = false;
+                    // NUEVO: Resetear variables de foto
+                    this.detenerCamara();
+                    this.eliminarFoto();
+                    this.ultimoLogId = null;
+                },
+                
+                async buscarVisitante() {
+                    if (!this.form.tipo_identificacion || !this.form.num_identificacion) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.visitantes.buscar(
+                            this.form.tipo_identificacion,
+                            this.form.num_identificacion
+                        );
+                        
+                        if (response.encontrado) {
+                            this.visitanteEncontrado = true;
+                            this.visitanteNoExiste = false;
+                            this.visitanteActual = response.visitante;
+                            this.seccionesAbiertas.destino = true;
+                        } else {
+                            this.visitanteEncontrado = false;
+                            this.visitanteNoExiste = true;
+                            this.prepararFormularioRegistro();
+                        }
+                        
+                        // NUEVO: Buscar autorizaciones pendientes después de buscar visitante
+                        await this.buscarAutorizacionesPendientes();
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al buscar visitante');
+                    }
+                },
+                
+                prepararFormularioRegistro() {
+                    this.formRegistro = {
+                        tipo_identificacion: this.form.tipo_identificacion,
+                        num_identificacion: this.form.num_identificacion,
+                        primer_nombre: '',
+                        segundo_nombre: '',
+                        primer_apellido: '',
+                        segundo_apellido: '',
+                        num_telefono: '',
+                        dir_correo: '',
+                        empresa: '',
+                        nit_empresa: ''
+                    };
+                },
+                
+                // NUEVOS MÉTODOS PARA AUTORIZACIONES
+                async buscarAutorizacionesPendientes() {
+                    console.log('🔍 Buscando autorizaciones para:', this.form.num_identificacion);
+                    
+                    if (!this.form.num_identificacion) {
+                        console.log('⚠️ No hay número de identificación');
+                        this.autorizacionesPendientes = [];
+                        return;
+                    }
+                    
+                    try {
+                        const url = `${API_URL}/autorizaciones/buscar?identificacion=${encodeURIComponent(this.form.num_identificacion)}`;
+                        console.log('📡 Petición a:', url);
+                        
+                        const response = await fetch(url, {
+                            credentials: 'include'
+                        });
+                        
+                        const data = await response.json();
+                        console.log('📥 Respuesta autorizaciones:', data);
+                        
+                        if (data.success && data.encontrado) {
+                            this.autorizacionesPendientes = data.autorizaciones;
+                            console.log(`✅ Se encontraron ${data.autorizaciones.length} autorizaciones`);
+                        } else {
+                            this.autorizacionesPendientes = [];
+                            console.log('ℹ️ No se encontraron autorizaciones');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error al buscar autorizaciones:', error);
+                        this.autorizacionesPendientes = [];
+                    }
+                },
+                
+                abrirModalAutorizaciones() {
+                    this.mostrarModalAutorizaciones = true;
+                },
+                
+                cerrarModalAutorizaciones() {
+                    this.mostrarModalAutorizaciones = false;
+                },
+                
+                async aplicarAutorizacion(autorizacion) {
+                    if (!confirm(`¿Desea aplicar la autorización de ${autorizacion.funcionario_autoriza}?`)) {
+                        return;
+                    }
+                    
+                    // Aplicar los datos de la autorización al formulario
+                    if (!this.visitanteEncontrado) {
+                        // Si el visitante no existe, llenar datos de registro
+                        this.formRegistro.primer_nombre = autorizacion.primer_nombre;
+                        this.formRegistro.segundo_nombre = autorizacion.segundo_nombre || '';
+                        this.formRegistro.primer_apellido = autorizacion.primer_apellido;
+                        this.formRegistro.segundo_apellido = autorizacion.segundo_apellido || '';
+                        this.formRegistro.empresa = autorizacion.empresa;
+                        this.formRegistro.nit_empresa = autorizacion.nit_empresa || '';
+                    }
+                    
+                    // Llenar datos de destino
+                    this.form.prefijo_dependencia = autorizacion.prefijo_dependencia;
+                    this.form.funcionario_autoriza = autorizacion.funcionario_autoriza;
+                    this.form.observaciones1 = autorizacion.observaciones || '';
+                    
+                    // Guardar ID de autorización aplicada
+                    this.autorizacionAplicada = autorizacion.id;
+                    
+                    // Abrir sección de destino
+                    this.seccionesAbiertas.destino = true;
+                    
+                    // Cerrar modal
+                    this.cerrarModalAutorizaciones();
+                    
+                    alert('Autorización aplicada. Por favor complete los datos restantes.');
+                },
+                
+                async buscarPorNit() {
+                    const nit = this.formRegistro.nit_empresa.trim();
+                    
+                    // Validar que el NIT tenga al menos 3 caracteres
+                    if (nit.length < 3) {
+                        this.nitEncontrado = false;
+                        return;
+                    }
+                    
+                    this.buscandoNit = true;
+                    this.nitEncontrado = false;
+                    
+                    try {
+                        // Buscar en la base de datos algún visitante con este NIT de empresa
+                        const response = await fetch(`${API_URL}/visitantes/buscar-por-nit?nit=${encodeURIComponent(nit)}`, {
+                            credentials: 'include'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.empresa) {
+                            // Autocompletar el campo empresa
+                            this.formRegistro.empresa = data.empresa;
+                            this.nitEncontrado = true;
+                        } else {
+                            this.nitEncontrado = false;
+                        }
+                    } catch (error) {
+                        console.error('Error buscando NIT:', error);
+                        this.nitEncontrado = false;
+                    } finally {
+                        this.buscandoNit = false;
+                    }
+                },
+                
+                async registrarNuevoVisitante() {
+                    this.cargando = true;
+                    try {
+                        const response = await apiClient.visitantes.registrar(this.formRegistro);
+                        if (response.success) {
+                            alert('Visitante registrado exitosamente');
+                            this.mostrarModalRegistro = false;
+                            await this.buscarVisitante();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    } catch (error) {
+                        alert('Error al registrar visitante');
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+                
+                async registrarIngreso() {
+                    if (!this.form.prefijo_dependencia || !this.form.funcionario_recibe) {
+                        alert('Debe completar la dependencia y el funcionario que recibe');
+                        return;
+                    }
+                    
+                    // Validar funcionario_autoriza (requerido)
+                    if (!this.form.funcionario_autoriza) {
+                        alert('Debe ingresar el nombre del funcionario que autoriza el ingreso');
+                        return;
+                    }
+                    
+                    this.cargando = true;
+                    try {
+                        const data = {
+                            tipo_identificacion: this.form.tipo_identificacion,
+                            num_identificacion: this.form.num_identificacion,
+                            prefijo_dependencia: this.form.prefijo_dependencia,
+                            funcionario_recibe: this.form.funcionario_recibe,
+                            funcionario_autoriza: this.form.funcionario_autoriza,  // NUEVO campo
+                            observaciones1: this.form.observaciones1,
+                            check1_elemento_tecnologico: this.form.check1_elemento_tecnologico,
+                            check1_descripcion: this.form.check1_descripcion,
+                            check2_arma_fuego: this.form.check2_arma_fuego,
+                            check2_descripcion: this.form.check2_descripcion,
+                            check3_otro_elemento: this.form.check3_otro_elemento,
+                            check3_descripcion: this.form.check3_descripcion,
+                            check4_herramienta: this.form.check4_herramienta,
+                            check4_descripcion: this.form.check4_descripcion,
+                            numero_carnet: this.form.numero_carnet
+                        };
+                        
+                        // NUEVO: Si se aplicó una autorización, incluir el ID
+                        if (this.autorizacionAplicada) {
+                            data.autorizacion_previa_id = this.autorizacionAplicada;
+                        }
+                        
+                        const response = await apiClient.visitantes.registrarIngreso(data);
+                        if (response.success) {
+                            this.ultimoLogId = response.log.id;
+                            
+                            let mensaje = 'Ingreso registrado exitosamente';
+                            
+                            // Si hay foto capturada, subirla
+                            if (this.fotoBlob) {
+                                await this.subirFoto();
+                                mensaje += '\n\n✅ Fotografía guardada en: uploads/visitantes/';
+                                mensaje += `\n${data.tipo_identificacion}-${data.num_identificacion}-${new Date().toLocaleDateString('es-CO').split('/').join('')}_${new Date().toLocaleTimeString('es-CO', {hour12: false}).replace(/:/g, '').slice(0,6)}.jpg`;
+                            }
+                            
+                            alert(mensaje);
+                            this.limpiarFormulario();
+                            this.paginaActual = 1;  // Reiniciar paginación
+                            await this.cargarVisitas();
+                            this.tabActiva = 'listado';  // Cambiar a pestaña de listado
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    } catch (error) {
+                        alert('Error al registrar ingreso');
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+                
+                async marcarSalida(logId) {
+                    if (!confirm('¿Confirma que el visitante está saliendo?')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await apiClient.visitantes.registrarSalida(logId);
+                        if (response.success) {
+                            alert('Salida registrada exitosamente');
+                            this.paginaActual = 1;
+                            await this.cargarVisitas();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    } catch (error) {
+                        alert('Error al registrar salida');
+                    }
+                },
+                
+                async cargarDependencias() {
+                    try {
+                        const response = await apiClient.dependencias.listar(this.usuario.sede_id);
+                        if (response.success) {
+                            this.dependencias = response.dependencias;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar dependencias:', error);
+                    }
+                },
+                
+                async cargarVisitas() {
+                    try {
+                        const params = {
+                            sede_id: this.usuario.sede_id,
+                            pagina: this.paginaActual,
+                            por_pagina: this.porPagina
+                        };
+                        
+                        // Agregar filtros si tienen valor
+                        if (this.filtrosListado.busqueda) {
+                            params.busqueda = this.filtrosListado.busqueda;
+                        }
+                        if (this.filtrosListado.fecha_desde) {
+                            params.fecha_desde = this.filtrosListado.fecha_desde;
+                        }
+                        if (this.filtrosListado.fecha_hasta) {
+                            params.fecha_hasta = this.filtrosListado.fecha_hasta;
+                        }
+                        if (this.filtrosListado.estado) {
+                            params.estado = this.filtrosListado.estado;
+                        }
+                        
+                        const response = await apiClient.visitantes.listar(params);
+                        if (response.success) {
+                            this.visitas = response.visitas;
+                            this.totalVisitas = response.total;
+                            this.paginaActual = response.pagina;
+                            this.totalPaginas = response.total_paginas;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar visitas:', error);
+                    }
+                },
+                
+                limpiarFiltros() {
+                    this.filtrosListado = {
+                        busqueda: '',
+                        fecha_desde: new Date().toISOString().split('T')[0],
+                        fecha_hasta: new Date().toISOString().split('T')[0],
+                        estado: ''
+                    };
+                    this.paginaActual = 1;
+                    this.cargarVisitas();
+                },
+                
+                cambiarPagina(pagina) {
+                    if (pagina >= 1 && pagina <= this.totalPaginas) {
+                        this.paginaActual = pagina;
+                        this.cargarVisitas();
+                        // Scroll al inicio de la tabla
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+                
+                obtenerRangoPaginas() {
+                    const rango = [];
+                    const maxBotones = 5;
+                    let inicio = Math.max(1, this.paginaActual - Math.floor(maxBotones / 2));
+                    let fin = Math.min(this.totalPaginas, inicio + maxBotones - 1);
+                    
+                    // Ajustar inicio si estamos cerca del final
+                    if (fin - inicio < maxBotones - 1) {
+                        inicio = Math.max(1, fin - maxBotones + 1);
+                    }
+                    
+                    for (let i = inicio; i <= fin; i++) {
+                        rango.push(i);
+                    }
+                    return rango;
+                },
+                
+                // MÉTODOS PARA CAPTURA DE FOTO
+                async activarCamara() {
+                    try {
+                        this.streamCamara = await navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 },
+                                facingMode: 'user'
+                            }
+                        });
+                        this.$refs.video.srcObject = this.streamCamara;
+                        this.camaraActiva = true;
+                    } catch (error) {
+                        console.error('Error al acceder a la cámara:', error);
+                        alert('No se pudo acceder a la cámara.\n\nPor favor use el botón verde "Subir Foto" para seleccionar una imagen desde su equipo.\n\nNota: La cámara web requiere HTTPS en producción.');
+                    }
+                },
+                
+                detenerCamara() {
+                    if (this.streamCamara) {
+                        this.streamCamara.getTracks().forEach(track => track.stop());
+                        this.streamCamara = null;
+                    }
+                    this.camaraActiva = false;
+                },
+                
+                capturarFoto() {
+                    const video = this.$refs.video;
+                    const canvas = this.$refs.canvas;
+                    
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convertir a blob
+                    canvas.toBlob((blob) => {
+                        this.fotoBlob = blob;
+                        this.fotoCapturada = URL.createObjectURL(blob);
+                    }, 'image/jpeg', 0.85);
+                    
+                    this.detenerCamara();
+                },
+                
+                eliminarFoto() {
+                    if (this.fotoCapturada) {
+                        URL.revokeObjectURL(this.fotoCapturada);
+                    }
+                    this.fotoCapturada = null;
+                    this.fotoBlob = null;
+                },
+                
+                subirFotoArchivo(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    // Validar que sea una imagen
+                    if (!file.type.startsWith('image/')) {
+                        alert('Por favor seleccione un archivo de imagen válido');
+                        return;
+                    }
+                    
+                    // Validar tamaño (máximo 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('La imagen es muy grande. Máximo 5MB');
+                        return;
+                    }
+                    
+                    // Crear preview
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.fotoCapturada = e.target.result;
+                        this.fotoBlob = file;
+                    };
+                    reader.readAsDataURL(file);
+                    
+                    // Limpiar el input
+                    event.target.value = '';
+                },
+                
+                async subirFoto() {
+                    if (!this.fotoBlob || !this.ultimoLogId) {
+                        return;
+                    }
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('foto', this.fotoBlob, 'foto.jpg');
+                        
+                        const response = await fetch(`${API_URL}/visitantes/foto/${this.ultimoLogId}`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (!data.success) {
+                            console.error('Error al subir foto:', data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error al subir foto:', error);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

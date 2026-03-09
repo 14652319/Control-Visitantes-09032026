@@ -1,0 +1,87 @@
+"""
+========================================
+CONFIGURACIÓN DE LA APLICACIÓN
+Sistema de Control de Visitantes
+Supertiendas Cañaveral SAS
+========================================
+"""
+
+import os
+from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class Config:
+    """Configuración base de la aplicación"""
+    
+    # Configuración de Flask
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    
+    # Base de Datos
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        'postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes'
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = False
+    
+    # JWT
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', SECRET_KEY)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=45)
+    
+    # Sesiones
+    SESSION_TIMEOUT = int(os.getenv('SESSION_TIMEOUT', 45))
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=SESSION_TIMEOUT)
+    SESSION_COOKIE_SECURE = False  # True en producción con HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Seguridad
+    MAX_LOGIN_ATTEMPTS = int(os.getenv('MAX_LOGIN_ATTEMPTS', 10))
+    PASSWORD_MIN_LENGTH = 8
+    
+    # Archivos
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '../uploads/visitantes')
+    MAX_CONTENT_LENGTH = int(os.getenv('MAX_FILE_SIZE', 5 * 1024 * 1024))  # 5MB
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+    
+    # Retención de fotografías
+    DIAS_RETENCION_FOTOS = int(os.getenv('DIAS_RETENCION_FOTOS', 90))
+    BORRADO_AUTOMATICO_FOTOS = os.getenv('BORRADO_AUTOMATICO_FOTOS', 'false').lower() == 'true'
+    
+    # CORS
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
+    
+    # Timezone
+    TIMEZONE = 'America/Bogota'
+
+
+class DevelopmentConfig(Config):
+    """Configuración para desarrollo"""
+    DEBUG = True
+    TESTING = False
+    SQLALCHEMY_ECHO = True
+
+
+class ProductionConfig(Config):
+    """Configuración para producción"""
+    DEBUG = False
+    TESTING = False
+    SESSION_COOKIE_SECURE = True
+
+
+class TestingConfig(Config):
+    """Configuración para pruebas"""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes_test'
+
+
+# Configuración por defecto
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+}
