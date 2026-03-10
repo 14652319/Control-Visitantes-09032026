@@ -219,6 +219,12 @@
                                     <option :value="dep.prefijo_dependencia" x-text="dep.prefijo_dependencia + ' - ' + dep.descripcion_dependencia"></option>
                                 </template>
                             </select>
+                            <p x-show="dependencias.length === 0" class="text-xs text-red-600 mt-1">
+                                <i class="fas fa-exclamation-triangle"></i> No hay dependencias cargadas. Recargue la página.
+                            </p>
+                            <p x-show="dependencias.length > 0" class="text-xs text-gray-500 mt-1">
+                                <span x-text="dependencias.length"></span> dependencias disponibles
+                            </p>
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Funcionario que Recibe *</label>
@@ -722,13 +728,26 @@
                 </div>
             </div>
             
-            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 sticky bottom-0">
+            <div class="bg-gray-50 px-6 py-4 flex justify-between items-center sticky bottom-0">
                 <button @click="mostrarModalRegistro = false" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
-                    Cancelar
+                    <i class="fas fa-times mr-2"></i>Cancelar
                 </button>
-                <button @click="registrarNuevoVisitante()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
-                    <i class="fas fa-save mr-2"></i>Guardar
-                </button>
+                <div class="flex gap-3">
+                    <button 
+                        @click="registrarNuevoVisitante(false)" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                        title="Guarda el visitante y vuelve al inicio"
+                    >
+                        <i class="fas fa-save mr-2"></i>Guardar y Salir
+                    </button>
+                    <button 
+                        @click="registrarNuevoVisitante(true)" 
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+                        title="Guarda el visitante y continúa con el registro de ingreso"
+                    >
+                        <i class="fas fa-arrow-right mr-2"></i>Guardar y Continuar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1070,9 +1089,29 @@
                 },
                 
                 async aplicarAutorizacion(autorizacion) {
+                    console.log('📋 Aplicando autorización:', autorizacion);
+                    
                     if (!confirm(`¿Desea aplicar la autorización de ${autorizacion.funcionario_autoriza}?`)) {
                         return;
                     }
+                    
+                    // Asegurar que las dependencias estén cargadas
+                    if (this.dependencias.length === 0) {
+                        console.log('⚠️ Dependencias vacías, recargando...');
+                        await this.cargarDependencias();
+                    }
+                    
+                    console.log('📂 Total dependencias cargadas:', this.dependencias.length);
+                    console.log('📂 Lista de dependencias:', this.dependencias.map(d => ({
+                        prefijo: d.prefijo_dependencia,
+                        descripcion: d.descripcion_dependencia
+                    })));
+                    
+                    // Cerrar modal primero
+                    this.cerrarModalAutorizaciones();
+                    
+                    // Abrir sección de destino
+                    this.seccionesAbiertas.destino = true;
                     
                     // Aplicar los datos de la autorización al formulario
                     if (!this.visitanteEncontrado) {
@@ -1085,21 +1124,42 @@
                         this.formRegistro.nit_empresa = autorizacion.nit_empresa || '';
                     }
                     
-                    // Llenar datos de destino
-                    this.form.prefijo_dependencia = autorizacion.prefijo_dependencia;
-                    this.form.funcionario_autoriza = autorizacion.funcionario_autoriza;
-                    this.form.observaciones1 = autorizacion.observaciones || '';
+                    // Usar await $nextTick para asegurar que Alpine.js termine de renderizar
+                    await this.$nextTick();
+                    
+                    // Llenar datos de destino desde la autorización
+                    const prefijoDep = (autorizacion.prefijo_dependencia || '').trim().toUpperCase();
+                    const funcionarioAutoriza = (autorizacion.funcionario_autoriza || '').trim().toUpperCase();
+                    const observaciones = (autorizacion.observaciones || '').trim().toUpperCase();
+                    
+                    this.form.prefijo_dependencia = prefijoDep;
+                    this.form.funcionario_recibe = funcionarioAutoriza;
+                    this.form.funcionario_autoriza = funcionarioAutoriza;
+                    this.form.observaciones1 = observaciones;
+                    
+                    console.log('✅ Campos aplicados:', {
+                        prefijo_dependencia: this.form.prefijo_dependencia,
+                        funcionario_recibe: this.form.funcionario_recibe,
+                        funcionario_autoriza: this.form.funcionario_autoriza,
+                        observaciones: this.form.observaciones1
+                    });
+                    
+                    // Verificar si la dependencia existe en la lista
+                    const depExiste = this.dependencias.find(d => d.prefijo_dependencia === prefijoDep);
+                    if (!depExiste) {
+                        console.warn('⚠️ Dependencia no encontrada en la lista:', prefijoDep);
+                        console.warn('⚠️ Dependencias disponibles:', this.dependencias.map(d => d.prefijo_dependencia).join(', '));
+                    } else {
+                        console.log('✅ Dependencia encontrada:', depExiste);
+                    }
                     
                     // Guardar ID de autorización aplicada
                     this.autorizacionAplicada = autorizacion.id;
                     
-                    // Abrir sección de destino
-                    this.seccionesAbiertas.destino = true;
+                    // Forzar actualización de Alpine.js
+                    await this.$nextTick();
                     
-                    // Cerrar modal
-                    this.cerrarModalAutorizaciones();
-                    
-                    alert('Autorización aplicada. Por favor complete los datos restantes.');
+                    alert('Autorización aplicada. Verifique los campos autocompletados y complete los datos restantes.');
                 },
                 
                 async buscarPorNit() {
@@ -1137,14 +1197,37 @@
                     }
                 },
                 
-                async registrarNuevoVisitante() {
+                async registrarNuevoVisitante(continuarConRegistro = true) {
                     this.cargando = true;
                     try {
                         const response = await apiClient.visitantes.registrar(this.formRegistro);
                         if (response.success) {
-                            alert('Visitante registrado exitosamente');
                             this.mostrarModalRegistro = false;
-                            await this.buscarVisitante();
+                            
+                            if (continuarConRegistro) {
+                                // OPCIÓN 1: Guardar y Continuar - Llena el formulario de ingreso
+                                alert('Visitante registrado exitosamente. Ahora puede continuar con el registro de ingreso.');
+                                await this.buscarVisitante();
+                            } else {
+                                // OPCIÓN 2: Guardar y Salir - Solo crea el visitante y vuelve al inicio
+                                alert('Visitante registrado exitosamente. El funcionario ya puede crear autorizaciones para este visitante.');
+                                // Limpiar formulario principal y formRegistro
+                                this.limpiarFormulario();
+                                this.formRegistro = {
+                                    tipo_identificacion: '',
+                                    num_identificacion: '',
+                                    primer_nombre: '',
+                                    segundo_nombre: '',
+                                    primer_apellido: '',
+                                    segundo_apellido: '',
+                                    num_telefono: '',
+                                    dir_correo: '',
+                                    empresa: '',
+                                    nit_empresa: ''
+                                };
+                                this.visitanteEncontrado = false;
+                                this.visitanteNoExiste = false;
+                            }
                         } else {
                             alert('Error: ' + response.message);
                         }
@@ -1240,13 +1323,19 @@
                 },
                 
                 async cargarDependencias() {
+                    console.log('🔄 Cargando dependencias globales...');
                     try {
-                        const response = await apiClient.dependencias.listar(this.usuario.sede_id);
+                        const response = await apiClient.dependencias.listar();
+                        console.log('📡 Respuesta del servidor:', response);
                         if (response.success) {
                             this.dependencias = response.dependencias;
+                            console.log('📂 Dependencias cargadas:', this.dependencias.length, 'items');
+                            console.log('📂 Dependencias:', this.dependencias);
+                        } else {
+                            console.error('❌ Error en respuesta:', response.message);
                         }
                     } catch (error) {
-                        console.error('Error al cargar dependencias:', error);
+                        console.error('❌ Error al cargar dependencias:', error);
                     }
                 },
                 

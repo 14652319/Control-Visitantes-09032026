@@ -147,7 +147,8 @@ class AutorizacionIngreso(db.Model):
             'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None,
             'fecha_utilizacion': self.fecha_utilizacion.isoformat() if self.fecha_utilizacion else None,
             'utilizada_en_log_id': self.utilizada_en_log_id,
-            'sede_id': self.sede_id
+            'sede_id': self.sede_id,
+            'codigo_sede': self.sede.codigo_sede if self.sede else None
         }
         
         if incluir_usuario and self.usuario_creador:

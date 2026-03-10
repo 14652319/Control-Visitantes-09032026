@@ -137,11 +137,10 @@ const apiClient = {
         }
     },
     
-    // Dependencias
+    // Dependencias (globales para todas las sedes)
     dependencias: {
-        async listar(sedeId) {
-            const url = sedeId ? `/dependencias/?sede_id=${sedeId}` : '/dependencias/';
-            return await apiClient.request(url);
+        async listar() {
+            return await apiClient.request('/dependencias/');
         },
         
         async crear(data) {

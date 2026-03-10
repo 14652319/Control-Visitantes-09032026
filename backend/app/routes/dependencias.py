@@ -17,20 +17,14 @@ bp = Blueprint('dependencias', __name__, url_prefix='/api/dependencias')
 @bp.route('/', methods=['GET'])
 @login_required
 def listar_dependencias():
-    """Lista todas las dependencias o las de una sede específica"""
+    """Lista todas las dependencias activas (globales para todas las sedes)"""
     try:
-        sede_id = request.args.get('sede_id', type=int)
+        # Obtener solo activas o todas según parámetro
+        solo_activas = request.args.get('solo_activas', 'true').lower() == 'true'
         
-        if sede_id:
-            # Filtrar por sede (solo activas para el operador)
-            sede = Sede.query.get(sede_id)
-            if not sede:
-                return jsonify({
-                    'success': False,
-                    'message': 'Sede no encontrada'
-                }), 404
-            
-            dependencias = sede.dependencias.filter_by(estado='ACTIVO').all()
+        if solo_activas:
+            # Solo dependencias activas (para operadores/funcionarios)
+            dependencias = Dependencia.query.filter_by(estado='ACTIVO').order_by(Dependencia.prefijo_dependencia).all()
         else:
             # Todas las dependencias (activas e inactivas) para administración
             dependencias = Dependencia.query.order_by(Dependencia.estado.desc(), Dependencia.prefijo_dependencia).all()
@@ -38,7 +32,7 @@ def listar_dependencias():
         return jsonify({
             'success': True,
             'total': len(dependencias),
-            'dependencias': [d.to_dict(incluir_sedes=True) for d in dependencias]
+            'dependencias': [d.to_dict() for d in dependencias]
         }), 200
         
     except Exception as e:
