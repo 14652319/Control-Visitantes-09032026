@@ -242,6 +242,7 @@ def registrar_ingreso():
             funcionario_recibe=data['funcionario_recibe'].upper(),
             funcionario_autoriza=data['funcionario_autoriza'].upper(),  # NUEVO campo
             observaciones1=data.get('observaciones1', '').upper(),
+            # Campos antiguos check (mantener por compatibilidad)
             check1_elemento_tecnologico=data.get('check1_elemento_tecnologico', False),
             check1_descripcion=data.get('check1_descripcion', '').upper(),
             check2_arma_fuego=data.get('check2_arma_fuego', False),
@@ -252,6 +253,15 @@ def registrar_ingreso():
             check4_descripcion=data.get('check4_descripcion', '').upper(),
             check5_adicional=data.get('check5_adicional', False),
             check5_descripcion=data.get('check5_descripcion', '').upper(),
+            # Nuevos campos simplificados
+            ingresa_elementos=data.get('ingresa_elementos', False),
+            elementos_observacion=data.get('elementos_observacion', '').upper(),
+            elemento_portatil=data.get('elemento_portatil', False),
+            elemento_celular=data.get('elemento_celular', False),
+            elemento_herramientas=data.get('elemento_herramientas', False),
+            elemento_otros=data.get('elemento_otros', False),
+            numero_visitantes=data.get('numero_visitantes', 1),
+            visitantes_adicionales=data.get('visitantes_adicionales', '').upper(),
             numero_carnet=data.get('numero_carnet', '').upper(),
             estado_visita='EN_INSTALACIONES',
             sede_id=current_user.sede_id,

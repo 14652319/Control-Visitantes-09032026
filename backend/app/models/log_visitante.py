@@ -46,7 +46,7 @@ class LogVisitante(db.Model):
     # Autorización previa (si se utilizó una)
     autorizacion_previa_id = db.Column(db.Integer, db.ForeignKey('autorizaciones_ingreso.id'))
     
-    # Elementos ingresados (checkboxes)
+    # Elementos ingresados (checkboxes antiguos - mantener por compatibilidad)
     check1_elemento_tecnologico = db.Column(db.Boolean, default=False)
     check1_descripcion = db.Column(db.String(500))
     
@@ -61,6 +61,18 @@ class LogVisitante(db.Model):
     
     check5_adicional = db.Column(db.Boolean, default=False)
     check5_descripcion = db.Column(db.String(500))
+    
+    # Nuevos campos para elementos que ingresa (estructura simplificada)
+    ingresa_elementos = db.Column(db.Boolean, default=False)
+    elementos_observacion = db.Column(db.String(500))
+    elemento_portatil = db.Column(db.Boolean, default=False)
+    elemento_celular = db.Column(db.Boolean, default=False)
+    elemento_herramientas = db.Column(db.Boolean, default=False)
+    elemento_otros = db.Column(db.Boolean, default=False)
+    
+    # Número de visitantes
+    numero_visitantes = db.Column(db.Integer, default=1)
+    visitantes_adicionales = db.Column(db.Text)
     
     # Fotografía
     fotografia_visitante = db.Column(db.String(500))
@@ -139,6 +151,15 @@ class LogVisitante(db.Model):
             'autorizacion_previa_id': self.autorizacion_previa_id,
             'observaciones1': self.observaciones1,
             'elementos': self.get_elementos_ingresados(),
+            # Nuevos campos
+            'ingresa_elementos': self.ingresa_elementos,
+            'elementos_observacion': self.elementos_observacion,
+            'elemento_portatil': self.elemento_portatil,
+            'elemento_celular': self.elemento_celular,
+            'elemento_herramientas': self.elemento_herramientas,
+            'elemento_otros': self.elemento_otros,
+            'numero_visitantes': self.numero_visitantes,
+            'visitantes_adicionales': self.visitantes_adicionales,
             'fotografia_visitante': self.fotografia_visitante,
             'numero_carnet': self.numero_carnet,
             'estado_visita': self.estado_visita,
