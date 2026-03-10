@@ -270,63 +270,82 @@
                         <i class="fas" :class="seccionesAbiertas.elementos ? 'fa-minus' : 'fa-plus'"></i>
                         3. Elementos que Ingresa
                     </h3>
-                    <div x-show="seccionesAbiertas.elementos" class="space-y-3">
-                        <div class="flex items-start gap-3">
-                            <input type="checkbox" x-model="form.check1_elemento_tecnologico" class="mt-1">
-                            <div class="flex-1">
-                                <label class="font-medium">¿Ingresa elemento tecnológico?</label>
-                                <input 
-                                    x-show="form.check1_elemento_tecnologico"
-                                    type="text"
-                                    x-model="form.check1_descripcion"
-                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
-                                    placeholder="Especifique tipo y marca"
-                                    maxlength="500"
-                                >
+                    <div x-show="seccionesAbiertas.elementos" class="space-y-4">
+                        
+                        <!-- Checkbox principal: Elementos que ingresa -->
+                        <div class="border-2 border-gray-200 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" x-model="form.ingresa_elementos" class="mt-1">
+                                <label class="font-medium text-gray-700">¿Ingresa elementos?</label>
+                            </div>
+                            
+                            <!-- Contenido que se despliega al marcar el checkbox -->
+                            <div x-show="form.ingresa_elementos" class="mt-4 space-y-4 pl-7 border-l-4 border-green-500">
+                                
+                                <!-- Campo de observación general -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones sobre los elementos</label>
+                                    <textarea
+                                        x-model="form.elementos_observacion"
+                                        class="w-full px-4 py-2 border rounded-lg uppercase focus:ring-2 focus:ring-green-500"
+                                        placeholder="DESCRIBA LOS ELEMENTOS QUE INGRESA"
+                                        rows="2"
+                                        maxlength="500"
+                                    ></textarea>
+                                </div>
+                                
+                                <!-- Sub-checkboxes para tipos de elementos -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de elementos (opcional):</label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" x-model="form.elemento_portatil" id="elem_portatil">
+                                            <label for="elem_portatil" class="text-gray-700">Portátil</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" x-model="form.elemento_celular" id="elem_celular">
+                                            <label for="elem_celular" class="text-gray-700">Celular</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" x-model="form.elemento_herramientas" id="elem_herramientas">
+                                            <label for="elem_herramientas" class="text-gray-700">Herramientas</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" x-model="form.elemento_otros" id="elem_otros">
+                                            <label for="elem_otros" class="text-gray-700">Otros</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex items-start gap-3">
-                            <input type="checkbox" x-model="form.check2_arma_fuego" class="mt-1">
-                            <div class="flex-1">
-                                <label class="font-medium">¿Ingresa arma de fuego?</label>
-                                <input 
-                                    x-show="form.check2_arma_fuego"
-                                    type="text"
-                                    x-model="form.check2_descripcion"
-                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
-                                    placeholder="Especifique"
+                        
+                        <!-- Campo: Número de visitantes -->
+                        <div class="border-2 border-gray-200 rounded-lg p-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Número de visitantes que ingresan *</label>
+                            <input 
+                                type="number"
+                                x-model.number="form.numero_visitantes"
+                                min="1"
+                                max="50"
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                placeholder="1"
+                            >
+                            
+                            <!-- Campo adicional si hay más de 1 visitante -->
+                            <div x-show="form.numero_visitantes > 1" class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nombres de los visitantes adicionales (opcional)
+                                </label>
+                                <textarea
+                                    x-model="form.visitantes_adicionales"
+                                    class="w-full px-4 py-2 border rounded-lg uppercase focus:ring-2 focus:ring-green-500"
+                                    placeholder="INGRESE LOS NOMBRES DE LOS VISITANTES ADICIONALES"
+                                    rows="2"
                                     maxlength="500"
-                                >
+                                ></textarea>
                             </div>
                         </div>
-                        <div class="flex items-start gap-3">
-                            <input type="checkbox" x-model="form.check4_herramienta" class="mt-1">
-                            <div class="flex-1">
-                                <label class="font-medium">¿Ingresa herramientas?</label>
-                                <input 
-                                    x-show="form.check4_herramienta"
-                                    type="text"
-                                    x-model="form.check4_descripcion"
-                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
-                                    placeholder="Especifique qué herramientas"
-                                    maxlength="500"
-                                >
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <input type="checkbox" x-model="form.check3_otro_elemento" class="mt-1">
-                            <div class="flex-1">
-                                <label class="font-medium">¿Ingresa otro elemento?</label>
-                                <input 
-                                    x-show="form.check3_otro_elemento"
-                                    type="text"
-                                    x-model="form.check3_descripcion"
-                                    class="w-full mt-2 px-4 py-2 border rounded-lg uppercase"
-                                    placeholder="Especifique"
-                                    maxlength="500"
-                                >
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
                 
@@ -889,6 +908,17 @@
                     funcionario_recibe: '',
                     funcionario_autoriza: '',  // NUEVO: campo para el funcionario que autoriza
                     observaciones1: '',
+                    // Nuevos campos para elementos que ingresa
+                    ingresa_elementos: false,
+                    elementos_observacion: '',
+                    elemento_portatil: false,
+                    elemento_celular: false,
+                    elemento_herramientas: false,
+                    elemento_otros: false,
+                    // Nuevo: número de visitantes
+                    numero_visitantes: 1,
+                    visitantes_adicionales: '',
+                    // Campos antiguos (mantener por compatibilidad temporal)
                     check1_elemento_tecnologico: false,
                     check1_descripcion: '',
                     check2_arma_fuego: false,
@@ -975,8 +1005,19 @@
                         num_identificacion: '',
                         prefijo_dependencia: '',
                         funcionario_recibe: '',
-                        funcionario_autoriza: '',  // NUEVO
+                        funcionario_autoriza: '',
                         observaciones1: '',
+                        // Nuevos campos para elementos
+                        ingresa_elementos: false,
+                        elementos_observacion: '',
+                        elemento_portatil: false,
+                        elemento_celular: false,
+                        elemento_herramientas: false,
+                        elemento_otros: false,
+                        // Nuevo: número de visitantes
+                        numero_visitantes: 1,
+                        visitantes_adicionales: '',
+                        // Campos antiguos (mantener por compatibilidad)
                         check1_elemento_tecnologico: false,
                         check1_descripcion: '',
                         check2_arma_fuego: false,
@@ -1257,8 +1298,18 @@
                             num_identificacion: this.form.num_identificacion,
                             prefijo_dependencia: this.form.prefijo_dependencia,
                             funcionario_recibe: this.form.funcionario_recibe,
-                            funcionario_autoriza: this.form.funcionario_autoriza,  // NUEVO campo
+                            funcionario_autoriza: this.form.funcionario_autoriza,
                             observaciones1: this.form.observaciones1,
+                            // Nuevos campos
+                            ingresa_elementos: this.form.ingresa_elementos,
+                            elementos_observacion: this.form.elementos_observacion,
+                            elemento_portatil: this.form.elemento_portatil,
+                            elemento_celular: this.form.elemento_celular,
+                            elemento_herramientas: this.form.elemento_herramientas,
+                            elemento_otros: this.form.elemento_otros,
+                            numero_visitantes: this.form.numero_visitantes,
+                            visitantes_adicionales: this.form.visitantes_adicionales,
+                            // Campos antiguos (mantener por compatibilidad)
                             check1_elemento_tecnologico: this.form.check1_elemento_tecnologico,
                             check1_descripcion: this.form.check1_descripcion,
                             check2_arma_fuego: this.form.check2_arma_fuego,

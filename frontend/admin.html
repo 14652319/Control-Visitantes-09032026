@@ -437,38 +437,221 @@
                 <!-- Reportes -->
                 <div x-show="seccion === 'reportes'">
                     <div class="bg-white rounded-xl shadow p-6">
-                        <h2 class="text-xl font-bold text-gray-800 mb-6">Generación de Reportes</h2>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <i class="fas fa-chart-bar mr-3 text-green-600"></i>
+                            Generación de Reportes de Visitas
+                        </h2>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Fecha Inicio</label>
-                                <input 
-                                    type="date" 
-                                    x-model="filtrosReporte.fecha_inicio"
-                                    class="w-full px-4 py-3 border rounded-lg"
-                                >
+                        <!-- Filtros -->
+                        <div class="bg-gray-50 p-6 rounded-lg mb-6">
+                            <h3 class="font-semibold text-gray-700 mb-4 flex items-center">
+                                <i class="fas fa-filter mr-2"></i>
+                                Filtros de Búsqueda
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <!-- Rango de Fechas -->
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Fecha Inicio *</label>
+                                    <input 
+                                        type="date" 
+                                        x-model="filtrosReporte.fecha_inicio"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                        required
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Fecha Fin *</label>
+                                    <input 
+                                        type="date" 
+                                        x-model="filtrosReporte.fecha_fin"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                        required
+                                    >
+                                </div>
+                                
+                                <!-- Filtro por Sede -->
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Sede</label>
+                                    <select 
+                                        x-model.number="filtrosReporte.sede_id"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="0">Todas las Sedes</option>
+                                        <template x-for="sede in sedes" :key="sede.id">
+                                            <option :value="sede.id" x-text="`${sede.codigo_sede} - ${sede.descripcion_sede}`"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                
+                                <!-- Filtro por Dependencia -->
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Dependencia</label>
+                                    <select 
+                                        x-model="filtrosReporte.dependencia"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="">Todas las Dependencias</option>
+                                        <template x-for="dep in dependencias" :key="dep.id">
+                                            <option :value="dep.prefijo_dependencia" x-text="`${dep.prefijo_dependencia} - ${dep.descripcion_dependencia}`"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                
+                                <!-- Filtro por Estado -->
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Estado</label>
+                                    <select 
+                                        x-model="filtrosReporte.estado"
+                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="">Todos los Estados</option>
+                                        <option value="EN_INSTALACIONES">En Instalaciones</option>
+                                        <option value="SALIO">Salió</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Fecha Fin</label>
-                                <input 
-                                    type="date" 
-                                    x-model="filtrosReporte.fecha_fin"
-                                    class="w-full px-4 py-3 border rounded-lg"
+                            
+                            <!-- Botones de Acción -->
+                            <div class="flex gap-3 mt-6">
+                                <button 
+                                    @click="generarReporte()"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
                                 >
+                                    <i class="fas fa-search mr-2"></i>Generar Reporte
+                                </button>
+                                <button 
+                                    @click="exportarReporteExcel()"
+                                    :disabled="!reporteGenerado"
+                                    :class="reporteGenerado ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'"
+                                    class="text-white px-6 py-3 rounded-lg font-semibold transition"
+                                >
+                                    <i class="fas fa-file-excel mr-2"></i>Exportar a Excel
+                                </button>
+                                <button 
+                                    @click="limpiarFiltrosReporte()"
+                                    class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold transition"
+                                >
+                                    <i class="fas fa-eraser mr-2"></i>Limpiar Filtros
+                                </button>
                             </div>
                         </div>
                         
-                        <button 
-                            @click="generarReporteExcel()"
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg"
-                        >
-                            <i class="fas fa-file-excel mr-2"></i>Generar Reporte Excel
-                        </button>
+                        <!-- Estadísticas Resumidas -->
+                        <div x-show="reporteGenerado" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm opacity-90">Total Visitas</p>
+                                        <p class="text-3xl font-bold" x-text="reporteResultados.length"></p>
+                                    </div>
+                                    <i class="fas fa-users text-4xl opacity-50"></i>
+                                </div>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm opacity-90">En Instalaciones</p>
+                                        <p class="text-3xl font-bold" x-text="reporteResultados.filter(v => v.estado_visita === 'EN_INSTALACIONES').length"></p>
+                                    </div>
+                                    <i class="fas fa-door-open text-4xl opacity-50"></i>
+                                </div>
+                            </div>
+                            <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm opacity-90">Salieron</p>
+                                        <p class="text-3xl font-bold" x-text="reporteResultados.filter(v => v.estado_visita === 'SALIO').length"></p>
+                                    </div>
+                                    <i class="fas fa-door-closed text-4xl opacity-50"></i>
+                                </div>
+                            </div>
+                            <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm opacity-90">Con Elementos</p>
+                                        <p class="text-3xl font-bold" x-text="reporteResultados.filter(v => v.ingresa_elementos).length"></p>
+                                    </div>
+                                    <i class="fas fa-briefcase text-4xl opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div class="mt-6 text-center py-12 text-gray-500">
+                        <!-- Tabla de Resultados -->
+                        <div x-show="reporteGenerado" class="overflow-x-auto">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-semibold text-gray-700">Resultados: <span x-text="reporteResultados.length"></span> visita(s)</h3>
+                            </div>
+                            
+                            <table class="w-full" x-show="reporteResultados.length > 0">
+                                <thead class="bg-gray-100 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Fecha/Hora</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Visitante</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Identificación</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Empresa</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Dependencia</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Func. Recibe</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Elementos</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">N° Visitas</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Estado</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Sede</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <template x-for="visita in reporteResultados" :key="visita.id">
+                                        <tr class="hover:bg-gray-50 text-sm">
+                                            <td class="px-3 py-2">
+                                                <div x-text="`${visita.fecha_ingreso} ${visita.hora_ingreso}`" class="text-xs"></div>
+                                                <div x-show="visita.fecha_salida" class="text-xs text-gray-500">
+                                                    <span x-text="`Salida: ${visita.fecha_salida} ${visita.hora_salida}`"></span>
+                                                </div>
+                                            </td>
+                                            <td class="px-3 py-2 font-medium" x-text="visita.nombre_completo"></td>
+                                            <td class="px-3 py-2 text-xs">
+                                                <div x-text="visita.tipo_identificacion"></div>
+                                                <div x-text="visita.num_identificacion" class="font-mono"></div>
+                                            </td>
+                                            <td class="px-3 py-2 text-xs" x-text="visita.empresa"></td>
+                                            <td class="px-3 py-2 text-xs">
+                                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold" x-text="visita.prefijo_dependencia"></span>
+                                            </td>
+                                            <td class="px-3 py-2 text-xs" x-text="visita.funcionario_recibe"></td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span x-show="visita.ingresa_elementos" class="text-green-600" title="Ingresa elementos">
+                                                    <i class="fas fa-check-circle"></i>
+                                                </span>
+                                                <span x-show="!visita.ingresa_elementos" class="text-gray-300">
+                                                    <i class="fas fa-times-circle"></i>
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span class="bg-gray-100 px-2 py-1 rounded text-xs font-semibold" x-text="visita.numero_visitantes || 1"></span>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <span 
+                                                    :class="visita.estado_visita === 'EN_INSTALACIONES' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                                                    class="px-2 py-1 rounded text-xs font-semibold"
+                                                    x-text="visita.estado_visita === 'EN_INSTALACIONES' ? 'En Inst.' : 'Salió'"
+                                                ></span>
+                                            </td>
+                                            <td class="px-3 py-2 text-xs" x-text="visita.codigo_sede"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            
+                            <div x-show="reporteResultados.length === 0" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                <p>No se encontraron visitas con los filtros aplicados</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Mensaje inicial -->
+                        <div x-show="!reporteGenerado" class="text-center py-12 text-gray-500">
                             <i class="fas fa-chart-bar text-6xl mb-4"></i>
-                            <p class="text-lg">Sistema de reportes completo disponible</p>
-                            <p class="text-sm">Filtre por fechas y exporte resultados a Excel</p>
+                            <p class="text-lg font-semibold">Configure los filtros y genere su reporte</p>
+                            <p class="text-sm">Seleccione el rango de fechas y aplique los filtros deseados</p>
                         </div>
                     </div>
                 </div>
@@ -976,8 +1159,13 @@
                 dependenciaEdicion: {},
                 filtrosReporte: {
                     fecha_inicio: '',
-                    fecha_fin: ''
+                    fecha_fin: '',
+                    sede_id: 0,
+                    dependencia: '',
+                    estado: ''
                 },
+                reporteGenerado: false,
+                reporteResultados: [],
                 configuraciones: {
                     dias_vigencia_autorizacion: 1,
                     max_intentos_login: 10,
@@ -1586,8 +1774,129 @@
                     this.filtrosReporte.fecha_fin = hoy.toISOString().split('T')[0];
                 },
                 
-                async generarReporteExcel() {
-                    alert('Función de reporte Excel implementada en el backend. Requiere selección de visitas.');
+                async generarReporte() {
+                    // Validar fechas
+                    if (!this.filtrosReporte.fecha_inicio || !this.filtrosReporte.fecha_fin) {
+                        alert('Por favor seleccione el rango de fechas');
+                        return;
+                    }
+                    
+                    try {
+                        // Construir parámetros de búsqueda
+                        const params = new URLSearchParams({
+                            fecha_inicio: this.filtrosReporte.fecha_inicio,
+                            fecha_fin: this.filtrosReporte.fecha_fin
+                        });
+                        
+                        if (this.filtrosReporte.sede_id > 0) {
+                            params.append('sede_id', this.filtrosReporte.sede_id);
+                        }
+                        
+                        if (this.filtrosReporte.dependencia) {
+                            params.append('dependencia', this.filtrosReporte.dependencia);
+                        }
+                        
+                        if (this.filtrosReporte.estado) {
+                            params.append('estado', this.filtrosReporte.estado);
+                        }
+                        
+                        const response = await apiClient.request(`/reportes/visitas?${params.toString()}`);
+                        
+                        if (response.success) {
+                            this.reporteResultados = response.visitas;
+                            this.reporteGenerado = true;
+                            
+                            if (this.reporteResultados.length === 0) {
+                                alert('No se encontraron visitas con los filtros aplicados');
+                            }
+                        } else {
+                            alert('Error al generar reporte: ' + response.message);
+                        }
+                    } catch (error) {
+                        console.error('Error al generar reporte:', error);
+                        alert('Error al generar reporte: ' + error.message);
+                    }
+                },
+                
+                async exportarReporteExcel() {
+                    if (!this.reporteGenerado || this.reporteResultados.length === 0) {
+                        alert('Primero debe generar un reporte con resultados');
+                        return;
+                    }
+                    
+                    try {
+                        // Construir URL con los mismos parámetros
+                        const params = new URLSearchParams({
+                            fecha_inicio: this.filtrosReporte.fecha_inicio,
+                            fecha_fin: this.filtrosReporte.fecha_fin
+                        });
+                        
+                        if (this.filtrosReporte.sede_id > 0) {
+                            params.append('sede_id', this.filtrosReporte.sede_id);
+                        }
+                        
+                        if (this.filtrosReporte.dependencia) {
+                            params.append('dependencia', this.filtrosReporte.dependencia);
+                        }
+                        
+                        if (this.filtrosReporte.estado) {
+                            params.append('estado', this.filtrosReporte.estado);
+                        }
+                        
+                        // Descargar archivo Excel usando fetch con credenciales
+                        const baseUrl = apiClient.baseUrl;
+                        const url = `${baseUrl}/reportes/visitas/excel?${params.toString()}`;
+                        
+                        console.log('Descargando Excel desde:', url);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            credentials: 'include',
+                            headers: {
+                                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Error al descargar el archivo: ' + response.statusText);
+                        }
+                        
+                        // Convertir respuesta a blob
+                        const blob = await response.blob();
+                        
+                        if (blob.size === 0) {
+                            throw new Error('El archivo descargado está vacío');
+                        }
+                        
+                        // Crear URL temporal para el blob
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        
+                        // Crear link temporal para descarga
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = `reporte_visitas_${new Date().getTime()}.xlsx`;
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        // Limpiar
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(blobUrl);
+                        
+                        console.log('✓ Archivo Excel descargado:', blob.size, 'bytes');
+                        alert('✓ Reporte Excel descargado exitosamente');
+                    } catch (error) {
+                        console.error('Error al exportar a Excel:', error);
+                        alert('Error al exportar a Excel: ' + error.message);
+                    }
+                },
+                
+                limpiarFiltrosReporte() {
+                    this.inicializarFechas();
+                    this.filtrosReporte.sede_id = 0;
+                    this.filtrosReporte.dependencia = '';
+                    this.filtrosReporte.estado = '';
+                    this.reporteGenerado = false;
+                    this.reporteResultados = [];
                 }
             }
         }
