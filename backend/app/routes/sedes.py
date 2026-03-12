@@ -14,6 +14,24 @@ from app.routes.auth import role_required
 bp = Blueprint('sedes', __name__, url_prefix='/api/sedes')
 
 
+@bp.route('/publico', methods=['GET'])
+def listar_sedes_publico():
+    """Lista sedes activas sin autenticación (para registro público)"""
+    try:
+        sedes = Sede.query.filter_by(estado='ACTIVO').order_by(Sede.codigo_sede).all()
+        
+        return jsonify({
+            'success': True,
+            'sedes': [s.to_dict() for s in sedes]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
 @bp.route('/', methods=['GET'])
 @login_required
 def listar_sedes():

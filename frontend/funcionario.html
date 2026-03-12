@@ -700,9 +700,13 @@
                     }
                 } catch (error) {
                     console.error('❌ Error en init():', error);
-                    // No redirigir inmediatamente en caso de error de red
-                    alert('Error al cargar. Intente nuevamente.');
-                    return;
+                    // Solo redirigir si es error 401 (no autenticado)
+                    if (error.message && error.message.includes('401')) {
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    // Si es error de red temporal, mostrar mensaje pero permitir continuar
+                    console.log('⚠️ Error temporal de red, continuando con datos locales...');
                 }
                 
                 await this.cargarDependencias();

@@ -56,6 +56,17 @@ class Config:
     
     # Timezone
     TIMEZONE = 'America/Bogota'
+    
+    # Configuración de Correo (Gmail)
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 465))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'False').lower() == 'true'
+    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'True').lower() == 'true'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'gestordocumentalsc01@gmail.com')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'urjrkjlogcfdtynq')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'gestordocumentalsc01@gmail.com')
+    MAIL_MAX_EMAILS = None
+    MAIL_ASCII_ATTACHMENTS = False
 
 
 class DevelopmentConfig(Config):

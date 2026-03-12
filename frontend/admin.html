@@ -44,10 +44,17 @@
                 <button 
                     @click="seccion = 'usuarios'"
                     :class="seccion === 'usuarios' ? 'bg-green-700' : 'hover:bg-green-700'"
-                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+                    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center justify-between"
                 >
-                    <i class="fas fa-users w-5"></i>
-                    <span>Usuarios</span>
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-users w-5"></i>
+                        <span>Usuarios</span>
+                    </div>
+                    <span 
+                        x-show="usuariosPendientes > 0" 
+                        x-text="usuariosPendientes"
+                        class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse"
+                    ></span>
                 </button>
                 <button 
                     @click="seccion = 'sedes'"
@@ -227,45 +234,75 @@
                                                     :class="{
                                                         'bg-green-100 text-green-800': usr.estado === 'ACTIVO',
                                                         'bg-red-100 text-red-800': usr.estado === 'INACTIVO',
-                                                        'bg-yellow-100 text-yellow-800': usr.estado === 'BLOQUEADO'
+                                                        'bg-yellow-100 text-yellow-800': usr.estado === 'BLOQUEADO',
+                                                        'bg-blue-100 text-blue-800 animate-pulse': usr.estado === 'PENDIENTE',
+                                                        'bg-gray-100 text-gray-800': usr.estado === 'RECHAZADO'
                                                     }"
                                                     x-text="usr.estado"
                                                 ></span>
                                                 <span x-show="usr.estado === 'BLOQUEADO'" class="ml-2 text-xs text-yellow-600">
                                                     <i class="fas fa-lock"></i>
                                                 </span>
+                                                <span x-show="usr.estado === 'PENDIENTE'" class="ml-2 text-xs text-blue-600">
+                                                    <i class="fas fa-clock"></i>
+                                                </span>
                                             </td>
                                             <td class="px-4 py-3 text-sm space-x-2">
-                                                <button 
-                                                    @click="editarUsuario(usr)"
-                                                    class="text-blue-600 hover:text-blue-800"
-                                                    title="Editar"
-                                                >
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button 
-                                                    x-show="usr.estado === 'BLOQUEADO'"
-                                                    @click="desbloquearUsuario(usr)"
-                                                    class="text-yellow-600 hover:text-yellow-800"
-                                                    title="Desbloquear Usuario"
-                                                >
-                                                    <i class="fas fa-unlock"></i>
-                                                </button>
-                                                <button 
-                                                    @click="resetearPassword(usr)"
-                                                    class="text-orange-600 hover:text-orange-800"
-                                                    title="Resetear Contraseña"
-                                                >
-                                                    <i class="fas fa-key"></i>
-                                                </button>
-                                                <button 
-                                                    x-show="usr.estado !== 'BLOQUEADO'"
-                                                    @click="cambiarEstadoUsuario(usr)"
-                                                    :class="usr.estado === 'ACTIVO' ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'"
-                                                    :title="usr.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'"
-                                                >
-                                                    <i :class="usr.estado === 'ACTIVO' ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
-                                                </button>
+                                                <!-- Botones para usuarios PENDIENTES -->
+                                                <template x-if="usr.estado === 'PENDIENTE'">
+                                                    <div class="flex gap-2">
+                                                        <button 
+                                                            @click="activarUsuario(usr)"
+                                                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-medium"
+                                                            title="Activar Usuario"
+                                                        >
+                                                            <i class="fas fa-check mr-1"></i>Activar
+                                                        </button>
+                                                        <button 
+                                                            @click="rechazarUsuario(usr)"
+                                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-medium"
+                                                            title="Rechazar Solicitud"
+                                                        >
+                                                            <i class="fas fa-times mr-1"></i>Rechazar
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                                
+                                                <!-- Botones para usuarios no PENDIENTES -->
+                                                <template x-if="usr.estado !== 'PENDIENTE'">
+                                                    <div class="flex gap-2">
+                                                        <button 
+                                                            @click="editarUsuario(usr)"
+                                                            class="text-blue-600 hover:text-blue-800"
+                                                            title="Editar"
+                                                        >
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button 
+                                                            x-show="usr.estado === 'BLOQUEADO'"
+                                                            @click="desbloquearUsuario(usr)"
+                                                            class="text-yellow-600 hover:text-yellow-800"
+                                                            title="Desbloquear Usuario"
+                                                        >
+                                                            <i class="fas fa-unlock"></i>
+                                                        </button>
+                                                        <button 
+                                                            @click="resetearPassword(usr)"
+                                                            class="text-orange-600 hover:text-orange-800"
+                                                            title="Resetear Contraseña"
+                                                        >
+                                                            <i class="fas fa-key"></i>
+                                                        </button>
+                                                        <button 
+                                                            x-show="usr.estado !== 'BLOQUEADO' && usr.estado !== 'RECHAZADO'"
+                                                            @click="cambiarEstadoUsuario(usr)"
+                                                            :class="usr.estado === 'ACTIVO' ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'"
+                                                            :title="usr.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'"
+                                                        >
+                                                            <i :class="usr.estado === 'ACTIVO' ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
+                                                        </button>
+                                                    </div>
+                                                </template>
                                             </td>
                                         </tr>
                                     </template>
@@ -770,31 +807,6 @@
                             </div>
                         </div>
                         
-                        <!-- Información General -->
-                        <div class="bg-gray-50 border-l-4 border-gray-600 p-6 rounded-lg">
-                            <h3 class="font-bold text-gray-800 mb-2 flex items-center">
-                                <i class="fas fa-info-circle mr-2 text-gray-600"></i>
-                                Información de Empresa
-                            </h3>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 font-medium mb-2">
-                                    Nombre de la Empresa
-                                </label>
-                                <input 
-                                    type="text" 
-                                    x-model="configuraciones.nombre_empresa"
-                                    class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                                    placeholder="Nombre de su empresa"
-                                >
-                            </div>
-                            <button 
-                                @click="guardarConfiguracion('nombre_empresa')"
-                                class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition font-semibold"
-                            >
-                                <i class="fas fa-save mr-2"></i>Guardar
-                            </button>
-                        </div>
-                        
                         <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                             <p class="text-yellow-800 text-sm">
                                 <i class="fas fa-exclamation-triangle mr-2"></i>
@@ -1150,6 +1162,7 @@
                 },
                 sedes: [],
                 usuarios: [],
+                usuariosPendientes: 0,
                 dependencias: [],
                 mostrarModalUsuario: false,
                 mostrarModalSede: false,
@@ -1169,8 +1182,7 @@
                 configuraciones: {
                     dias_vigencia_autorizacion: 1,
                     max_intentos_login: 10,
-                    tiempo_sesion_minutos: 45,
-                    nombre_empresa: ''
+                    tiempo_sesion_minutos: 45
                 },
                 
                 get tituloSeccion() {
@@ -1225,7 +1237,12 @@
                         }
                     } catch (error) {
                         console.error('Error verificando sesión:', error);
-                        this.redirigirAlLogin();
+                        // Solo redirigir si es error 401 (no autenticado)
+                        // No redirigir por errores de red (AbortError en recargas rápidas)
+                        if (error.message && error.message.includes('401')) {
+                            this.redirigirAlLogin();
+                        }
+                        // Si es error de red, continuar - el usuario ya está en localStorage
                     }
                 },
                 
@@ -1522,6 +1539,8 @@
                         const response = await apiClient.usuarios.listar();
                         if (response.success) {
                             this.usuarios = response.usuarios;
+                            // Calcular usuarios pendientes
+                            this.usuariosPendientes = this.usuarios.filter(u => u.estado === 'PENDIENTE').length;
                         }
                     } catch (error) {
                         console.error('Error al cargar usuarios:', error);
@@ -1694,6 +1713,65 @@
                     } catch (error) {
                         console.error('Error al cambiar estado:', error);
                         alert(error.message || 'Error al cambiar estado del usuario');
+                    }
+                },
+                
+                async activarUsuario(usr) {
+                    if (!confirm(`¿Está seguro de ACTIVAR la cuenta de ${usr.primer_nombre} ${usr.primer_apellido}? Se enviará un correo de confirmación.`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('http://localhost:5000/api/usuarios/activar/' + usr.id, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Usuario activado exitosamente. Se ha enviado un correo de confirmación.');
+                            await this.cargarUsuarios();
+                        } else {
+                            alert(data.message || 'Error al activar usuario');
+                        }
+                    } catch (error) {
+                        console.error('Error al activar usuario:', error);
+                        alert('Error al activar usuario');
+                    }
+                },
+                
+                async rechazarUsuario(usr) {
+                    const motivo = prompt(`Ingrese el motivo del rechazo para ${usr.primer_nombre} ${usr.primer_apellido} (opcional):`);
+                    
+                    if (motivo === null) { // Usuario canceló
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('http://localhost:5000/api/usuarios/rechazar/' + usr.id, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ motivo: motivo || '' })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Solicitud rechazada. Se ha enviado un correo al usuario.');
+                            await this.cargarUsuarios();
+                        } else {
+                            alert(data.message || 'Error al rechazar solicitud');
+                        }
+                    } catch (error) {
+                        console.error('Error al rechazar usuario:', error);
+                        alert('Error al rechazar solicitud');
                     }
                 },
                 

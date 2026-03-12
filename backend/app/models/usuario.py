@@ -33,7 +33,7 @@ class Usuario(UserMixin, db.Model):
     
     # Rol y estado
     rol = db.Column(db.String(100), nullable=False)  # usuario_master o usuario_operador
-    estado = db.Column(db.String(100), nullable=False, default='ACTIVO')  # ACTIVO, INACTIVO, BLOQUEADO
+    estado = db.Column(db.String(100), nullable=False, default='ACTIVO')  # ACTIVO, INACTIVO, BLOQUEADO, PENDIENTE, RECHAZADO
     
     # Credenciales
     usuario = db.Column(db.String(100), nullable=False, unique=True, index=True)
@@ -64,8 +64,14 @@ class Usuario(UserMixin, db.Model):
     
     def incrementar_intentos_fallidos(self):
         """Incrementa los intentos fallidos de login"""
+        from app.models.configuracion_sistema import ConfiguracionSistema
+        
         self.intentos_fallidos += 1
-        if self.intentos_fallidos >= 10:
+        
+        # Obtener máximo de intentos desde configuración
+        max_intentos = int(ConfiguracionSistema.obtener_valor('max_intentos_login', 10))
+        
+        if self.intentos_fallidos >= max_intentos:
             self.estado = 'BLOQUEADO'
             self.bloqueado_hasta = datetime.utcnow()
     

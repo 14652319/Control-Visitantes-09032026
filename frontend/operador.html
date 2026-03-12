@@ -968,7 +968,12 @@
                         }
                     } catch (error) {
                         console.error('Error verificando sesión:', error);
-                        this.redirigirAlLogin();
+                        // Solo redirigir si es error 401 (no autenticado)
+                        // No redirigir por errores de red (AbortError en recargas rápidas)
+                        if (error.message && error.message.includes('401')) {
+                            this.redirigirAlLogin();
+                        }
+                        // Si es error de red, continuar - el usuario ya está en localStorage
                     }
                 },
                 

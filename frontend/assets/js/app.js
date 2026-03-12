@@ -46,6 +46,8 @@ const utils = {
 
 // API Client
 const apiClient = {
+    baseUrl: API_URL,
+    
     async request(url, options = {}) {
         const defaultOptions = {
             credentials: 'include',

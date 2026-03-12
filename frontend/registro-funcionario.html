@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Funcionarios - Control de Visitantes</title>
+    
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- API Client -->
+    <script src="assets/js/app.js"></script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-green-100 min-h-screen flex items-center justify-center p-4">
+    
+    <div x-data="registroApp()" x-init="init()" class="w-full max-w-4xl" x-cloak>
+        <!-- Logo y Título -->
+        <div class="text-center mb-8">
+            <div class="inline-block p-4 bg-white rounded-2xl shadow-lg mb-4">
+                <img src="assets/img/logo-canaveral.png" alt="Supertiendas Cañaveral" class="h-20 w-auto mx-auto">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Registro de Funcionarios</h1>
+            <p class="text-gray-600 font-medium">Supertiendas Cañaveral SAS</p>
+        </div>
+        
+        <!-- Tarjeta de Registro -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800">Crear Cuenta</h2>
+                <a href="index.html" class="text-green-600 hover:text-green-700 transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Volver al Login
+                </a>
+            </div>
+            
+            <!-- Mensajes -->
+            <div x-show="mensaje.mostrar" 
+                 x-transition
+                 :class="mensaje.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'"
+                 class="p-4 border rounded-lg mb-6">
+                <p class="text-sm flex items-center gap-2">
+                    <i :class="mensaje.tipo === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
+                    <span x-text="mensaje.texto"></span>
+                </p>
+            </div>
+            
+            <!-- Formulario -->
+            <form @submit.prevent="registrar()" x-show="!registroExitoso">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Tipo Identificación -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-id-card mr-2"></i>Tipo Identificación *
+                        </label>
+                        <select 
+                            x-model="form.tipo_identificacion"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            required
+                            :disabled="cargando"
+                        >
+                            <option value="">Seleccione...</option>
+                            <option value="RC">RC - Registro Civil</option>
+                            <option value="TI">TI - Tarjeta de Identidad</option>
+                            <option value="CC">CC - Cédula de Ciudadanía</option>
+                            <option value="CE">CE - Cédula de Extranjería</option>
+                            <option value="PS">PS - Pasaporte</option>
+                            <option value="CT">CT - Contraseña</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Número Identificación -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-hashtag mr-2"></i>Número Identificación *
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.num_identificacion"
+                            @blur="verificarIdentificacion()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            :class="{'border-red-500': identificacionExiste, 'border-green-500': identificacionVerificada && !identificacionExiste}"
+                            placeholder="Número de identificación"
+                            required
+                            :disabled="cargando"
+                        >
+                        <!-- Mensaje de validación de identificación -->
+                        <div x-show="verificandoIdentificacion" class="mt-2 text-sm text-blue-600">
+                            <i class="fas fa-spinner fa-spin mr-1"></i> Verificando identificación...
+                        </div>
+                        <div x-show="identificacionExiste" class="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            <span x-text="mensajeIdentificacion"></span>
+                            <br>
+                            <span class="font-medium">Si olvidó su usuario o contraseña, contacte al administrador.</span>
+                        </div>
+                        <div x-show="identificacionVerificada && !identificacionExiste" class="mt-2 text-sm text-green-600">
+                            <i class="fas fa-check-circle mr-1"></i> Identificación disponible
+                        </div>
+                    </div>
+                    
+                    <!-- Primer Nombre -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-user mr-2"></i>Primer Nombre *
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.primer_nombre"
+                            @input="form.primer_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Primer nombre"
+                            required
+                            :disabled="cargando"
+                        >
+                    </div>
+                    
+                    <!-- Segundo Nombre -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-user mr-2"></i>Segundo Nombre
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.segundo_nombre"
+                            @input="form.segundo_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Segundo nombre (opcional)"
+                            :disabled="cargando"
+                        >
+                    </div>
+                    
+                    <!-- Primer Apellido -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-user mr-2"></i>Primer Apellido *
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.primer_apellido"
+                            @input="form.primer_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Primer apellido"
+                            required
+                            :disabled="cargando"
+                        >
+                    </div>
+                    
+                    <!-- Segundo Apellido -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-user mr-2"></i>Segundo Apellido
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.segundo_apellido"
+                            @input="form.segundo_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Segundo apellido (opcional)"
+                            :disabled="cargando"
+                        >
+                    </div>
+                    
+                    <!-- Teléfono -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-phone mr-2"></i>Teléfono *
+                        </label>
+                        <input 
+                            type="tel" 
+                            x-model="form.num_telefono"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Número de teléfono"
+                            required
+                            :disabled="cargando"
+                        >
+                    </div>
+                    
+                    <!-- Correo Electrónico -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-envelope mr-2"></i>Correo Electrónico *
+                        </label>
+                        <input 
+                            type="email" 
+                            x-model="form.dir_correo"
+                            @input="form.dir_correo = $event.target.value.toLowerCase()"
+                            @blur="verificarCorreo()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            :class="{'border-red-500': correoExiste, 'border-green-500': correoVerificado && !correoExiste}"
+                            placeholder="correo@ejemplo.com"
+                            required
+                            :disabled="cargando"
+                        >
+                        <!-- Mensaje de validación de correo -->
+                        <div x-show="verificandoCorreo" class="mt-2 text-sm text-blue-600">
+                            <i class="fas fa-spinner fa-spin mr-1"></i> Verificando correo...
+                        </div>
+                        <div x-show="correoExiste" class="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            <span x-text="mensajeCorreo"></span>
+                            <br>
+                            <span class="font-medium">Use otro correo electrónico o contacte al administrador.</span>
+                        </div>
+                        <div x-show="correoVerificado && !correoExiste" class="mt-2 text-sm text-green-600">
+                            <i class="fas fa-check-circle mr-1"></i> Correo disponible
+                        </div>
+                    </div>
+                    
+                    <!-- Sede -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-building mr-2"></i>Sede *
+                        </label>
+                        <select 
+                            x-model="form.sede_id"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            required
+                            :disabled="cargando"
+                        >
+                            <option value="">Seleccione una sede...</option>
+                            <template x-for="sede in sedes" :key="sede.id">
+                                <option :value="sede.id" x-text="sede.descripcion_sede"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Usuario (login) -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-user-circle mr-2"></i>Usuario (login) *
+                        </label>
+                        <input 
+                            type="text" 
+                            x-model="form.usuario"
+                            @input="form.usuario = $event.target.value.toLowerCase()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Nombre de usuario para acceder"
+                            required
+                            :disabled="cargando"
+                            minlength="4"
+                            maxlength="50"
+                            autocomplete="off"
+                            name="username-registro-nuevo"
+                        >
+                        <p class="text-xs text-gray-500 mt-1">Mínimo 4 caracteres</p>
+                    </div>
+                    
+                    <!-- Contraseña -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-lock mr-2"></i>Contraseña *
+                        </label>
+                        <div class="relative">
+                            <input 
+                                :type="mostrarPassword ? 'text' : 'password'" 
+                                x-model="form.password"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent pr-12"
+                                placeholder="Contraseña segura"
+                                required
+                                :disabled="cargando"
+                                minlength="8"
+                                autocomplete="new-password"
+                                name="password-registro-nuevo"
+                            >
+                            <button 
+                                type="button"
+                                @click="mostrarPassword = !mostrarPassword"
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                :disabled="cargando"
+                                tabindex="-1"
+                            >
+                                <i :class="mostrarPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+                    </div>
+                    
+                    <!-- Confirmar Contraseña -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">
+                            <i class="fas fa-lock mr-2"></i>Confirmar Contraseña *
+                        </label>
+                        <div class="relative">
+                            <input 
+                                :type="mostrarPasswordConfirm ? 'text' : 'password'" 
+                                x-model="form.password_confirm"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent pr-12"
+                                placeholder="Repetir contraseña"
+                                required
+                                :disabled="cargando"
+                                minlength="8"
+                                autocomplete="new-password"
+                                name="password-confirm-registro-nuevo"
+                            >
+                            <button 
+                                type="button"
+                                @click="mostrarPasswordConfirm = !mostrarPasswordConfirm"
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                :disabled="cargando"
+                                tabindex="-1"
+                            >
+                                <i :class="mostrarPasswordConfirm ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <!-- Información -->
+                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Importante:</strong> Tu solicitud será revisada por un administrador. 
+                        Recibirás un correo de confirmación cuando tu cuenta sea activada.
+                    </p>
+                </div>
+                
+                <!-- Botones -->
+                <div class="flex gap-4 mt-8">
+                    <button 
+                        type="submit"
+                        :disabled="cargando || identificacionExiste || correoExiste"
+                        class="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="{'opacity-50 cursor-not-allowed': identificacionExiste || correoExiste}"
+                    >
+                        <i class="fas fa-user-plus mr-2"></i>
+                        <span x-text="cargando ? 'Registrando...' : 'Registrarse'"></span>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Mensaje de Éxito -->
+            <div x-show="registroExitoso" x-transition class="text-center py-8">
+                <div class="mb-6">
+                    <i class="fas fa-check-circle text-green-500 text-6xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">¡Registro Exitoso!</h3>
+                <p class="text-gray-600 mb-6">
+                    Tu solicitud ha sido enviada correctamente. Recibirás un correo de confirmación
+                    y serás notificado cuando un administrador active tu cuenta.
+                </p>
+                <a href="index.html" class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Ir al Login
+                </a>
+            </div>
+            
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-6 text-gray-600">
+            <p class="text-sm">
+                ¿Ya tienes cuenta? 
+                <a href="index.html" class="text-green-600 hover:text-green-700 font-medium">Inicia Sesión</a>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        function registroApp() {
+            return {
+                cargando: false,
+                registroExitoso: false,
+                mostrarPassword: false,
+                mostrarPasswordConfirm: false,
+                verificandoIdentificacion: false,
+                identificacionExiste: false,
+                identificacionVerificada: false,
+                mensajeIdentificacion: '',
+                verificandoCorreo: false,
+                correoExiste: false,
+                correoVerificado: false,
+                mensajeCorreo: '',
+                sedes: [],
+                form: {
+                    tipo_identificacion: '',
+                    num_identificacion: '',
+                    primer_nombre: '',
+                    segundo_nombre: '',
+                    primer_apellido: '',
+                    segundo_apellido: '',
+                    num_telefono: '',
+                    dir_correo: '',
+                    sede_id: '',
+                    usuario: '',
+                    password: '',
+                    password_confirm: ''
+                },
+                mensaje: {
+                    mostrar: false,
+                    texto: '',
+                    tipo: 'error'
+                },
+                
+                async init() {
+                    await this.cargarSedes();
+                },
+                
+                async cargarSedes() {
+                    try {
+                        const response = await fetch('http://localhost:5000/api/sedes/publico', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.sedes = data.sedes;
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar sedes:', error);
+                    }
+                },
+                
+                async verificarIdentificacion() {
+                    // Solo verificar si hay algo escrito
+                    if (!this.form.num_identificacion || this.form.num_identificacion.trim() === '') {
+                        this.identificacionExiste = false;
+                        this.identificacionVerificada = false;
+                        return;
+                    }
+                    
+                    this.verificandoIdentificacion = true;
+                    this.identificacionExiste = false;
+                    this.identificacionVerificada = false;
+                    
+                    try {
+                        const response = await fetch(`http://localhost:5000/api/auth/verificar-identificacion/${this.form.num_identificacion.trim()}`);
+                        const data = await response.json();
+                        
+                        this.identificacionVerificada = true;
+                        
+                        if (data.existe) {
+                            this.identificacionExiste = true;
+                            this.mensajeIdentificacion = data.message;
+                        } else {
+                            this.identificacionExiste = false;
+                        }
+                    } catch (error) {
+                        console.error('Error al verificar identificación:', error);
+                    } finally {
+                        this.verificandoIdentificacion = false;
+                    }
+                },
+                
+                async verificarCorreo() {
+                    // Solo verificar si hay algo escrito y es un formato válido
+                    if (!this.form.dir_correo || this.form.dir_correo.trim() === '') {
+                        this.correoExiste = false;
+                        this.correoVerificado = false;
+                        return;
+                    }
+                    
+                    // Validación básica de formato de email
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(this.form.dir_correo)) {
+                        this.correoVerificado = false;
+                        return;
+                    }
+                    
+                    this.verificandoCorreo = true;
+                    this.correoExiste = false;
+                    this.correoVerificado = false;
+                    
+                    try {
+                        const response = await fetch(`http://localhost:5000/api/auth/verificar-correo/${encodeURIComponent(this.form.dir_correo.trim())}`);
+                        const data = await response.json();
+                        
+                        this.correoVerificado = true;
+                        
+                        if (data.existe) {
+                            this.correoExiste = true;
+                            this.mensajeCorreo = data.message;
+                        } else {
+                            this.correoExiste = false;
+                        }
+                    } catch (error) {
+                        console.error('Error al verificar correo:', error);
+                    } finally {
+                        this.verificandoCorreo = false;
+                    }
+                },
+                
+                validarFormulario() {
+                    // Validar que la identificación no esté duplicada
+                    if (this.identificacionExiste) {
+                        this.mostrarMensaje('Esta identificación ya está registrada. Corrija el número de identificación.', 'error');
+                        return false;
+                    }
+                    
+                    // Validar que el correo no esté duplicado
+                    if (this.correoExiste) {
+                        this.mostrarMensaje('Este correo ya está registrado. Use otro correo electrónico.', 'error');
+                        return false;
+                    }
+                    
+                    // Validar contraseñas coincidan
+                    if (this.form.password !== this.form.password_confirm) {
+                        this.mostrarMensaje('Las contraseñas no coinciden', 'error');
+                        return false;
+                    }
+                    
+                    // Validar longitud de contraseña
+                    if (this.form.password.length < 8) {
+                        this.mostrarMensaje('La contraseña debe tener al menos 8 caracteres', 'error');
+                        return false;
+                    }
+                    
+                    // Validar usuario
+                    if (this.form.usuario.length < 4) {
+                        this.mostrarMensaje('El usuario debe tener al menos 4 caracteres', 'error');
+                        return false;
+                    }
+                    
+                    return true;
+                },
+                
+                async registrar() {
+                    // Verificar identificación antes de continuar si no se ha verificado
+                    if (!this.identificacionVerificada) {
+                        await this.verificarIdentificacion();
+                    }
+                    
+                    // Si la identificación existe, no continuar
+                    if (this.identificacionExiste) {
+                        this.mostrarMensaje('Esta identificación ya está registrada en el sistema.', 'error');
+                        return;
+                    }
+                    
+                    // Verificar correo antes de continuar si no se ha verificado
+                    if (!this.correoVerificado) {
+                        await this.verificarCorreo();
+                    }
+                    
+                    // Si el correo existe, no continuar
+                    if (this.correoExiste) {
+                        this.mostrarMensaje('Este correo ya está registrado en el sistema.', 'error');
+                        return;
+                    }
+                    
+                    if (!this.validarFormulario()) return;
+                    
+                    this.cargando = true;
+                    this.mensaje.mostrar = false;
+                    
+                    try {
+                        const response = await fetch('http://localhost:5000/api/auth/registro-funcionario', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                tipo_identificacion: this.form.tipo_identificacion,
+                                num_identificacion: this.form.num_identificacion,
+                                primer_nombre: this.form.primer_nombre.toUpperCase(),
+                                segundo_nombre: this.form.segundo_nombre.toUpperCase(),
+                                primer_apellido: this.form.primer_apellido.toUpperCase(),
+                                segundo_apellido: this.form.segundo_apellido.toUpperCase(),
+                                num_telefono: this.form.num_telefono,
+                                dir_correo: this.form.dir_correo.toLowerCase(),
+                                sede_id: parseInt(this.form.sede_id),
+                                usuario: this.form.usuario.toLowerCase(),
+                                password: this.form.password
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.registroExitoso = true;
+                        } else {
+                            this.mostrarMensaje(data.message || 'Error al registrar', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarMensaje('Error de conexión con el servidor', 'error');
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+                
+                mostrarMensaje(texto, tipo = 'error') {
+                    this.mensaje = {
+                        mostrar: true,
+                        texto: texto,
+                        tipo: tipo
+                    };
+                    
+                    // Auto ocultar después de 5 segundos
+                    setTimeout(() => {
+                        this.mensaje.mostrar = false;
+                    }, 5000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

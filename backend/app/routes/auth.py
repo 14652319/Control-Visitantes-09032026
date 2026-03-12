@@ -5,11 +5,12 @@ Login, Logout, Verificación de Sesión
 ========================================
 """
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db, limiter
 from app.models import Usuario, LogEvento
-from datetime import datetime
+from app.models.configuracion_sistema import ConfiguracionSistema
+from datetime import datetime, timedelta
 from functools import wraps
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -89,7 +90,9 @@ def login():
                 nivel='WARNING'
             )
             
-            intentos_restantes = 10 - usuario.intentos_fallidos
+            # Obtener máximo de intentos desde configuración
+            max_intentos = int(ConfiguracionSistema.obtener_valor('max_intentos_login', 10))
+            intentos_restantes = max_intentos - usuario.intentos_fallidos
             mensaje = f'Contraseña incorrecta. Intentos restantes: {intentos_restantes}'
             
             if usuario.estado == 'BLOQUEADO':
@@ -112,6 +115,11 @@ def login():
         usuario.resetear_intentos_fallidos()
         usuario.ultimo_acceso = datetime.utcnow()
         db.session.commit()
+        
+        # Configurar tiempo de sesión desde base de datos
+        tiempo_sesion = int(ConfiguracionSistema.obtener_valor('tiempo_sesion_minutos', 45))
+        session.permanent = True
+        current_app.permanent_session_lifetime = timedelta(minutes=tiempo_sesion)
         
         login_user(usuario, remember=True)
         
@@ -222,3 +230,206 @@ def role_required(*roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+@bp.route('/verificar-identificacion/<num_identificacion>', methods=['GET'])
+def verificar_identificacion(num_identificacion):
+    """
+    Verifica si una identificación ya está registrada
+    Endpoint público sin autenticación
+    """
+    try:
+        num_id = str(num_identificacion).strip()
+        usuario_existe = Usuario.query.filter_by(num_identificacion=num_id).first()
+        
+        if usuario_existe:
+            return jsonify({
+                'existe': True,
+                'message': f'Esta identificación ya está registrada en el sistema como {usuario_existe.rol.replace("usuario_", "").upper()}.',
+                'usuario': {
+                    'nombre_completo': f"{usuario_existe.primer_nombre} {usuario_existe.primer_apellido}",
+                    'estado': usuario_existe.estado
+                }
+            }), 200
+        else:
+            return jsonify({
+                'existe': False,
+                'message': 'Identificación disponible'
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            'existe': False,
+            'message': 'Error al verificar'
+        }), 500
+
+
+@bp.route('/verificar-correo/<correo>', methods=['GET'])
+def verificar_correo(correo):
+    """
+    Verifica si un correo electrónico ya está registrado
+    Endpoint público sin autenticación
+    """
+    try:
+        email = correo.lower().strip()
+        usuario_existe = Usuario.query.filter(
+            db.func.lower(Usuario.dir_correo) == email
+        ).first()
+        
+        if usuario_existe:
+            return jsonify({
+                'existe': True,
+                'message': f'Este correo ya está registrado en el sistema.',
+                'usuario': {
+                    'nombre_completo': f"{usuario_existe.primer_nombre} {usuario_existe.primer_apellido}",
+                    'rol': usuario_existe.rol.replace("usuario_", "").upper()
+                }
+            }), 200
+        else:
+            return jsonify({
+                'existe': False,
+                'message': 'Correo disponible'
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            'existe': False,
+            'message': 'Error al verificar'
+        }), 500
+
+
+@bp.route('/registro-funcionario', methods=['POST'])
+@limiter.limit("5 per hour")
+def registro_funcionario():
+    """
+    Registro público de funcionarios
+    Crea usuario con estado PENDIENTE y envía correos de notificación
+    """
+    try:
+        data = request.get_json()
+        
+        # Validar datos requeridos
+        campos_requeridos = [
+            'tipo_identificacion', 'num_identificacion', 'primer_nombre', 
+            'primer_apellido', 'num_telefono', 'dir_correo', 'sede_id', 
+            'usuario', 'password'
+        ]
+        
+        for campo in campos_requeridos:
+            if not data.get(campo):
+                return jsonify({
+                    'success': False,
+                    'message': f'El campo {campo} es requerido'
+                }), 400
+        
+        # Validar que el usuario no exista
+        usuario_existe = Usuario.query.filter(
+            db.func.lower(Usuario.usuario) == data['usuario'].lower()
+        ).first()
+        
+        if usuario_existe:
+            return jsonify({
+                'success': False,
+                'message': 'El nombre de usuario ya existe'
+            }), 400
+        
+        # Validar que el correo no exista
+        correo_existe = Usuario.query.filter(
+            db.func.lower(Usuario.dir_correo) == data['dir_correo'].lower()
+        ).first()
+        
+        if correo_existe:
+            return jsonify({
+                'success': False,
+                'message': 'El correo electrónico ya está registrado'
+            }), 400
+        
+        # Validar que la identificación no exista
+        num_id_input = str(data['num_identificacion']).strip()
+        print(f"DEBUG: Buscando identificación: '{num_id_input}' (tipo: {type(num_id_input)})")
+        
+        identificacion_existe = Usuario.query.filter_by(
+            num_identificacion=num_id_input
+        ).first()
+        
+        print(f"DEBUG: ¿Encontrado? {identificacion_existe is not None}")
+        if identificacion_existe:
+            print(f"DEBUG: Usuario encontrado - ID: {identificacion_existe.id}, Usuario: {identificacion_existe.usuario}")
+        
+        if identificacion_existe:
+            return jsonify({
+                'success': False,
+                'message': 'Esta identificación ya está registrada en el sistema. Si olvidó su usuario o contraseña, contacte al administrador.'
+            }), 400
+        
+        # Crear nuevo usuario con estado PENDIENTE
+        nuevo_usuario = Usuario(
+            tipo_identificacion=data['tipo_identificacion'],
+            num_identificacion=data['num_identificacion'],
+            primer_nombre=data['primer_nombre'].upper(),
+            segundo_nombre=data.get('segundo_nombre', '').upper(),
+            primer_apellido=data['primer_apellido'].upper(),
+            segundo_apellido=data.get('segundo_apellido', '').upper(),
+            num_telefono=data['num_telefono'],
+            dir_correo=data['dir_correo'].lower(),
+            sede_id=data['sede_id'],
+            rol='usuario_funcionario',
+            estado='PENDIENTE',
+            usuario=data['usuario'].lower()
+        )
+        
+        # Establecer contraseña
+        nuevo_usuario.set_password(data['password'])
+        
+        db.session.add(nuevo_usuario)
+        db.session.commit()
+        
+        # Registrar evento
+        client_info = get_client_info()
+        LogEvento.registrar_evento(
+            tipo_evento='REGISTRO_FUNCIONARIO',
+            descripcion=f'Nuevo registro de funcionario: {nuevo_usuario.usuario}',
+            usuario=nuevo_usuario,
+            ip_address=client_info['ip'],
+            user_agent=client_info['user_agent'],
+            nivel='INFO'
+        )
+        
+        # Enviar correos
+        from app.services.email_service import (
+            enviar_correo_registro_funcionario,
+            enviar_correo_notificacion_admin
+        )
+        
+        usuario_data = {
+            'primer_nombre': nuevo_usuario.primer_nombre,
+            'segundo_nombre': nuevo_usuario.segundo_nombre,
+            'primer_apellido': nuevo_usuario.primer_apellido,
+            'segundo_apellido': nuevo_usuario.segundo_apellido,
+            'tipo_identificacion': nuevo_usuario.tipo_identificacion,
+            'num_identificacion': nuevo_usuario.num_identificacion,
+            'num_telefono': nuevo_usuario.num_telefono,
+            'dir_correo': nuevo_usuario.dir_correo,
+            'usuario': nuevo_usuario.usuario
+        }
+        
+        # Correo al funcionario
+        enviar_correo_registro_funcionario(usuario_data)
+        
+        # Correo al administrador master
+        admin = Usuario.query.filter_by(rol='usuario_master', estado='ACTIVO').first()
+        if admin and admin.dir_correo:
+            enviar_correo_notificacion_admin(usuario_data, admin.dir_correo)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Registro exitoso. Tu cuenta está pendiente de activación por el administrador.'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en registro: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error al registrar: {str(e)}'
+        }), 500

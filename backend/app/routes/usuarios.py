@@ -315,3 +315,134 @@ def desbloquear_usuario(usuario_id):
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+
+
+@bp.route('/activar/<int:usuario_id>', methods=['POST'])
+@role_required('usuario_master')
+def activar_usuario(usuario_id):
+    """
+    Activa un usuario PENDIENTE y envía correo de confirmación
+    """
+    try:
+        usuario = db.session.get(Usuario, usuario_id)
+        
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.estado != 'PENDIENTE':
+            return jsonify({
+                'success': False,
+                'message': 'Solo se pueden activar usuarios en estado PENDIENTE'
+            }), 400
+        
+        # Cambiar estado a ACTIVO
+        usuario.estado = 'ACTIVO'
+        usuario.intentos_fallidos = 0
+        db.session.commit()
+        
+        # Registrar evento
+        LogEvento.registrar_evento(
+            tipo_evento='USUARIO_ACTIVADO',
+            descripcion=f'Usuario activado por administrador: {usuario.usuario}',
+            usuario=current_user,
+            datos_adicionales={
+                'usuario_activado_id': usuario.id,
+                'usuario_activado': usuario.usuario
+            },
+            nivel='INFO'
+        )
+        
+        # Enviar correo de confirmación
+        from app.services.email_service import enviar_correo_cuenta_activada
+        
+        usuario_data = {
+            'primer_nombre': usuario.primer_nombre,
+            'primer_apellido': usuario.primer_apellido,
+            'dir_correo': usuario.dir_correo,
+            'usuario': usuario.usuario
+        }
+        
+        enviar_correo_cuenta_activada(usuario_data)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Usuario {usuario.usuario} activado exitosamente',
+            'usuario': usuario.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@bp.route('/rechazar/<int:usuario_id>', methods=['POST'])
+@role_required('usuario_master')
+def rechazar_usuario(usuario_id):
+    """
+    Rechaza una solicitud de usuario PENDIENTE y envía correo
+    """
+    try:
+        data = request.get_json()
+        motivo = data.get('motivo', '') if data else ''
+        
+        usuario = db.session.get(Usuario, usuario_id)
+        
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.estado != 'PENDIENTE':
+            return jsonify({
+                'success': False,
+                'message': 'Solo se pueden rechazar usuarios en estado PENDIENTE'
+            }), 400
+        
+        # Cambiar estado a RECHAZADO
+        usuario.estado = 'RECHAZADO'
+        db.session.commit()
+        
+        # Registrar evento
+        LogEvento.registrar_evento(
+            tipo_evento='USUARIO_RECHAZADO',
+            descripcion=f'Solicitud rechazada por administrador: {usuario.usuario}',
+            usuario=current_user,
+            datos_adicionales={
+                'usuario_rechazado_id': usuario.id,
+                'usuario_rechazado': usuario.usuario,
+                'motivo': motivo
+            },
+            nivel='WARNING'
+        )
+        
+        # Enviar correo de rechazo
+        from app.services.email_service import enviar_correo_cuenta_rechazada
+        
+        usuario_data = {
+            'primer_nombre': usuario.primer_nombre,
+            'primer_apellido': usuario.primer_apellido,
+            'dir_correo': usuario.dir_correo,
+            'usuario': usuario.usuario
+        }
+        
+        enviar_correo_cuenta_rechazada(usuario_data, motivo)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Solicitud de {usuario.usuario} rechazada',
+            'usuario': usuario.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
