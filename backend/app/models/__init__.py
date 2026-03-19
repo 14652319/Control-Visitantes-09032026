@@ -12,6 +12,9 @@ from app.models.log_visitante import LogVisitante
 from app.models.log_evento import LogEvento
 from app.models.autorizacion_ingreso import AutorizacionIngreso
 
+# Módulo SST
+from app.models.operador_aportes import OperadorAportes
+
 __all__ = [
     'Usuario',
     'Sede',
@@ -19,5 +22,7 @@ __all__ = [
     'Visitante',
     'LogVisitante',
     'LogEvento',
-    'AutorizacionIngreso'
+    'AutorizacionIngreso',
+    # SST
+    'OperadorAportes',
 ]
