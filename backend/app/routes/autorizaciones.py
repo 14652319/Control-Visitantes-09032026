@@ -12,6 +12,7 @@ from app.models import AutorizacionIngreso, LogVisitante, LogEvento, Sede, Usuar
 from app.routes.auth import role_required
 from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
+from app.utils.logger import logger
 
 bp = Blueprint('autorizaciones', __name__, url_prefix='/api/autorizaciones')
 
@@ -35,18 +36,18 @@ def listar_autorizaciones():
         query = AutorizacionIngreso.query
         
         # Filtrar según el rol
-        print(f"\n🔍 [AUTORIZACIONES] Usuario: {current_user.usuario} (Rol: {current_user.rol})")
+        logger.info(f"Listando autorizaciones - Usuario: {current_user.usuario} (Rol: {current_user.rol})")
         if current_user.rol == 'usuario_funcionario':
             # Funcionarios solo ven sus propias autorizaciones
             query = query.filter_by(usuario_id=current_user.id)
-            print(f"   → Filtrado por usuario_id={current_user.id}")
+            logger.debug(f"Filtrado por usuario_id={current_user.id}")
         elif current_user.rol == 'usuario_operador':
             # Operadores ven solo las pendientes de su sede
             query = query.filter_by(
                 sede_id=current_user.sede_id,
                 estado='PENDIENTE'
             )
-            print(f"   → Filtrado por sede_id={current_user.sede_id}, estado=PENDIENTE")
+            logger.debug(f"Filtrado por sede_id={current_user.sede_id}, estado=PENDIENTE")
             # Verificar vencimiento de las pendientes
             autorizaciones = query.all()
             for auth in autorizaciones:
@@ -54,7 +55,7 @@ def listar_autorizaciones():
             db.session.commit()
         # usuario_master no tiene filtros adicionales
         else:
-            print(f"   → Sin filtros de rol (Master)")
+            logger.debug("Sin filtros de rol (Master)")
         
         # Aplicar filtros adicionales
         if estado:
@@ -75,17 +76,17 @@ def listar_autorizaciones():
             AutorizacionIngreso.fecha_creacion.desc()
         ).all()
         
-        print(f"   → Total autorizaciones encontradas: {len(autorizaciones)}")
+        logger.info(f"Total autorizaciones encontradas: {len(autorizaciones)}")
         
         # Verificar vencimiento de autorizaciones pendientes
         for auth in autorizaciones:
             if auth.estado == 'PENDIENTE':
-                print(f"      • {auth.num_identificacion} - Fecha venc: {auth.fecha_vencimiento} - Estado: {auth.estado}")
+                logger.debug(f"Verificando autorización {auth.num_identificacion} - Vencimiento: {auth.fecha_vencimiento}")
                 auth.verificar_vencimiento()
         
         db.session.commit()
         
-        print(f"✅ Retornando {len(autorizaciones)} autorizaciones\n")
+        logger.info(f"Retornando {len(autorizaciones)} autorizaciones")
         
         return jsonify({
             'success': True,
@@ -95,9 +96,10 @@ def listar_autorizaciones():
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error al listar autorizaciones: {str(e)}")
         return jsonify({
             'success': False,
-            'message': f'Error al listar autorizaciones: {str(e)}'
+            'message': 'No se pudieron cargar las autorizaciones. Inténtelo nuevamente.'
         }), 500
 
 
@@ -150,9 +152,10 @@ def buscar_por_identificacion():
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error al buscar autorizaciones: {str(e)}")
         return jsonify({
             'success': False,
-            'message': f'Error al buscar autorizaciones: {str(e)}'
+            'message': 'No se pudo completar la búsqueda. Verifique el número de identificación.'
         }), 500
 
 
@@ -227,9 +230,10 @@ def crear_autorizacion():
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error al crear autorización: {str(e)}")
         return jsonify({
             'success': False,
-            'message': f'Error al crear autorización: {str(e)}'
+            'message': 'No se pudo crear la autorización. Verifique los datos e inténtelo nuevamente.'
         }), 500
 
 

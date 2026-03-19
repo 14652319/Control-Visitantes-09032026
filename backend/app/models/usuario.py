@@ -9,6 +9,7 @@ from datetime import datetime
 from app.extensions import db
 from flask_login import UserMixin
 import bcrypt
+import re
 
 
 class Usuario(UserMixin, db.Model):
@@ -47,6 +48,32 @@ class Usuario(UserMixin, db.Model):
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_modificacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     ultimo_acceso = db.Column(db.DateTime)
+    
+    @staticmethod
+    def validar_email(email):
+        """
+        Valida formato de email según RFC 5322 (simplificado)
+        Retorna True si es válido, False si no
+        """
+        if not email or not isinstance(email, str):
+            return False
+        
+        # Pattern robusto para validación de email
+        # Acepta: letras, números, puntos, guiones, guiones bajos antes del @
+        # Requiere dominio con al menos un punto y extensión de 2-6 caracteres
+        pattern = r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$'
+        
+        # Validaciones adicionales
+        if len(email) > 254:  # Máximo según RFC
+            return False
+        
+        if '..' in email:  # No permitir puntos consecutivos
+            return False
+        
+        if email.startswith('.') or email.startswith('-'):
+            return False
+        
+        return re.match(pattern, email.lower()) is not None
     
     def set_password(self, password):
         """Hashea la contraseña usando bcrypt"""

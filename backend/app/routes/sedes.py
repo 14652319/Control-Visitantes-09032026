@@ -49,7 +49,7 @@ def listar_sedes():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'No se pudieron listar las sedes. Inténtelo nuevamente.'
         }), 500
 
 
@@ -74,7 +74,7 @@ def obtener_sede(sede_id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'No se pudo obtener la información de la sede. Inténtelo nuevamente.'
         }), 500
 
 
