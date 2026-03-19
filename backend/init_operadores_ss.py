@@ -24,7 +24,7 @@ OPERADORES = [
     # ==========================================
     {'nombre': 'PORVENIR', 'tipo': 'AFP', 'nit': '800144331', 'activo': True},
     {'nombre': 'PROTECCION', 'tipo': 'AFP', 'nit': '900280884', 'activo': True},
-    {'nombre': 'COLFONDOS', 'tipo': 'AFP', 'nit': '860066942', 'activo': True},
+    {'nombre': 'COLFONDOS', 'tipo': 'AFP', 'nit': '800200517', 'activo': True},
     {'nombre': 'OLD MUTUAL', 'tipo': 'AFP', 'nit': '860051894', 'activo': True},
     
     # ==========================================
