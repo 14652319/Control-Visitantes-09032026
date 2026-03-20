@@ -1704,7 +1704,7 @@ def listar_empleados_activos():
             
             item['sede'] = {
                 'id': log.sede_id,
-                'nombre': log.sede.nombre if log.sede else None
+                'nombre': log.sede.descripcion_sede if log.sede else None
             } if log.sede_id else None
             
             resultado.append(item)
