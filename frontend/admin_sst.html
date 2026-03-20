@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -870,9 +870,9 @@
                                     readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 text-sm cursor-not-allowed">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Autorización *</label>
-                                <input type="date" x-model="formAutorizacion.fecha_autorizacion"
-                                    class="w-full px-3 py-2 border rounded-lg text-sm">
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Autorización</label>
+                                <input type="date" :value="formAutorizacion.fecha_autorizacion"
+                                    readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 text-sm cursor-not-allowed">
                             </div>
                         </div>
 
@@ -896,13 +896,12 @@
                             <div x-show="autBusqueda.tipo_persona === 'JURIDICA'" class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div class="md:col-span-1">
                                     <label class="block text-xs text-gray-500 mb-1">NIT *</label>
-                                    <div class="flex space-x-2">
-                                        <input type="text" x-model="autBusqueda.nit" @keyup.enter="buscarEmpresaAutorizacion()"
-                                            placeholder="900123456" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-                                        <button type="button" @click="buscarEmpresaAutorizacion()" class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                            <i class="fas fa-search text-sm"></i>
-                                        </button>
-                                    </div>
+                                    <input type="text" x-model="autBusqueda.nit"
+                                        @keyup.enter="buscarEmpresaAutorizacion()"
+                                        @blur="buscarEmpresaAutorizacion()"
+                                        @input="autBusqueda.nit = $event.target.value.replace(/[^0-9]/g, '')"
+                                        placeholder="900123456" inputmode="numeric"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-xs text-gray-500 mb-1">Razón Social</label>
@@ -923,6 +922,7 @@
                                             <option value="TI">Tarjeta de Identidad</option>
                                             <option value="NIT">NIT (Natural)</option>
                                             <option value="PE">Permiso Especial de Permanencia</option>
+                                            <option value="PT">Permiso de Trabajo</option>
                                             <option value="RC">Registro Civil</option>
                                             <option value="CD">Carné Diplomático</option>
                                             <option value="SC">Salvoconducto</option>
@@ -930,13 +930,11 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Número Documento *</label>
-                                        <div class="flex space-x-2">
-                                            <input type="text" x-model="autBusqueda.num_id" @keyup.enter="buscarEmpresaAutorizacion()"
-                                                placeholder="12345678" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-                                            <button type="button" @click="buscarEmpresaAutorizacion()" class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                                <i class="fas fa-search text-sm"></i>
-                                            </button>
-                                        </div>
+                                        <input type="text" x-model="autBusqueda.num_id"
+                                            @keyup.enter="buscarEmpresaAutorizacion()"
+                                            @blur="buscarEmpresaAutorizacion()"
+                                            @input="autBusqueda.num_id = $event.target.value.replace(/[^0-9A-Za-z]/g, '')"
+                                            placeholder="12345678" class="w-full px-3 py-2 border rounded-lg text-sm">
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -971,26 +969,7 @@
                             </div>
                         </div>
 
-                        <!-- Sede + Fechas -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Sede *</label>
-                                <select x-model="formAutorizacion.sede_id" class="w-full px-3 py-2 border rounded-lg text-sm" required>
-                                    <option value="">Seleccione sede...</option>
-                                    <template x-for="sede in sedes" :key="sede.id">
-                                        <option :value="sede.id" x-text="sede.descripcion_sede"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha Inicio *</label>
-                                <input type="date" x-model="formAutorizacion.fecha_inicio" class="w-full px-3 py-2 border rounded-lg text-sm" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha Fin *</label>
-                                <input type="date" x-model="formAutorizacion.fecha_fin" class="w-full px-3 py-2 border rounded-lg text-sm" required>
-                            </div>
-                        </div>
+
 
                         <!-- Labor -->
                         <div>
@@ -1017,11 +996,11 @@
                             <!-- Operador -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Operador de Pago (EPS/Caja) *</label>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Operador de Aportes PILA *</label>
                                     <select x-model="autPlanilla.operador_id" class="w-full px-3 py-2 border rounded-lg text-sm">
                                         <option value="">Seleccione operador...</option>
-                                        <template x-for="op in operadoresAportes.EPS" :key="op.id">
-                                            <option :value="op.id" x-text="op.nit + ' - ' + op.nombre"></option>
+                                        <template x-for="op in pilaOperadores" :key="op.nit">
+                                            <option :value="op.nit" x-text="op.nit + ' - ' + op.nombre"></option>
                                         </template>
                                     </select>
                                 </div>
@@ -1029,9 +1008,17 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Tipo Planilla</label>
                                     <select x-model="autPlanilla.tipo_planilla" class="w-full px-3 py-2 border rounded-lg text-sm">
                                         <option value="">--</option>
-                                        <option value="I">I — Independiente</option>
-                                        <option value="E">E — Empleado</option>
-                                        <option value="N">N — Novedad</option>
+                                        <option value="E">E — Empleado dependiente</option>
+                                        <option value="I">I — Independiente (prestación de servicios)</option>
+                                        <option value="P">P — Pensionado cotizante en salud</option>
+                                        <option value="T">T — Independiente voluntario AFP</option>
+                                        <option value="S">S — Subsidiado</option>
+                                        <option value="A">A — Aprendiz en etapa productiva</option>
+                                        <option value="C">C — Independiente contrato UGPP</option>
+                                        <option value="M">M — Mora</option>
+                                        <option value="N">N — Novedad retroactiva</option>
+                                        <option value="Y">Y — Dependiente/Independiente UGPP</option>
+                                        <option value="X">X — No obligado cotizar pensón</option>
                                     </select>
                                 </div>
                             </div>
@@ -1039,16 +1026,12 @@
                             <!-- Número planilla con verificación -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">Número de Planilla</label>
-                                <div class="flex space-x-2">
-                                    <input type="text" x-model="autPlanilla.numero"
-                                        @blur="verificarNumeroPlanilla()" @keyup.enter="verificarNumeroPlanilla()"
-                                        placeholder="ej: PLAN-2026-001234"
-                                        class="flex-1 px-3 py-2 border rounded-lg text-sm"
-                                        :class="autPlanilla.duplicada ? 'border-red-400 bg-red-50' : ''">
-                                    <button type="button" @click="verificarNumeroPlanilla()" class="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
+                                <input type="text" x-model="autPlanilla.numero"
+                                    @blur="verificarNumeroPlanilla()" @keyup.enter="verificarNumeroPlanilla()"
+                                    @input="autPlanilla.numero = $event.target.value.replace(/[^0-9]/g, '')"
+                                    placeholder="ej: 202600123456" inputmode="numeric"
+                                    class="w-full px-3 py-2 border rounded-lg text-sm"
+                                    :class="autPlanilla.duplicada ? 'border-red-400 bg-red-50' : ''">
                                 <!-- Alerta duplicado -->
                                 <div x-show="autPlanilla.duplicada" class="mt-1.5 bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
                                     <i class="fas fa-exclamation-circle mr-1"></i>
@@ -1068,13 +1051,9 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia hasta (dd/mm/aaaa)</label>
-                                    <input type="text" x-model="autPlanilla.vigencia_display"
-                                        @input="parseFechaVigilancia($event.target.value)"
-                                        placeholder="dd/mm/aaaa" maxlength="10"
-                                        class="w-full px-3 py-2 border rounded-lg text-sm"
-                                        :class="autPlanilla.vigenciaError ? 'border-red-400' : ''">
-                                    <p x-show="autPlanilla.vigenciaError" class="text-xs text-red-600 mt-1" x-text="autPlanilla.vigenciaError"></p>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia hasta</label>
+                                    <input type="date" x-model="autPlanilla.vigencia_iso"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Pago *</label>
@@ -1145,6 +1124,7 @@
                                                 <option value="PA">Pasaporte</option>
                                                 <option value="TI">Tarjeta de Identidad</option>
                                                 <option value="PE">Permiso Especial de Permanencia</option>
+                                                <option value="PT">Permiso de Trabajo</option>
                                                 <option value="RC">Registro Civil</option>
                                                 <option value="CD">Carné Diplomático</option>
                                                 <option value="SC">Salvoconducto</option>
@@ -1153,16 +1133,12 @@
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-1">Número Documento *</label>
-                                            <div class="flex space-x-2">
-                                                <input type="text" x-model="emp.num_id"
-                                                    @keyup.enter="buscarEmpleadoEnAutorizacion(idx)"
-                                                    placeholder="12345678"
-                                                    class="flex-1 px-3 py-2 border rounded-lg text-sm">
-                                                <button type="button" @click="buscarEmpleadoEnAutorizacion(idx)"
-                                                    class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                                    <i class="fas fa-search text-sm"></i>
-                                                </button>
-                                            </div>
+                                            <input type="text" x-model="emp.num_id"
+                                                @keyup.enter="buscarEmpleadoEnAutorizacion(idx)"
+                                                @blur="buscarEmpleadoEnAutorizacion(idx)"
+                                                @input="emp.num_id = $event.target.value.replace(/[^0-9]/g, '')"
+                                                placeholder="12345678" inputmode="numeric"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm">
                                         </div>
                                     </div>
 
@@ -1408,6 +1384,20 @@
             },
             filtroEmpleados: { empresa_id: '', estado: '', busqueda: '' },
             operadoresAportes: { EPS: [], AFP: [], ARL: [] },
+
+            // Operadores de información PILA en Colombia
+            pilaOperadores: [
+                { nit: '830108943',  nombre: 'SOI S.A. - Simple Aportes en Línea' },
+                { nit: '900365708',  nombre: 'Aportes en Línea (Heinsohn Business Group)' },
+                { nit: '900148044',  nombre: 'Mi Planilla' },
+                { nit: '900148044',  nombre: 'SUAPORTE' },
+                { nit: '860062517',  nombre: 'Banco Caja Social BCSC S.A.' },
+                { nit: '860007738',  nombre: 'PILA Colpatria Banco Multibanca' },
+                { nit: '900252369',  nombre: 'Asopagos S.A. - Sus Aportes' },
+                { nit: '900459527',  nombre: 'Visiónamos S.A.S.' },
+                { nit: '800116772',  nombre: 'Colfondos S.A. - Mi Planilla C&B' },
+                { nit: '830056729',  nombre: 'Enlace Operativo S.A.' },
+            ],
             certificadosEmpleado: [],
             
             // Planillas
@@ -1831,16 +1821,14 @@
             // ── Verificar número de planilla duplicado ────────────────────────────
             async verificarNumeroPlanilla() {
                 const num = this.autPlanilla.numero.trim();
-                if (!num) return;
+                if (!num || num.length < 3) return;
                 this.autPlanilla.duplicada = false;
                 try {
-                    const params = new URLSearchParams({ numero: num });
-                    if (this.autPlanilla.operador_id) params.append('operador_id', this.autPlanilla.operador_id);
-                    const resp = await apiClient.request('GET', '/sst/autorizaciones/verificar-planilla?' + params.toString());
+                    const resp = await apiClient.sst.verificarPlanilla(num, this.autPlanilla.operador_id || null);
                     if (resp.existe) {
                         this.autPlanilla.duplicada = true;
-                        this.autPlanilla.empresa_duplicada = resp.planilla.empresa_nombre || '';
-                        this.autPlanilla.fecha_duplicada = resp.planilla.created_at?.slice(0, 10) || '';
+                        this.autPlanilla.empresa_duplicada = resp.planilla?.empresa_nombre || '';
+                        this.autPlanilla.fecha_duplicada = resp.planilla?.created_at?.slice(0, 10) || '';
                     }
                 } catch(e) { /* ignorar error de red */ }
             },
@@ -1911,16 +1899,16 @@
                     const resp = await apiClient.sst.buscarEmpleado(`${emp.tipo_id}-${emp.num_id.trim()}`);
                     if (resp.encontrado && resp.data) {
                         const d = resp.data;
-                        emp.empleado_id = d.id;
+                        emp.empleado_id = d.id;  // null si vino de visitantes
                         const nombParts = (d.nombres || '').split(' ');
-                        emp.primer_nombre = nombParts[0] || '';
-                        emp.segundo_nombre = nombParts.slice(1).join(' ') || '';
+                        emp.primer_nombre = nombParts[0] || d.primer_nombre || '';
+                        emp.segundo_nombre = nombParts.slice(1).join(' ') || d.segundo_nombre || '';
                         const apellParts = (d.apellidos || '').split(' ');
-                        emp.primer_apellido = apellParts[0] || '';
-                        emp.segundo_apellido = apellParts.slice(1).join(' ') || '';
-                        emp.nombre_completo = d.nombre_completo || d.nombres + ' ' + d.apellidos;
+                        emp.primer_apellido = apellParts[0] || d.primer_apellido || '';
+                        emp.segundo_apellido = apellParts.slice(1).join(' ') || d.segundo_apellido || '';
+                        emp.nombre_completo = d.nombre_completo || ((d.primer_nombre || '') + ' ' + (d.primer_apellido || '')).trim();
                         emp.cargo = d.cargo || '';
-                        emp.es_nuevo = false;
+                        emp.es_nuevo = (resp.fuente === 'visitante');  // precargar datos pero marca nuevo
                         emp.noEncontrado = false;
                     } else {
                         emp.empleado_id = null;
@@ -1959,10 +1947,6 @@
             // ── Confirmación y guardado ───────────────────────────────────────────
             mostrarConfirmacionGuardar() {
                 if (!this.formAutorizacion.empresa_id) { alert('Seleccione el contratista'); return; }
-                if (!this.formAutorizacion.sede_id) { alert('Seleccione la sede'); return; }
-                if (!this.formAutorizacion.fecha_inicio || !this.formAutorizacion.fecha_fin) {
-                    alert('Ingrese las fechas de vigencia'); return;
-                }
                 if (!this.formAutorizacion.labor || this.formAutorizacion.labor.trim().length < 5) {
                     alert('Ingrese la descripción de la labor (mínimo 5 caracteres)'); return;
                 }

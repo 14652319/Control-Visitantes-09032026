@@ -292,45 +292,58 @@ def actualizar_empresa(id):
 def buscar_empresa():
     """
     Búsqueda inteligente de empresa por NIT (Jurídica) o num_identificacion (Natural).
-    Útil para auto-completado en formularios.
-    
+    Si no se encuentra en EmpresaContratista, busca en la tabla de Visitantes.
+
     Query params:
         q (str): NIT o número de documento a buscar
-    
+
     Returns:
-        {'encontrado': bool, 'data': empresa.to_dict() | None}
+        {'encontrado': bool, 'fuente': 'contratista'|'visitante'|None, 'data': {...}|None}
     """
     try:
         from app.models.empresa_contratista import EmpresaContratista
-        
+        from app.models.visitante import Visitante
+
         consulta = request.args.get('q', '').strip()
         if not consulta:
-            return jsonify({
-                'success': False,
-                'message': 'Parámetro "q" requerido'
-            }), 400
-        
-        # Buscar por NIT (Jurídica) O por num_identificacion (Natural)
+            return jsonify({'success': False, 'message': 'Parámetro "q" requerido'}), 400
+
+        # 1) Buscar en EmpresaContratista por NIT o num_identificacion
         empresa = EmpresaContratista.query.filter(
             db.or_(
                 EmpresaContratista.nit == consulta,
                 EmpresaContratista.num_identificacion == consulta
             )
         ).first()
-        
+
         if empresa:
             return jsonify({
                 'success': True,
                 'encontrado': True,
+                'fuente': 'contratista',
                 'data': empresa.to_dict()
             }), 200
-        else:
+
+        # 2) Si no está en SST, buscar en la tabla de visitantes
+        visitante = Visitante.query.filter(
+            Visitante.num_identificacion == consulta
+        ).first()
+
+        if visitante:
+            data = visitante.to_dict()
+            # Adaptar al formato que espera el frontend de EmpresaContratista
+            data['tipo_persona'] = 'NATURAL'
+            data['nombre_completo_persona_natural'] = data.get('nombre_completo', '')
+            data['id'] = None  # No es contratista todavía
             return jsonify({
                 'success': True,
-                'encontrado': False,
-                'data': None
+                'encontrado': True,
+                'fuente': 'visitante',
+                'data': data
             }), 200
-        
+
+        return jsonify({'success': True, 'encontrado': False, 'fuente': None, 'data': None}), 200
+
     except Exception as e:
         logger.error(f"Error buscando empresa: {e}")
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
@@ -535,60 +548,70 @@ def actualizar_empleado(id):
 def buscar_empleado():
     """
     Búsqueda inteligente de empleado por tipo + número de documento.
-    Retorna empleado + empresa + certificados vigentes.
-    
+    Si no se encuentra en EmpleadoContratista, busca en la tabla de Visitantes.
+
     Query params:
         tipo (str): Tipo de documento (CC, TI, CE, etc)
         num (str): Número de documento
-    
+
     Returns:
-        {'encontrado': bool, 'data': {...} | None}
+        {'encontrado': bool, 'fuente': 'empleado'|'visitante'|None, 'data': {...}|None}
     """
     try:
         from app.models.empleado_contratista import EmpleadoContratista
         from app.models.certificado_trabajo import CertificadoTrabajo
+        from app.models.visitante import Visitante
         from datetime import date
-        
+
         tipo_doc = request.args.get('tipo', '').strip().upper()
         num_doc = request.args.get('num', '').strip()
-        
+
         if not tipo_doc or not num_doc:
-            return jsonify({
-                'success': False,
-                'message': 'Parámetros "tipo" y "num" requeridos'
-            }), 400
-        
+            return jsonify({'success': False, 'message': 'Parámetros "tipo" y "num" requeridos'}), 400
+
+        # 1) Buscar en EmpleadoContratista
         empleado = EmpleadoContratista.query.filter_by(
             tipo_id=tipo_doc,
             num_id=num_doc
         ).first()
-        
+
         if empleado:
-            # Obtener certificados vigentes
             certificados_vigentes = CertificadoTrabajo.query.filter(
                 CertificadoTrabajo.empleado_id == empleado.id,
                 CertificadoTrabajo.fecha_vencimiento >= date.today()
             ).all()
-            
+
             data = empleado.to_dict()
             data['certificados_vigentes'] = [cert.to_dict() for cert in certificados_vigentes]
-            
-            # Agregar datos de empresa
             if empleado.empresa:
                 data['empresa'] = empleado.empresa.to_dict()
-            
-            return jsonify({
-                'success': True,
-                'encontrado': True,
-                'data': data
-            }), 200
-        else:
-            return jsonify({
-                'success': True,
-                'encontrado': False,
-                'data': None
-            }), 200
-        
+
+            return jsonify({'success': True, 'encontrado': True, 'fuente': 'empleado', 'data': data}), 200
+
+        # 2) Si no está en SST, buscar en la tabla de visitantes
+        visitante = Visitante.query.filter_by(
+            num_identificacion=num_doc
+        ).first()
+
+        if visitante:
+            data = visitante.to_dict()
+            # Adaptar campos al formato de EmpleadoContratista para el frontend
+            data['id'] = None
+            data['tipo_id'] = visitante.tipo_identificacion
+            data['num_id'] = visitante.num_identificacion
+            nombres = (visitante.primer_nombre or '').strip()
+            if visitante.segundo_nombre:
+                nombres += ' ' + visitante.segundo_nombre.strip()
+            data['nombres'] = nombres
+            apellidos = (visitante.primer_apellido or '').strip()
+            if visitante.segundo_apellido:
+                apellidos += ' ' + visitante.segundo_apellido.strip()
+            data['apellidos'] = apellidos
+            data['certificados_vigentes'] = []
+            return jsonify({'success': True, 'encontrado': True, 'fuente': 'visitante', 'data': data}), 200
+
+        return jsonify({'success': True, 'encontrado': False, 'fuente': None, 'data': None}), 200
+
     except Exception as e:
         logger.error(f"Error buscando empleado: {e}")
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
