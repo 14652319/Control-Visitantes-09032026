@@ -1375,3 +1375,326 @@ def anular_autorizacion(id):
         logger.error(f"Error anulando autorización {id}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+# ============================================================
+# SECCIÓN 6: INGRESOS Y SALIDAS DE CONTRATISTAS
+# ============================================================
+
+@bp.route('/ingresos', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_ingresos():
+    """Lista logs de ingresos/salidas de contratistas con filtros.
+    Query params:
+    - sede_id: Filtrar por sede
+    - fecha: Filtrar por fecha (formato YYYY-MM-DD, default=hoy)
+    - tipo_evento: ingreso o salida
+    - empleado_id: Filtrar por empleado específico
+    """
+    try:
+        from app.models.log_ingreso_contratista import LogIngresoContratista
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.empresa_contratista import EmpresaContratista
+        from datetime import date, datetime
+        
+        # Filtros
+        sede_id = request.args.get('sede_id', type=int)
+        fecha_str = request.args.get('fecha')  # YYYY-MM-DD
+        tipo_evento = request.args.get('tipo_evento')  # ingreso | salida
+        empleado_id = request.args.get('empleado_id', type=int)
+        
+        # Determinar fecha a consultar
+        if fecha_str:
+            try:
+                fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Formato de fecha inválido (use YYYY-MM-DD)'}), 400
+        else:
+            fecha = date.today()
+        
+        # Query base
+        query = LogIngresoContratista.query
+        
+        # Filtrar por fecha (timestamp_evento en el día especificado)
+        fecha_inicio = datetime.combine(fecha, datetime.min.time())
+        fecha_fin = datetime.combine(fecha, datetime.max.time())
+        query = query.filter(
+            LogIngresoContratista.timestamp_evento >= fecha_inicio,
+            LogIngresoContratista.timestamp_evento <= fecha_fin
+        )
+        
+        if sede_id:
+            query = query.filter_by(sede_id=sede_id)
+        
+        if tipo_evento and tipo_evento.lower() in ('ingreso', 'salida'):
+            query = query.filter_by(tipo_evento=tipo_evento.lower())
+        
+        if empleado_id:
+            query = query.filter_by(empleado_id=empleado_id)
+        
+        logs = query.order_by(LogIngresoContratista.timestamp_evento.desc()).all()
+        
+        # Enriquecer con datos del empleado y empresa
+        resultado = []
+        for log in logs:
+            empleado = EmpleadoContratista.query.get(log.empleado_id)
+            empresa = EmpresaContratista.query.get(empleado.empresa_id) if empleado else None
+            
+            item = log.to_dict()
+            item['empleado'] = {
+                'id': empleado.id,
+                'nombres_completos': f"{empleado.primer_nombre} {empleado.segundo_nombre or ''} {empleado.primer_apellido} {empleado.segundo_apellido or ''}".strip(),
+                'tipo_identificacion': empleado.tipo_identificacion,
+                'num_identificacion': empleado.num_identificacion,
+            } if empleado else None
+            
+            item['empresa'] = {
+                'id': empresa.id,
+                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else f"{empresa.primer_nombre} {empresa.primer_apellido}",
+            } if empresa else None
+            
+            resultado.append(item)
+        
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(resultado),
+            'fecha': fecha.isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando ingresos: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/ingresos', methods=['POST'])
+@login_required
+@role_required(*ROLES_SST)
+def registrar_ingreso():
+    """Registra ingreso de empleado contratista.
+    Body JSON:
+    {
+        "empleado_id": int,
+        "autorizacion_sst_id": int,
+        "sede_id": int,
+        "observaciones": str (opcional)
+    }
+    
+    Validaciones:
+    - Autorización existe y está APROBADA
+    - Autorización no vencida
+    - Empleado incluido en la autorización
+    - Empleado no tiene ingreso activo (último evento debe ser 'salida')
+    """
+    try:
+        from app.models.log_ingreso_contratista import LogIngresoContratista
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empleado_contratista import EmpleadoContratista
+        from datetime import date
+        
+        data = request.json
+        
+        # Validación de campos requeridos
+        if not all(k in data for k in ['empleado_id', 'autorizacion_sst_id', 'sede_id']):
+            return jsonify({'success': False, 'message': 'Faltan campos requeridos'}), 400
+        
+        empleado_id = data['empleado_id']
+        autorizacion_sst_id = data['autorizacion_sst_id']
+        
+        # VALIDACIÓN 1: Autorización existe y está APROBADA
+        autorizacion = AutorizacionSST.query.get(autorizacion_sst_id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        if autorizacion.estado.lower() != 'aprobada':
+            return jsonify({'success': False, 'message': f'Autorización no está aprobada (estado actual: {autorizacion.estado})'}), 400
+        
+        # VALIDACIÓN 2: Autorización no vencida
+        if autorizacion.vigencia_fin < date.today():
+            # Marcar como vencida
+            autorizacion.estado = 'vencida'
+            db.session.commit()
+            return jsonify({'success': False, 'message': 'Autorización SST vencida'}), 400
+        
+        # VALIDACIÓN 3: Empleado incluido en la autorización
+        empleado = EmpleadoContratista.query.get(empleado_id)
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        # Verificar que el empleado esté en la lista de empleados de esta autorización
+        if empleado not in autorizacion.empleados:
+            return jsonify({'success': False, 'message': 'Empleado no está incluido en esta autorización SST'}), 400
+        
+        # VALIDACIÓN 4: Empleado no tiene ingreso activo
+        # Buscar el último log de este empleado
+        ultimo_log = LogIngresoContratista.query.filter_by(
+            empleado_id=empleado_id
+        ).order_by(LogIngresoContratista.timestamp_evento.desc()).first()
+        
+        if ultimo_log and ultimo_log.tipo_evento == 'ingreso':
+            return jsonify({
+                'success': False,
+                'message': 'Empleado ya se encuentra en instalaciones (debe registrar salida primero)'
+            }), 400
+        
+        # Crear log de ingreso
+        nuevo_log = LogIngresoContratista(
+            empleado_id=empleado_id,
+            autorizacion_sst_id=autorizacion_sst_id,
+            sede_id=data['sede_id'],
+            tipo_evento='ingreso',
+            registrado_por=current_user.id,
+            observaciones=data.get('observaciones')
+        )
+        
+        db.session.add(nuevo_log)
+        db.session.commit()
+        
+        logger.info(f"Ingreso registrado para empleado {empleado_id} por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': nuevo_log.to_dict(),
+            'message': 'Ingreso registrado correctamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error registrando ingreso: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/ingresos/<int:id>/salida', methods=['PUT'])
+@login_required
+@role_required(*ROLES_SST)
+def registrar_salida(id):
+    """Registra salida de empleado contratista.
+    El ID corresponde al log de ingreso.
+    Body JSON (opcional):
+    {
+        "observaciones": str
+    }
+    
+    Crea un nuevo log con tipo_evento='salida'.
+    """
+    try:
+        from app.models.log_ingreso_contratista import LogIngresoContratista
+        
+        # Buscar log de ingreso
+        log_ingreso = LogIngresoContratista.query.get(id)
+        if not log_ingreso:
+            return jsonify({'success': False, 'message': 'Log de ingreso no encontrado'}), 404
+        
+        if log_ingreso.tipo_evento != 'ingreso':
+            return jsonify({'success': False, 'message': 'El log especificado no es un ingreso'}), 400
+        
+        # Verificar que no haya ya una salida posterior
+        salida_existente = LogIngresoContratista.query.filter(
+            LogIngresoContratista.empleado_id == log_ingreso.empleado_id,
+            LogIngresoContratista.timestamp_evento > log_ingreso.timestamp_evento,
+            LogIngresoContratista.tipo_evento == 'salida'
+        ).first()
+        
+        if salida_existente:
+            return jsonify({'success': False, 'message': 'Ya existe una salida registrada para este ingreso'}), 400
+        
+        data = request.json or {}
+        
+        # Crear log de salida
+        log_salida = LogIngresoContratista(
+            empleado_id=log_ingreso.empleado_id,
+            autorizacion_sst_id=log_ingreso.autorizacion_sst_id,
+            sede_id=log_ingreso.sede_id,
+            tipo_evento='salida',
+            registrado_por=current_user.id,
+            observaciones=data.get('observaciones')
+        )
+        
+        db.session.add(log_salida)
+        db.session.commit()
+        
+        logger.info(f"Salida registrada para empleado {log_ingreso.empleado_id} por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': log_salida.to_dict(),
+            'message': 'Salida registrada correctamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error registrando salida: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/ingresos/activos', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_empleados_activos():
+    """Lista empleados contratistas actualmente en instalaciones.
+    Un empleado está activo si su último log es de tipo='ingreso'.
+    
+    Query params:
+    - sede_id: Filtrar por sede
+    """
+    try:
+        from app.models.log_ingreso_contratista import LogIngresoContratista
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.empresa_contratista import EmpresaContratista
+        from sqlalchemy import func
+        
+        sede_id = request.args.get('sede_id', type=int)
+        
+        # Query para obtener el último log de cada empleado
+        # Subconsulta: obtener el ID del último log por empleado
+        subquery = db.session.query(
+            LogIngresoContratista.empleado_id,
+            func.max(LogIngresoContratista.id).label('max_id')
+        ).group_by(LogIngresoContratista.empleado_id).subquery()
+        
+        # Query principal: obtener logs cuyo ID esté en la subconsulta y tipo_evento='ingreso'
+        query = db.session.query(LogIngresoContratista).join(
+            subquery,
+            (LogIngresoContratista.id == subquery.c.max_id) &
+            (LogIngresoContratista.empleado_id == subquery.c.empleado_id)
+        ).filter(
+            LogIngresoContratista.tipo_evento == 'ingreso'
+        )
+        
+        if sede_id:
+            query = query.filter(LogIngresoContratista.sede_id == sede_id)
+        
+        logs_activos = query.all()
+        
+        # Enriquecer con datos del empleado y empresa
+        resultado = []
+        for log in logs_activos:
+            empleado = EmpleadoContratista.query.get(log.empleado_id)
+            empresa = EmpresaContratista.query.get(empleado.empresa_id) if empleado else None
+            
+            item = log.to_dict()
+            item['empleado'] = {
+                'id': empleado.id,
+                'nombres_completos': f"{empleado.primer_nombre} {empleado.segundo_nombre or ''} {empleado.primer_apellido} {empleado.segundo_apellido or ''}".strip(),
+                'tipo_identificacion': empleado.tipo_identificacion,
+                'num_identificacion': empleado.num_identificacion,
+                'empresa_id': empleado.empresa_id,
+            } if empleado else None
+            
+            item['empresa'] = {
+                'id': empresa.id,
+                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else f"{empresa.primer_nombre} {empresa.primer_apellido}",
+            } if empresa else None
+            
+            resultado.append(item)
+        
+        return jsonify({
+            'success': True,
+            'data': resultado,
+            'total': len(resultado)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando empleados activos: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
