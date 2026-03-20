@@ -12,7 +12,9 @@ from app.models import Visitante, LogVisitante, LogEvento, Dependencia, Autoriza
 from app.routes.auth import role_required
 from datetime import datetime
 import os
+import io
 from werkzeug.utils import secure_filename
+from PIL import Image
 
 bp = Blueprint('visitantes', __name__, url_prefix='/api/visitantes')
 
@@ -465,6 +467,18 @@ def guardar_foto(log_id):
             return jsonify({
                 'success': False,
                 'message': 'Formato de archivo no permitido'
+            }), 400
+        
+        # Validar contenido real del archivo (magic bytes)
+        try:
+            file_bytes = file.read()
+            img = Image.open(io.BytesIO(file_bytes))
+            img.verify()
+            file.seek(0)
+        except Exception:
+            return jsonify({
+                'success': False,
+                'message': 'El archivo no es una imagen válida'
             }), 400
         
         # Buscar log

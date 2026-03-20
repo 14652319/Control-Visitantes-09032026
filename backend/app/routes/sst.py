@@ -1502,6 +1502,10 @@ def registrar_ingreso():
         if not all(k in data for k in ['empleado_id', 'autorizacion_sst_id', 'sede_id']):
             return jsonify({'success': False, 'message': 'Faltan campos requeridos'}), 400
         
+        # Validación de acceso por sede (operadores solo su sede)
+        if not current_user.tiene_acceso_sede(data['sede_id']):
+            return jsonify({'success': False, 'message': 'No tiene acceso a esta sede'}), 403
+        
         empleado_id = data['empleado_id']
         autorizacion_sst_id = data['autorizacion_sst_id']
         
@@ -1587,6 +1591,10 @@ def registrar_salida(id):
         log_ingreso = LogIngresoContratista.query.get(id)
         if not log_ingreso:
             return jsonify({'success': False, 'message': 'Log de ingreso no encontrado'}), 404
+        
+        # Validación de acceso por sede
+        if not current_user.tiene_acceso_sede(log_ingreso.sede_id):
+            return jsonify({'success': False, 'message': 'No tiene acceso a esta sede'}), 403
         
         if log_ingreso.tipo_evento != 'ingreso':
             return jsonify({'success': False, 'message': 'El log especificado no es un ingreso'}), 400
