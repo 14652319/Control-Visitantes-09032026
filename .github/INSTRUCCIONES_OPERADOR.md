@@ -24,14 +24,60 @@
 
 ```
 1. Lees CHECKPOINT actual aquí (INSTRUCCIONES_OPERADOR.md)
-2. Implementas según instrucciones detalladas
-3. Ejecutas tests de verificación
-4. Escribes actualización en .github/COPILOT_TASKS.md sección [COPILOT EJECUTOR]
-5. Marcas [ESPERANDO VALIDACIÓN CLAUDE]
-6. ESPERAS hasta ver [✅ APROBADO POR CLAUDE] en COPILOT_TASKS.md
-7. Si ves [❌ REQUIERE CORRECCIÓN], corriges y vuelves a paso 4
-8. Si ves [✅ APROBADO], avanzas al siguiente CHECKPOINT
+2. ⚠️ OBLIGATORIO: Verificas el modelo (ver regla abajo)
+3. Implementas según instrucciones detalladas
+4. Ejecutas tests de verificación
+5. Escribes actualización en .github/COPILOT_TASKS.md sección [COPILOT EJECUTOR]
+6. Marcas [ESPERANDO VALIDACIÓN CLAUDE]
+7. ESPERAS hasta ver [✅ APROBADO POR CLAUDE] en COPILOT_TASKS.md
+8. Si ves [❌ REQUIERE CORRECCIÓN], corriges y vuelves a paso 5
+9. Si ves [✅ APROBADO], avanzas al siguiente CHECKPOINT
 ```
+
+---
+
+### 🚨 REGLA OBLIGATORIA: VERIFICAR MODELO ANTES DE ESCRIBIR ENDPOINTS
+
+> **Esta regla existe porque en los checkpoints 3.2.2 a 3.2.5 se cometieron 26 bugs
+> por usar nombres de campos inventados o del levantamiento de requerimientos
+> en vez de los nombres reales del modelo SQLAlchemy.**
+
+**ANTES de escribir cualquier route/endpoint, DEBÉS:**
+
+1. **LEER** el modelo SQLAlchemy correspondiente: `backend/app/models/{modelo}.py`
+2. **LISTAR** explícitamente TODAS las columnas y relaciones del modelo en tu reporte
+3. **USAR EXCLUSIVAMENTE** los nombres de columnas que aparecen en el archivo `.py`
+4. **NUNCA** usar nombres del levantamiento de requerimientos, del plan, ni inventados
+5. **VERIFICAR** el import correcto: el nombre del archivo `.py` y el nombre de la clase Python
+
+**Checklist de verificación (incluir en tu reporte de COPILOT_TASKS.md):**
+
+```markdown
+VERIFICACIÓN DE MODELO (obligatoria):
+- Archivo del modelo: backend/app/models/[nombre].py
+- Clase Python: [NombreClase]
+- Columnas reales: [listar TODAS]
+- Relaciones reales: [listar TODAS]
+- Confirmación: Todos los campos usados en mis endpoints existen en el modelo ✅
+```
+
+**Si un campo que necesitás NO existe en el modelo:**
+- NO lo inventes en el endpoint
+- Reportá en tu actualización: "Campo X necesario pero no existe en modelo Y"
+- Esperá instrucciones de Claude o @evaluador
+
+**Ejemplos de errores pasados que esta regla previene:**
+
+| Lo que escribiste | Lo que existía realmente |
+|---|---|
+| `from app.models.planilla_seguridad_social` | `from app.models.planilla_ss` |
+| `PlanillaSeguridadSocial` | `PlanillaSS` |
+| `vigencia_hasta` | `vigencia_fin` |
+| `tipo_identificacion`, `num_identificacion` | `tipo_id`, `num_id` |
+| `primer_nombre`, `primer_apellido` | `nombres`, `apellidos` |
+| `usuario_solicita_id` | `created_by` |
+| `estado = 'BORRADOR'` (MAYÚSCULAS) | `estado = 'borrador'` (minúsculas en BD) |
+| `autorizacion.empleados` (relación M2M) | No existe esa relación |
 
 ---
 
