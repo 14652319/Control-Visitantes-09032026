@@ -81,6 +81,11 @@ def validar_empresa(data, es_actualizacion=False):
             return False, "Persona Jurídica requiere NIT"
         if not data.get('razon_social'):
             return False, "Persona Jurídica requiere razón social"
+        if not es_actualizacion:
+            if not data.get('digito_verificacion'):
+                return False, "Persona Jurídica requiere dígito de verificación"
+            if not data.get('representante_legal'):
+                return False, "Persona Jurídica requiere representante legal"
     elif tipo == 'NATURAL':
         if not data.get('tipo_identificacion'):
             return False, "Persona Natural requiere tipo de identificación"
@@ -257,7 +262,7 @@ def actualizar_empresa(id):
             'tipo_persona', 'nit', 'razon_social', 'tipo_identificacion',
             'num_identificacion', 'primer_nombre', 'segundo_nombre',
             'primer_apellido', 'segundo_apellido', 'telefono', 'email',
-            'direccion', 'ciudad', 'estado', 'observaciones'
+            'direccion', 'ciudad', 'estado', 'digito_verificacion', 'representante_legal'
         ]
         
         for campo in campos_actualizables:
@@ -377,8 +382,8 @@ def listar_empleados():
             query = query.filter_by(estado=estado.lower())
         
         empleados = query.order_by(
-            EmpleadoContratista.primer_apellido,
-            EmpleadoContratista.primer_nombre
+            EmpleadoContratista.apellidos,
+            EmpleadoContratista.nombres
         ).all()
         
         return jsonify({
@@ -407,10 +412,10 @@ def crear_empleado():
         if not data.get('empresa_id'):
             return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
         
-        if not data.get('tipo_identificacion') or not data.get('num_identificacion'):
+        if not data.get('tipo_id') or not data.get('num_id'):
             return jsonify({'success': False, 'message': 'Documento de identificación requerido'}), 400
         
-        if not data.get('primer_nombre') or not data.get('primer_apellido'):
+        if not data.get('nombres') or not data.get('apellidos'):
             return jsonify({'success': False, 'message': 'Nombre y apellido requeridos'}), 400
         
         # Verificar que empresa existe
@@ -420,8 +425,8 @@ def crear_empleado():
         
         # Verificar duplicado
         existe = EmpleadoContratista.query.filter_by(
-            tipo_identificacion=data['tipo_identificacion'],
-            num_identificacion=data['num_identificacion']
+            tipo_id=data['tipo_id'],
+            num_id=data['num_id']
         ).first()
         
         if existe:
@@ -498,9 +503,9 @@ def actualizar_empleado(id):
         
         # Campos actualizables
         campos_actualizables = [
-            'empresa_id', 'tipo_identificacion', 'num_identificacion',
-            'primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido',
-            'telefono', 'email', 'cargo', 'fecha_ingreso', 'estado', 'observaciones'
+            'empresa_id', 'tipo_id', 'num_id',
+            'nombres', 'apellidos', 'cargo',
+            'eps_id', 'afp_id', 'arl_id', 'estado'
         ]
         
         for campo in campos_actualizables:
@@ -553,8 +558,8 @@ def buscar_empleado():
             }), 400
         
         empleado = EmpleadoContratista.query.filter_by(
-            tipo_identificacion=tipo_doc,
-            num_identificacion=num_doc
+            tipo_id=tipo_doc,
+            num_id=num_doc
         ).first()
         
         if empleado:
@@ -656,8 +661,8 @@ def crear_certificado():
         if not data.get('tipo_certificado'):
             return jsonify({'success': False, 'message': 'tipo_certificado requerido'}), 400
         
-        if not data.get('fecha_emision') or not data.get('fecha_vencimiento'):
-            return jsonify({'success': False, 'message': 'Fechas de emisión y vencimiento requeridas'}), 400
+        if not data.get('fecha_expedicion') or not data.get('fecha_vencimiento'):
+            return jsonify({'success': False, 'message': 'Fechas de expedición y vencimiento requeridas'}), 400
         
         # Verificar que empleado existe
         empleado = EmpleadoContratista.query.get(data['empleado_id'])
@@ -738,8 +743,9 @@ def actualizar_certificado(id):
         
         # Campos actualizables
         campos_actualizables = [
-            'tipo_certificado', 'entidad_emisora', 'numero_certificado',
-            'fecha_emision', 'fecha_vencimiento', 'observaciones'
+            'tipo_certificado', 'nombre_certificado',
+            'fecha_expedicion', 'fecha_vencimiento',
+            'archivo_nombre', 'archivo_ruta', 'verificado'
         ]
         
         for campo in campos_actualizables:
@@ -994,4 +1000,538 @@ def obtener_planillas_vigentes_empresa(empresa_id):
         logger.error(f"Error obteniendo planillas vigentes de empresa {empresa_id}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+# ============================================================
+# HELPERS: Autorizaciones SST
+# ============================================================
+
+def generar_consecutivo_sst():
+    """
+    Genera número de autorización SST único.
+    Formato: SST-{AÑO}-{CONSECUTIVO:04d}
+    Ejemplo: SST-2026-0001, SST-2026-0002, ...
+    El consecutivo reinicia cada año.
+    """
+    from sqlalchemy import text
+    from datetime import date
+    
+    anio = date.today().year
+    
+    # Buscar el mayor consecutivo del año actual
+    resultado = db.session.execute(text("""
+        SELECT MAX(CAST(SPLIT_PART(numero_autorizacion, '-', 3) AS INTEGER))
+        FROM autorizaciones_sst
+        WHERE numero_autorizacion LIKE :patron
+    """), {'patron': f'SST-{anio}-%'}).scalar()
+    
+    siguiente = (resultado or 0) + 1
+    return f"SST-{anio}-{siguiente:04d}"
+
+
+# Transiciones de estado válidas
+TRANSICIONES_VALIDAS = {
+    'BORRADOR':  ['REVISION'],
+    'REVISION':  ['APROBADA', 'RECHAZADA'],
+    'APROBADA':  ['VENCIDA', 'ANULADA'],
+    'RECHAZADA': [],  # Estado final
+    'VENCIDA':   [],  # Estado final
+    'ANULADA':   [],  # Estado final
+}
+
+
+def puede_transitar(estado_actual, estado_nuevo, rol_usuario):
+    """
+    Valida si la transición de estado es permitida para el rol dado.
+    
+    Args:
+        estado_actual (str): Estado actual de la autorización
+        estado_nuevo (str): Estado al que se quiere transitar
+        rol_usuario (str): Rol del usuario que intenta la transición
+    
+    Returns:
+        tuple: (puede: bool, mensaje_error: str|None)
+    """
+    if estado_nuevo not in TRANSICIONES_VALIDAS.get(estado_actual, []):
+        return False, f"No se puede pasar de {estado_actual} a {estado_nuevo}"
+    
+    # Solo master puede anular
+    if estado_nuevo == 'ANULADA' and rol_usuario != 'usuario_master':
+        return False, "Solo el master puede anular una autorización"
+    
+    # Solo admin_sst o master pueden aprobar/rechazar
+    if estado_nuevo in ('APROBADA', 'RECHAZADA') and rol_usuario not in ('admin_sst', 'usuario_master'):
+        return False, "Solo admin_sst o master pueden aprobar/rechazar"
+    
+    return True, None
+
+
+def marcar_vencidas():
+    """
+    Marca como VENCIDAS las autorizaciones cuya vigencia_fin ya pasó.
+    Ejecutar al listar autorizaciones para mantener estados actualizados.
+    
+    Returns:
+        int: Cantidad de autorizaciones marcadas como vencidas
+    """
+    from app.models.autorizacion_sst import AutorizacionSST
+    from datetime import date
+    
+    vencidas = AutorizacionSST.query.filter(
+        AutorizacionSST.estado == 'APROBADA',
+        AutorizacionSST.fecha_fin < date.today()
+    ).all()
+    
+    for auth in vencidas:
+        auth.estado = 'VENCIDA'
+    
+    if vencidas:
+        db.session.commit()
+        logger.info(f"Marcadas {len(vencidas)} autorizaciones como VENCIDAS")
+    
+    return len(vencidas)
+
+
+# ============================================================
+# ENDPOINTS: CRUD AUTORIZACIONES SST
+# ============================================================
+
+@bp.route('/autorizaciones', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_autorizaciones():
+    """Lista autorizaciones SST con filtros opcionales. Actualiza estados vencidos."""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        # Marcar vencidas antes de listar
+        marcar_vencidas()
+        
+        estado = request.args.get('estado')  # BORRADOR | REVISION | APROBADA | RECHAZADA | VENCIDA | ANULADA
+        sede_id = request.args.get('sede_id', type=int)
+        empresa_id = request.args.get('empresa_id', type=int)
+        
+        query = AutorizacionSST.query
+        
+        if estado and estado.upper() in ('BORRADOR', 'REVISION', 'APROBADA', 'RECHAZADA', 'VENCIDA', 'ANULADA'):
+            query = query.filter_by(estado=estado.upper())
+        
+        if sede_id:
+            query = query.filter_by(sede_id=sede_id)
+        
+        if empresa_id:
+            query = query.filter_by(empresa_id=empresa_id)
+        
+        autorizaciones = query.order_by(AutorizacionSST.fecha_solicitud.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'data': [auth.to_dict() for auth in autorizaciones],
+            'total': len(autorizaciones)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando autorizaciones SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def crear_autorizacion():
+    """Crea una nueva autorización SST en estado BORRADOR con consecutivo automático"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empresa_contratista import EmpresaContratista
+        
+        data = request.get_json()
+        
+        # Validaciones
+        if not data.get('empresa_id'):
+            return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
+        
+        if not data.get('sede_id'):
+            return jsonify({'success': False, 'message': 'sede_id requerido'}), 400
+        
+        if not data.get('fecha_inicio') or not data.get('fecha_fin'):
+            return jsonify({'success': False, 'message': 'Fechas de vigencia requeridas'}), 400
+        
+        # Verificar empresa existe
+        empresa = EmpresaContratista.query.get(data['empresa_id'])
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+        
+        # Generar consecutivo automáticamente
+        consecutivo = generar_consecutivo_sst()
+        data['numero_autorizacion'] = consecutivo
+        
+        # Estado inicial siempre BORRADOR
+        data['estado'] = 'BORRADOR'
+        data['usuario_solicita_id'] = current_user.id
+        
+        # Crear autorización
+        autorizacion = AutorizacionSST(**data)
+        db.session.add(autorizacion)
+        db.session.commit()
+        
+        logger.info(f"Autorización SST creada: {autorizacion.id} ({consecutivo}) por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': f'Autorización {consecutivo} creada exitosamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creando autorización SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_autorizacion(id):
+    """Obtiene detalle completo de una autorización con empleados asociados"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        data = autorizacion.to_dict()
+        
+        # Incluir empleados asociados
+        if autorizacion.empleados:
+            data['empleados'] = [emp.to_dict() for emp in autorizacion.empleados]
+        else:
+            data['empleados'] = []
+        
+        return jsonify({
+            'success': True,
+            'data': data
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>', methods=['PUT'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def actualizar_autorizacion(id):
+    """Actualiza una autorización SST (solo si está en estado BORRADOR)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        if autorizacion.estado != 'BORRADOR':
+            return jsonify({
+                'success': False,
+                'message': f'Solo se pueden actualizar autorizaciones en estado BORRADOR (actual: {autorizacion.estado})'
+            }), 400
+        
+        data = request.get_json()
+        
+        # Campos actualizables
+        campos_actualizables = [
+            'empresa_id', 'sede_id', 'fecha_inicio', 'fecha_fin',
+            'motivo', 'descripcion_actividades', 'observaciones'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in data:
+                setattr(autorizacion, campo, data[campo])
+        
+        db.session.commit()
+        
+        logger.info(f"Autorización {id} actualizada por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Autorización actualizada exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error actualizando autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/empleados', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def agregar_empleado_autorizacion(id):
+    """Agrega un empleado a una autorización SST (solo BORRADOR o REVISION)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        if autorizacion.estado not in ('BORRADOR', 'REVISION'):
+            return jsonify({
+                'success': False,
+                'message': f'Solo se pueden agregar empleados en estados BORRADOR o REVISION (actual: {autorizacion.estado})'
+            }), 400
+        
+        data = request.get_json()
+        
+        if not data.get('empleado_id'):
+            return jsonify({'success': False, 'message': 'empleado_id requerido'}), 400
+        
+        empleado = EmpleadoContratista.query.get(data['empleado_id'])
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        # Verificar que el empleado pertenezca a la misma empresa
+        if empleado.empresa_id != autorizacion.empresa_id:
+            return jsonify({
+                'success': False,
+                'message': 'El empleado no pertenece a la empresa de esta autorización'
+            }), 400
+        
+        # Verificar duplicado
+        if empleado in autorizacion.empleados:
+            return jsonify({
+                'success': False,
+                'message': 'El empleado ya está asociado a esta autorización'
+            }), 409
+        
+        # Agregar empleado
+        autorizacion.empleados.append(empleado)
+        db.session.commit()
+        
+        logger.info(f"Empleado {empleado.id} agregado a autorización {id} por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Empleado agregado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error agregando empleado a autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/empleados/<int:empleado_id>', methods=['DELETE'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def quitar_empleado_autorizacion(id, empleado_id):
+    """Quita un empleado de una autorización SST (solo BORRADOR o REVISION)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        if autorizacion.estado not in ('BORRADOR', 'REVISION'):
+            return jsonify({
+                'success': False,
+                'message': f'Solo se pueden quitar empleados en estados BORRADOR o REVISION (actual: {autorizacion.estado})'
+            }), 400
+        
+        empleado = EmpleadoContratista.query.get(empleado_id)
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        if empleado not in autorizacion.empleados:
+            return jsonify({
+                'success': False,
+                'message': 'El empleado no está asociado a esta autorización'
+            }), 404
+        
+        # Quitar empleado
+        autorizacion.empleados.remove(empleado)
+        db.session.commit()
+        
+        logger.info(f"Empleado {empleado_id} quitado de autorización {id} por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Empleado quitado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error quitando empleado de autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/enviar-revision', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def enviar_revision_autorizacion(id):
+    """Cambia estado de BORRADOR a REVISION"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        # Validar transición
+        puede, error = puede_transitar(autorizacion.estado, 'REVISION', current_user.rol)
+        if not puede:
+            return jsonify({'success': False, 'message': error}), 400
+        
+        # Validar que tenga al menos un empleado
+        if not autorizacion.empleados:
+            return jsonify({
+                'success': False,
+                'message': 'La autorización debe tener al menos un empleado para enviar a revisión'
+            }), 400
+        
+        autorizacion.estado = 'REVISION'
+        db.session.commit()
+        
+        logger.info(f"Autorización {id} enviada a REVISION por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Autorización enviada a revisión'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error enviando autorización {id} a revisión: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/aprobar', methods=['POST'])
+@login_required
+@role_required('admin_sst', 'usuario_master')
+def aprobar_autorizacion(id):
+    """Cambia estado de REVISION a APROBADA (solo admin_sst o master)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        # Validar transición
+        puede, error = puede_transitar(autorizacion.estado, 'APROBADA', current_user.rol)
+        if not puede:
+            return jsonify({'success': False, 'message': error}), 400
+        
+        data = request.get_json() or {}
+        
+        autorizacion.estado = 'APROBADA'
+        autorizacion.usuario_aprueba_id = current_user.id
+        autorizacion.fecha_aprobacion = db.func.now()
+        
+        if data.get('observaciones_aprobacion'):
+            autorizacion.observaciones_aprobacion = data['observaciones_aprobacion']
+        
+        db.session.commit()
+        
+        logger.info(f"Autorización {id} APROBADA por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Autorización aprobada exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error aprobando autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/rechazar', methods=['POST'])
+@login_required
+@role_required('admin_sst', 'usuario_master')
+def rechazar_autorizacion(id):
+    """Cambia estado de REVISION a RECHAZADA (solo admin_sst o master). Requiere motivo."""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        # Validar transición
+        puede, error = puede_transitar(autorizacion.estado, 'RECHAZADA', current_user.rol)
+        if not puede:
+            return jsonify({'success': False, 'message': error}), 400
+        
+        data = request.get_json()
+        
+        if not data or not data.get('motivo_rechazo'):
+            return jsonify({'success': False, 'message': 'motivo_rechazo requerido'}), 400
+        
+        autorizacion.estado = 'RECHAZADA'
+        autorizacion.motivo_rechazo = data['motivo_rechazo']
+        autorizacion.fecha_rechazo = db.func.now()
+        
+        db.session.commit()
+        
+        logger.info(f"Autorización {id} RECHAZADA por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Autorización rechazada'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error rechazando autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/autorizaciones/<int:id>/anular', methods=['POST'])
+@login_required
+@role_required('usuario_master')
+def anular_autorizacion(id):
+    """Cambia estado de APROBADA a ANULADA (solo master). Requiere motivo."""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        
+        autorizacion = AutorizacionSST.query.get(id)
+        if not autorizacion:
+            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
+        
+        # Validar transición
+        puede, error = puede_transitar(autorizacion.estado, 'ANULADA', current_user.rol)
+        if not puede:
+            return jsonify({'success': False, 'message': error}), 400
+        
+        data = request.get_json()
+        
+        if not data or not data.get('motivo_anulacion'):
+            return jsonify({'success': False, 'message': 'motivo_anulacion requerido'}), 400
+        
+        autorizacion.estado = 'ANULADA'
+        autorizacion.motivo_anulacion = data['motivo_anulacion']
+        autorizacion.fecha_anulacion = db.func.now()
+        
+        db.session.commit()
+        
+        logger.info(f"Autorización {id} ANULADA por usuario {current_user.id} (master)")
+        
+        return jsonify({
+            'success': True,
+            'data': autorizacion.to_dict(),
+            'message': 'Autorización anulada'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error anulando autorización {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 

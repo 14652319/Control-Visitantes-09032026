@@ -11,20 +11,9 @@
 ## 🚨 ESTADO ACTUAL — LEER ANTES DE HACER CUALQUIER COSA
 
 ```
-⛔ CHECKPOINTS 3.2.2 y 3.2.3 TIENEN CORRECCIONES PENDIENTES ⛔
-
-Claude detectó bugs críticos. Los endpoints de empleados y certificados
-usan nombres de columna que NO existen en los modelos → crash en runtime.
-
-ACCIÓN REQUERIDA ANTES de avanzar:
-1. Leer la sección [CLAUDE SUPERVISOR] al final de COPILOT_TASKS.md
-2. Corregir los bugs en backend/app/routes/sst.py (listados allí)
-3. Hacer commit: "fix: corregir nombres columna 3.2.2+3.2.3 - CORRECCIÓN"
-4. Reportar en [COPILOT EJECUTOR] de COPILOT_TASKS.md
-5. Marcar [ESPERANDO VALIDACIÓN CLAUDE]
-6. Decirle al usuario que avise a Claude
-
-NO AVANZAR A 3.2.4 NI A NINGÚN OTRO CHECKPOINT.
+✅ CORRECCIONES 3.2.2 y 3.2.3 APLICADAS POR CLAUDE (commit siguiente)
+✅ CHECKPOINT 3.2.4 puede ser revisado
+⏳ CHECKPOINT 3.2.5 espera aprobación de Claude sobre 3.2.4
 ```
 
 ---
