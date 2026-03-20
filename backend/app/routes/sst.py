@@ -1842,12 +1842,13 @@ def descargar_pdf_autorizacion(id):
         if not autorizacion.pdf_ruta:
             return jsonify({'success': False, 'message': 'Esta autorización no tiene PDF generado'}), 404
 
-        # Construir ruta completa
-        ruta_completa = os.path.join(
-            current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
-            '..', autorizacion.pdf_ruta
+        # Construir ruta completa con validación de sandbox
+        base_storage = os.path.normpath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'uploads')
         )
-        ruta_completa = os.path.normpath(ruta_completa)
+        ruta_completa = os.path.normpath(os.path.join(base_storage, autorizacion.pdf_ruta))
+        if not ruta_completa.startswith(base_storage + os.sep) and ruta_completa != base_storage:
+            return jsonify({'success': False, 'message': 'Ruta de archivo inválida'}), 403
 
         if not os.path.exists(ruta_completa):
             return jsonify({'success': False, 'message': 'Archivo PDF no encontrado en disco'}), 404

@@ -424,15 +424,14 @@ def enviar_notificacion_autorizacion_aprobada(autorizacion_data, empresa_data, d
         )
         msg.html = cuerpo
 
-        # Adjuntar PDF si existe
+        # Adjuntar PDF si existe (con validación de sandbox)
         if pdf_ruta:
             import os
-            pdf_full_path = os.path.join(
-                current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
-                '..', pdf_ruta
+            base_storage = os.path.normpath(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'uploads')
             )
-            pdf_full_path = os.path.normpath(pdf_full_path)
-            if os.path.exists(pdf_full_path):
+            pdf_full_path = os.path.normpath(os.path.join(base_storage, pdf_ruta))
+            if pdf_full_path.startswith(base_storage + os.sep) and os.path.exists(pdf_full_path):
                 with open(pdf_full_path, 'rb') as f:
                     msg.attach(
                         os.path.basename(pdf_ruta),

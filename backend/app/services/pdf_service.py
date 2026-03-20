@@ -6,6 +6,7 @@ Formato SC-SST-FOR-015 — Autorización SST
 """
 
 import os
+from html import escape
 from io import BytesIO
 from datetime import datetime
 from xhtml2pdf import pisa
@@ -58,9 +59,9 @@ def generar_pdf_autorizacion(autorizacion, empresa, empleados, planilla_vigente=
             filas_empleados += f"""
             <tr>
                 <td style="padding: 6px; border: 1px solid #ccc; text-align: center;">{i}</td>
-                <td style="padding: 6px; border: 1px solid #ccc;">{emp.nombre_completo}</td>
-                <td style="padding: 6px; border: 1px solid #ccc;">{emp.tipo_id} {emp.num_id}</td>
-                <td style="padding: 6px; border: 1px solid #ccc;">{emp.cargo or '-'}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{escape(emp.nombre_completo)}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{escape(emp.tipo_id)} {escape(emp.num_id)}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{escape(emp.cargo) if emp.cargo else '-'}</td>
                 <td style="padding: 6px; border: 1px solid #ccc;">{', '.join(certs) if certs else '-'}</td>
             </tr>"""
 
@@ -125,7 +126,7 @@ def generar_pdf_autorizacion(autorizacion, empresa, empleados, planilla_vigente=
 
             <div class="seccion">
                 <h3>LABOR AUTORIZADA</h3>
-                <p>{autorizacion.labor}</p>
+                <p>{escape(autorizacion.labor)}</p>
             </div>
 
             <div class="seccion">
@@ -148,7 +149,7 @@ def generar_pdf_autorizacion(autorizacion, empresa, empleados, planilla_vigente=
 
             <div class="seccion">
                 <h3>SEDE AUTORIZADA</h3>
-                <p>{nombre_sede}</p>
+                <p>{escape(nombre_sede)}</p>
             </div>
 
             <div class="validez">
