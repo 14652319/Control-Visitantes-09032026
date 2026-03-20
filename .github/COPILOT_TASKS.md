@@ -3904,4 +3904,110 @@ Timestamp: 2026-03-19 22:15
 
 ## [COPILOT EJECUTOR] — FASE 3.2
 
-_(Aquí irán las actualizaciones de @operador para FASE 3.2)_
+---
+### CHECKPOINT 3.2.0 — Correcciones BD (Hallazgos FASE 3.1)
+
+Fecha: 2026-03-19 22:14
+Commit: 8889a97
+
+QUÉ HICE:
+- Creé backend/migrate_fix_hallazgos_3_1.py con correcciones de 5 hallazgos
+- Ejecuté migración: constraints, nueva columna e índices aplicados
+- Creé backend/verificar_checkpoint_3_2_0.py para validación
+- Commit exitoso incluyendo archivos de @evaluador (COPILOT_TASKS.md, INSTRUCCIONES_OPERADOR.md)
+
+ARCHIVOS CREADOS:
+- backend/migrate_fix_hallazgos_3_1.py (migración con rollback)
+- backend/verificar_checkpoint_3_2_0.py (script verificación)
+
+HALLAZGOS CORREGIDOS:
+
+1️⃣ **CP313-01** — CHECK constraint tipo_certificado:
+   ```sql
+   ALTER TABLE certificados_trabajo
+   ADD CONSTRAINT check_tipo_certificado CHECK (
+       tipo_certificado IN ('ALTURAS', 'ELECTRICO', 'ESPACIOS_CONFINADOS', 
+                            'MANEJO_QUIMICOS', 'PRIMEROS_AUXILIOS', 'OTRO')
+   );
+   ```
+   ✅ Constraint creado exitosamente
+
+2️⃣ **CP314-02** — CHECK constraint fechas en autorizaciones_sst:
+   ```sql
+   ALTER TABLE autorizaciones_sst
+   ADD CONSTRAINT check_vigencia_autorizacion CHECK (
+       fecha_fin >= fecha_inicio
+   );
+   ```
+   ✅ Constraint creado — impide autorizaciones con fecha_fin anterior a fecha_inicio
+
+3️⃣ **CP314-01** — Columna numero_autorizacion para consecutivo SST:
+   ```sql
+   ALTER TABLE autorizaciones_sst
+   ADD COLUMN numero_autorizacion VARCHAR(20) UNIQUE;
+   
+   CREATE UNIQUE INDEX idx_autorizacion_numero
+   ON autorizaciones_sst(numero_autorizacion);
+   ```
+   ✅ Columna agregada — permitirá formato SST-{AÑO}-{0001}
+   ✅ Índice único creado — garantiza consecutivos únicos
+
+4️⃣ **CP313-03** — Índice performance en certificados_trabajo:
+   ```sql
+   CREATE INDEX idx_certificado_empleado
+   ON certificados_trabajo(empleado_id);
+   ```
+   ✅ Índice creado — optimiza consultas de certificados por empleado
+
+5️⃣ **CP314-04** — Índice performance en log_ingresos_contratistas:
+   ```sql
+   CREATE INDEX idx_log_ingreso_empleado
+   ON log_ingresos_contratistas(empleado_id);
+   ```
+   ✅ Índice creado — optimiza consultas de historial de ingresos por empleado
+
+VERIFICACIÓN EJECUTADA (verificar_checkpoint_3_2_0.py):
+```
+✅ check_tipo_certificado — EXISTS
+✅ check_vigencia_autorizacion — EXISTS
+✅ Columna numero_autorizacion — character varying(20)
+✅ Índice idx_autorizacion_numero — UNIQUE
+✅ idx_certificado_empleado — EXISTS
+✅ idx_log_ingreso_empleado — EXISTS
+```
+
+ROLLBACK IMPLEMENTADO:
+- DROP constraints (check_tipo_certificado, check_vigencia_autorizacion)
+- DROP INDEX (idx_autorizacion_numero, idx_certificado_empleado, idx_log_ingreso_empleado)
+- DROP COLUMN numero_autorizacion
+
+CORRECCIONES DURANTE DESARROLLO:
+- Primer intento: Usé columnas incorrectas `vigencia_fin`/`vigencia_inicio` → corregido a `fecha_fin`/`fecha_inicio`
+- Segundo intento: Asumí que numero_autorizacion existía → agregué ADD COLUMN
+- Tercer intento: ✅ Exitoso con todos los hallazgos corregidos
+
+IMPACTO EN API (FASE 3.2 siguiente):
+- ✅ tipo_certificado ahora validado en BD (6 valores permitidos)
+- ✅ autorizaciones_sst no acepta fechas inválidas
+- ✅ numero_autorizacion listo para lógica de consecutivos en API
+- ✅ Índices mejoran performance en consultas de empleados frecuentes
+
+ESTADO BASE DE DATOS:
+- 7 tablas SST (FASE 3.1)
+- 2 CHECK constraints nuevos (CP313-01, CP314-02)
+- 1 columna nueva con UNIQUE (CP314-01: numero_autorizacion)
+- 3 índices de performance (CP313-03, CP314-04, CP314-01)
+- 15 FKs (validadas en FASE 3.1)
+- 13 operadores seeder (validados en FASE 3.1)
+
+GIT STATUS:
+- Commit: 8889a97
+- Archivos:
+  - backend/migrate_fix_hallazgos_3_1.py (nuevo)
+  - backend/verificar_checkpoint_3_2_0.py (nuevo)
+  - .github/COPILOT_TASKS.md (M — cambios de @evaluador)
+  - .github/INSTRUCCIONES_OPERADOR.md (M — cambios de @evaluador)
+
+ESTADO: [✅ COMPLETADO — ESPERANDO VALIDACIÓN CLAUDE]
+
+---
