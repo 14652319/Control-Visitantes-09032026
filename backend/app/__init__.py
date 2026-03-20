@@ -10,6 +10,14 @@ from flask_cors import CORS
 from config import config
 import os
 
+# Importar Sentry solo si está disponible
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -27,6 +35,25 @@ def create_app(config_name=None):
     # Inicializar extensiones
     from app.extensions import init_extensions
     init_extensions(app)
+    
+    # Configurar sistema de logging
+    from app.utils.logger import setup_logger
+    logger = setup_logger(app)
+    
+    # Configurar Sentry para monitoreo de errores (Producción)
+    if SENTRY_AVAILABLE and app.config.get('SENTRY_DSN'):
+        sentry_sdk.init(
+            dsn=app.config['SENTRY_DSN'],
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=1.0,
+            environment=app.config.get('FLASK_ENV', 'development'),
+            release=f"control-visitantes@1.0.0"
+        )
+        logger.info("✅ Sentry inicializado correctamente para monitoreo de errores")
+    elif not SENTRY_AVAILABLE:
+        logger.info("ℹ️  Sentry no está instalado (pip install sentry-sdk[flask])")
+    else:
+        logger.info("ℹ️  Sentry no configurado (SENTRY_DSN no encontrado en .env)")
     
     # Configurar CORS
     CORS(app, resources={

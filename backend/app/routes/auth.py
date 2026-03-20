@@ -346,15 +346,10 @@ def registro_funcionario():
         
         # Validar que la identificación no exista
         num_id_input = str(data['num_identificacion']).strip()
-        print(f"DEBUG: Buscando identificación: '{num_id_input}' (tipo: {type(num_id_input)})")
         
         identificacion_existe = Usuario.query.filter_by(
             num_identificacion=num_id_input
         ).first()
-        
-        print(f"DEBUG: ¿Encontrado? {identificacion_existe is not None}")
-        if identificacion_existe:
-            print(f"DEBUG: Usuario encontrado - ID: {identificacion_existe.id}, Usuario: {identificacion_existe.usuario}")
         
         if identificacion_existe:
             return jsonify({
