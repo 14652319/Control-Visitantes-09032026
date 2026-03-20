@@ -33,6 +33,7 @@ class EmpleadoContratista(db.Model):
     arl = db.relationship('OperadorAportes', foreign_keys=[arl_id], back_populates='empleados_arl')
     certificados = db.relationship('CertificadoTrabajo', back_populates='empleado')
     ingresos = db.relationship('LogIngresoContratista', back_populates='empleado')
+    autorizaciones_sst = db.relationship('EmpleadoAutorizacion', back_populates='empleado')
 
     @property
     def nombre_completo(self):

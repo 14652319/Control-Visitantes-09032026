@@ -19,6 +19,7 @@ from app.models.empleado_contratista import EmpleadoContratista
 from app.models.certificado_trabajo import CertificadoTrabajo
 from app.models.planilla_ss import PlanillaSS
 from app.models.autorizacion_sst import AutorizacionSST
+from app.models.empleado_autorizacion import EmpleadoAutorizacion
 from app.models.log_ingreso_contratista import LogIngresoContratista
 
 __all__ = [
@@ -36,5 +37,6 @@ __all__ = [
     'CertificadoTrabajo',
     'PlanillaSS',
     'AutorizacionSST',
+    'EmpleadoAutorizacion',
     'LogIngresoContratista',
 ]

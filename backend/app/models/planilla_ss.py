@@ -15,7 +15,10 @@ class PlanillaSS(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     empresa_id = db.Column(db.Integer, db.ForeignKey('empresas_contratistas.id'), nullable=False)
-    periodo = db.Column(db.String(7), nullable=False)
+    operador_id = db.Column(db.Integer, db.ForeignKey('operadores_aportes.id'))  # EPS/ARL principal
+    numero_planilla = db.Column(db.String(50))          # número oficial de la planilla
+    tipo_planilla = db.Column(db.String(1))             # I=Independiente, E=Empleado, N=Novedad
+    periodo = db.Column(db.String(7), nullable=False)   # YYYY-MM
     fecha_pago = db.Column(db.Date, nullable=False)
     vigencia_fin = db.Column(db.Date, nullable=False)
     archivo_nombre = db.Column(db.String(200))
@@ -26,6 +29,7 @@ class PlanillaSS(db.Model):
     verificado_at = db.Column(db.DateTime)
 
     empresa = db.relationship('EmpresaContratista', back_populates='planillas')
+    operador = db.relationship('OperadorAportes', foreign_keys=[operador_id])
 
     def to_dict(self):
         return {
@@ -37,6 +41,9 @@ class PlanillaSS(db.Model):
             'archivo_nombre': self.archivo_nombre,
             'archivo_ruta': self.archivo_ruta,
             'estado': self.estado,
+            'operador_id': self.operador_id,
+            'numero_planilla': self.numero_planilla,
+            'tipo_planilla': self.tipo_planilla,
             'verificado_por': self.verificado_por,
             'verificado_at': self.verificado_at.isoformat() if self.verificado_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,

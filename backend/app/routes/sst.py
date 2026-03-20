@@ -1072,6 +1072,153 @@ def marcar_vencidas():
 # ENDPOINTS: CRUD AUTORIZACIONES SST
 # ============================================================
 
+# ── Helpers de archivos ───────────────────────────────────────────────────────
+
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+
+def _allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def _documentos_sst_base():
+    """Devuelve la ruta absoluta de la carpeta Documentos_SST dentro del proyecto"""
+    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, 'Documentos_SST')
+
+def _carpeta_autorizacion(numero_autorizacion):
+    """Crea (si no existe) y devuelve la ruta de la subcarpeta de la autorización"""
+    carpeta = os.path.join(_documentos_sst_base(), numero_autorizacion)
+    os.makedirs(carpeta, exist_ok=True)
+    return carpeta
+
+def _nombre_documento(numero_autorizacion, nit_empresa, num_id_empleado, numero_planilla, seq):
+    """
+    Devuelve nombre de archivo: AC-0000001_900123_12345678_PLAN001_001.pdf
+    Sanitiza componentes para evitar chars inválidos en nombres de archivo.
+    """
+    def s(v):
+        return str(v or 'X').replace('/', '-').replace('\\', '-').replace(' ', '_')[:40]
+    return f"{s(numero_autorizacion)}_{s(nit_empresa)}_{s(num_id_empleado)}_{s(numero_planilla)}_{seq:03d}.pdf"
+
+def _siguiente_seq(carpeta, nombre_base_sin_seq):
+    """Calcula el siguiente número de secuencia para evitar colisiones de nombre"""
+    import glob
+    patron = os.path.join(carpeta, nombre_base_sin_seq + '_*.pdf')
+    existentes = glob.glob(patron)
+    return len(existentes) + 1
+
+
+@bp.route('/autorizaciones/consecutivo', methods=['GET'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def obtener_consecutivo():
+    """Devuelve el próximo número de autorización AC-XXXXXXXX"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from sqlalchemy import func
+        ultimo = db.session.query(func.max(AutorizacionSST.id)).scalar() or 0
+        siguiente = ultimo + 1
+        return jsonify({
+            'success': True,
+            'consecutivo': f'AC-{siguiente:08d}'
+        }), 200
+    except Exception as e:
+        logger.error(f"Error generando consecutivo: {e}")
+        return jsonify({'success': False, 'message': 'Error interno'}), 500
+
+
+@bp.route('/autorizaciones/verificar-planilla', methods=['GET'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def verificar_numero_planilla():
+    """
+    GET /api/sst/autorizaciones/verificar-planilla?numero=XXX&operador_id=Y
+    Verifica si un número de planilla ya fue registrado con ese operador.
+    """
+    try:
+        from app.models.planilla_ss import PlanillaSS
+        from app.models.empresa_contratista import EmpresaContratista
+        numero = request.args.get('numero', '').strip()
+        operador_id = request.args.get('operador_id', type=int)
+        if not numero:
+            return jsonify({'success': False, 'message': 'numero requerido'}), 400
+        q = PlanillaSS.query.filter_by(numero_planilla=numero)
+        if operador_id:
+            q = q.filter_by(operador_id=operador_id)
+        planilla = q.first()
+        if planilla:
+            empresa = EmpresaContratista.query.get(planilla.empresa_id)
+            nombre_empresa = ''
+            if empresa:
+                nombre_empresa = empresa.razon_social if empresa.tipo_persona == 'JURIDICA' \
+                    else empresa.nombre_completo_persona_natural
+            return jsonify({
+                'success': True,
+                'existe': True,
+                'planilla': {
+                    'id': planilla.id,
+                    'periodo': planilla.periodo,
+                    'fecha_pago': planilla.fecha_pago.isoformat() if planilla.fecha_pago else None,
+                    'empresa_nombre': nombre_empresa,
+                    'created_at': planilla.created_at.isoformat() if planilla.created_at else None,
+                }
+            }), 200
+        return jsonify({'success': True, 'existe': False}), 200
+    except Exception as e:
+        logger.error(f"Error verificando planilla: {e}")
+        return jsonify({'success': False, 'message': 'Error interno'}), 500
+
+
+@bp.route('/autorizaciones/upload-documento', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def upload_documento_autorizacion():
+    """
+    Sube un archivo PDF a Documentos_SST/{numero_autorizacion}/
+    Form-data: numero_autorizacion, nit_empresa, num_id_empleado, numero_planilla, tipo_doc, archivo
+    Devuelve: { ruta_relativa, nombre_archivo }
+    """
+    try:
+        numero_autorizacion = request.form.get('numero_autorizacion', '').strip()
+        nit_empresa         = request.form.get('nit_empresa', '').strip()
+        num_id_empleado     = request.form.get('num_id_empleado', 'X').strip()
+        numero_planilla     = request.form.get('numero_planilla', 'SIN').strip()
+
+        if not numero_autorizacion:
+            return jsonify({'success': False, 'message': 'numero_autorizacion requerido'}), 400
+
+        if 'archivo' not in request.files:
+            return jsonify({'success': False, 'message': 'archivo requerido'}), 400
+
+        archivo = request.files['archivo']
+        if archivo.filename == '' or not _allowed_file(archivo.filename):
+            return jsonify({'success': False, 'message': 'Tipo de archivo no permitido (solo PDF/PNG/JPG)'}), 400
+
+        carpeta = _carpeta_autorizacion(numero_autorizacion)
+
+        # Base del nombre sin secuencia para calcular siguiente seq
+        base = f"{numero_autorizacion}_{nit_empresa}_{num_id_empleado}_{numero_planilla}"
+        seq = _siguiente_seq(carpeta, base)
+        nombre_final = _nombre_documento(numero_autorizacion, nit_empresa, num_id_empleado, numero_planilla, seq)
+
+        ruta_completa = os.path.join(carpeta, nombre_final)
+        archivo.save(ruta_completa)
+
+        # Ruta relativa para guardar en BD
+        ruta_relativa = os.path.join('Documentos_SST', numero_autorizacion, nombre_final)
+
+        logger.info(f"Documento SST subido: {ruta_relativa} por usuario {current_user.id}")
+
+        return jsonify({
+            'success': True,
+            'nombre_archivo': nombre_final,
+            'ruta_relativa': ruta_relativa
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error subiendo documento SST: {e}")
+        return jsonify({'success': False, 'message': 'Error al guardar el archivo'}), 500
+
+
 @bp.route('/autorizaciones', methods=['GET'])
 @login_required
 @role_required(*ROLES_SST)
@@ -1099,11 +1246,21 @@ def listar_autorizaciones():
             query = query.filter_by(empresa_id=empresa_id)
         
         autorizaciones = query.order_by(AutorizacionSST.created_at.desc()).all()
-        
+
+        resultado = []
+        for aut in autorizaciones:
+            d = aut.to_dict()
+            if aut.empresa:
+                d['empresa_nombre'] = aut.empresa.razon_social if aut.empresa.tipo_persona == 'JURIDICA' \
+                    else aut.empresa.nombre_completo_persona_natural
+            else:
+                d['empresa_nombre'] = 'N/A'
+            resultado.append(d)
+
         return jsonify({
             'success': True,
-            'data': [auth.to_dict() for auth in autorizaciones],
-            'total': len(autorizaciones)
+            'data': resultado,
+            'total': len(resultado)
         }), 200
         
     except Exception as e:
@@ -1115,52 +1272,139 @@ def listar_autorizaciones():
 @login_required
 @role_required(*ROLES_ADMIN_SST)
 def crear_autorizacion():
-    """Crea una nueva autorización SST en estado BORRADOR con consecutivo automático"""
+    """
+    Crea una nueva autorización SST en estado BORRADOR.
+    Acepta JSON con la siguiente estructura:
+    {
+        "empresa_id": int,
+        "sede_id": int,
+        "labor": str,
+        "fecha_inicio": "YYYY-MM-DD",
+        "fecha_fin":    "YYYY-MM-DD",
+        "fecha_autorizacion": "YYYY-MM-DD",   (opcional, default hoy)
+        "observaciones": str,                 (opcional)
+        "planilla": {                         (opcional)
+            "operador_id": int,
+            "numero_planilla": str,
+            "tipo_planilla": "I"|"E"|"N",
+            "periodo": "YYYY-MM",
+            "fecha_pago": "YYYY-MM-DD",
+            "vigencia_fin": "YYYY-MM-DD",
+            "archivo_ruta": str,              (ruta devuelta por upload-documento)
+            "archivo_nombre": str
+        },
+        "empleados": [                        (opcional)
+            {
+                "empleado_id": int,
+                "trabajo_altura": bool,
+                "trabajo_energias_peligrosas": bool,
+                "trabajo_espacios_confinados": bool,
+                "trabajo_caliente": bool,
+                "trabajo_izaje_cargas": bool,
+                "trabajo_excavacion": bool,
+                "trabajo_sustancias_quimicas": bool,
+                "trabajo_otro": str,
+                "documentos": [{ "tipo": str, "nombre": str, "ruta": str }]
+            }
+        ],
+        "carta_presentacion_ruta": str        (opcional)
+    }
+    """
     try:
         from app.models.autorizacion_sst import AutorizacionSST
         from app.models.empresa_contratista import EmpresaContratista
-        
+        from app.models.planilla_ss import PlanillaSS
+        from app.models.empleado_autorizacion import EmpleadoAutorizacion
+        from datetime import date
+
         data = request.get_json()
-        
-        # Validaciones
+
+        # ── validaciones obligatorias ───────────────────────────────────────────
         if not data.get('empresa_id'):
             return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
-        
         if not data.get('sede_id'):
             return jsonify({'success': False, 'message': 'sede_id requerido'}), 400
-        
         if not data.get('fecha_inicio') or not data.get('fecha_fin'):
             return jsonify({'success': False, 'message': 'Fechas de vigencia requeridas'}), 400
-        
         if not data.get('labor'):
-            return jsonify({'success': False, 'message': 'labor requerido (descripción de la actividad a realizar)'}), 400
-        
-        # Verificar empresa existe
+            return jsonify({'success': False, 'message': 'labor requerido'}), 400
+
         empresa = EmpresaContratista.query.get(data['empresa_id'])
         if not empresa:
             return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
-        
-        # Construir autorización solo con campos del modelo
+
+        # ── Generar consecutivo ─────────────────────────────────────────────────
+        from sqlalchemy import func
+        ultimo_id = db.session.query(func.max(AutorizacionSST.id)).scalar() or 0
+        numero_autorizacion = f'AC-{(ultimo_id + 1):08d}'
+
+        # ── Crear planilla SS si viene en el payload ────────────────────────────
+        planilla_id = None
+        if data.get('planilla'):
+            pdata = data['planilla']
+            planilla = PlanillaSS(
+                empresa_id=data['empresa_id'],
+                operador_id=pdata.get('operador_id'),
+                numero_planilla=pdata.get('numero_planilla'),
+                tipo_planilla=pdata.get('tipo_planilla'),
+                periodo=pdata.get('periodo', ''),
+                fecha_pago=pdata.get('fecha_pago'),
+                vigencia_fin=pdata.get('vigencia_fin', pdata.get('fecha_pago')),
+                archivo_nombre=pdata.get('archivo_nombre'),
+                archivo_ruta=pdata.get('archivo_ruta'),
+                estado='pendiente',
+            )
+            db.session.add(planilla)
+            db.session.flush()   # obtener planilla.id antes del commit
+            planilla_id = planilla.id
+
+        # ── Crear autorización ──────────────────────────────────────────────────
         autorizacion = AutorizacionSST(
+            numero_autorizacion=numero_autorizacion,
             empresa_id=data['empresa_id'],
             sede_id=data.get('sede_id'),
+            planilla_ss_id=planilla_id,
             labor=data['labor'],
             fecha_inicio=data['fecha_inicio'],
             fecha_fin=data['fecha_fin'],
+            fecha_autorizacion=data.get('fecha_autorizacion', date.today().isoformat()),
             estado='borrador',
+            observaciones=data.get('observaciones'),
+            carta_presentacion_ruta=data.get('carta_presentacion_ruta'),
             created_by=current_user.id,
         )
         db.session.add(autorizacion)
+        db.session.flush()   # obtener autorizacion.id
+
+        # ── Crear relaciones con empleados ──────────────────────────────────────
+        for emp_data in (data.get('empleados') or []):
+            if not emp_data.get('empleado_id'):
+                continue
+            ea = EmpleadoAutorizacion(
+                autorizacion_id=autorizacion.id,
+                empleado_id=emp_data['empleado_id'],
+                trabajo_altura=emp_data.get('trabajo_altura', False),
+                trabajo_energias_peligrosas=emp_data.get('trabajo_energias_peligrosas', False),
+                trabajo_espacios_confinados=emp_data.get('trabajo_espacios_confinados', False),
+                trabajo_caliente=emp_data.get('trabajo_caliente', False),
+                trabajo_izaje_cargas=emp_data.get('trabajo_izaje_cargas', False),
+                trabajo_excavacion=emp_data.get('trabajo_excavacion', False),
+                trabajo_sustancias_quimicas=emp_data.get('trabajo_sustancias_quimicas', False),
+                trabajo_otro=emp_data.get('trabajo_otro'),
+            )
+            ea.set_documentos(emp_data.get('documentos') or [])
+            db.session.add(ea)
+
         db.session.commit()
-        
-        logger.info(f"Autorización SST creada: {autorizacion.id} por usuario {current_user.id}")
-        
+
+        logger.info(f"Autorización SST {numero_autorizacion} creada por usuario {current_user.id}")
+
         return jsonify({
             'success': True,
             'data': autorizacion.to_dict(),
-            'message': f'Autorización {autorizacion.id} creada exitosamente'
+            'message': f'Autorización {numero_autorizacion} creada exitosamente'
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando autorización SST: {e}")
@@ -1214,7 +1458,8 @@ def actualizar_autorizacion(id):
         
         # Campos actualizables
         campos_actualizables = [
-            'empresa_id', 'sede_id', 'fecha_inicio', 'fecha_fin', 'labor'
+            'empresa_id', 'sede_id', 'fecha_inicio', 'fecha_fin', 'labor',
+            'observaciones', 'carta_presentacion_ruta', 'fecha_autorizacion'
         ]
         
         for campo in campos_actualizables:

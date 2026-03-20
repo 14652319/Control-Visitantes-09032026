@@ -436,6 +436,27 @@ const apiClient = {
             throw new Error(data.message || 'Error descargando PDF');
         },
 
+        // --- Utilidades Autorizaciones v2 ---
+        async consecutivo() {
+            return await apiClient.request('/sst/autorizaciones/consecutivo');
+        },
+        async verificarPlanilla(numero, operadorId) {
+            const q = new URLSearchParams({ numero: numero });
+            if (operadorId) q.append('operador_id', operadorId);
+            return await apiClient.request(`/sst/autorizaciones/verificar-planilla?${q}`);
+        },
+        async uploadDocumento(formData) {
+            // FormData: no pasar Content-Type para que el browser ponga boundary correcto
+            const response = await fetch(`${API_URL}/sst/autorizaciones/upload-documento`, {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Error al subir archivo');
+            return data;
+        },
+
         // --- Ingresos ---
         async listarIngresos(params = {}) {
             const q = new URLSearchParams(params).toString();

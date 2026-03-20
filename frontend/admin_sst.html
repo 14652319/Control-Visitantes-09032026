@@ -838,76 +838,538 @@
             </div>
         </div>
         
-        <!-- Modal Autorización -->
-        <div x-show="mostrarModalAutorizacion" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div @click.away="mostrarModalAutorizacion = false" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold" x-text="autorizacionSeleccionada ? 'Editar Autorización SST' : 'Nueva Autorización SST'"></h3>
-                    <button @click="mostrarModalAutorizacion = false" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
+        <!-- Modal Autorización — Versión Completa v2 -->
+        <div x-show="mostrarModalAutorizacion" x-cloak class="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 p-4 overflow-y-auto">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-6">
+                <!-- Encabezado fijo -->
+                <div class="sticky top-0 bg-gradient-to-r from-purple-700 to-purple-900 text-white px-6 py-4 flex justify-between items-center rounded-t-xl">
+                    <div>
+                        <h3 class="text-xl font-bold">
+                            <span x-text="autorizacionSeleccionada ? 'Editar Autorización SST' : 'Nueva Autorización SST'"></span>
+                        </h3>
+                        <p class="text-purple-200 text-sm mt-0.5" x-text="'Consecutivo: ' + (formAutorizacion.numero_autorizacion || 'PENDIENTE')"></p>
+                    </div>
+                    <button @click="cerrarModalAutorizacion()" class="text-white hover:text-purple-200 text-2xl">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
-                
-                <div class="p-6 space-y-4">
-                    <!-- Select Empresa -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
-                        <select x-model="formAutorizacion.empresa_id" class="w-full px-4 py-2 border rounded-lg" required :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'">
-                            <option value="">Seleccione empresa...</option>
-                            <template x-for="emp in empresas" :key="emp.id">
-                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
-                            </template>
-                        </select>
-                    </div>
-                    
-                    <!-- Select Sede -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
-                        <select x-model="formAutorizacion.sede_id" class="w-full px-4 py-2 border rounded-lg" required :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'">
-                            <option value="">Seleccione sede...</option>
-                            <template x-for="sede in sedes" :key="sede.id">
-                                <option :value="sede.id" x-text="sede.descripcion_sede"></option>
-                            </template>
-                        </select>
-                    </div>
-                    
-                    <!-- Labor -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de la Labor *</label>
-                        <textarea x-model="formAutorizacion.labor" rows="4" maxlength="300" class="w-full px-4 py-2 border rounded-lg" placeholder="Describa la labor a realizar..." :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Máximo 300 caracteres</p>
-                    </div>
-                    
-                    <!-- Fechas -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div class="p-6 space-y-6">
+
+                    <!-- ┌─ BLOQUE 1: Datos básicos ──────────────────────────────── -->
+                    <div class="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h4 class="font-semibold text-gray-700 flex items-center">
+                            <i class="fas fa-info-circle text-purple-600 mr-2"></i>Datos de la Autorización
+                        </h4>
+
+                        <!-- Fila: consecutivo + fecha -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Nro. Autorización</label>
+                                <input type="text" :value="formAutorizacion.numero_autorizacion || 'Se asignará al guardar'"
+                                    readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-600 text-sm cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Autorización *</label>
+                                <input type="date" x-model="formAutorizacion.fecha_autorizacion"
+                                    class="w-full px-3 py-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Tipo persona + búsqueda empresa -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio *</label>
-                            <input type="date" x-model="formAutorizacion.fecha_inicio" class="w-full px-4 py-2 border rounded-lg" :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required>
+                            <label class="block text-xs font-medium text-gray-500 mb-2">Tipo de Persona *</label>
+                            <div class="flex space-x-3 mb-3">
+                                <button type="button" @click="autBusqueda.tipo_persona = 'JURIDICA'; autBusqueda.resultado = null"
+                                    :class="autBusqueda.tipo_persona === 'JURIDICA' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
+                                    class="px-5 py-2 rounded-lg text-sm font-medium transition">
+                                    <i class="fas fa-building mr-1"></i> Persona Jurídica
+                                </button>
+                                <button type="button" @click="autBusqueda.tipo_persona = 'NATURAL'; autBusqueda.resultado = null"
+                                    :class="autBusqueda.tipo_persona === 'NATURAL' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'"
+                                    class="px-5 py-2 rounded-lg text-sm font-medium transition">
+                                    <i class="fas fa-user mr-1"></i> Persona Natural
+                                </button>
+                            </div>
+
+                            <!-- Jurídica: NIT + Razón Social -->
+                            <div x-show="autBusqueda.tipo_persona === 'JURIDICA'" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="md:col-span-1">
+                                    <label class="block text-xs text-gray-500 mb-1">NIT *</label>
+                                    <div class="flex space-x-2">
+                                        <input type="text" x-model="autBusqueda.nit" @keyup.enter="buscarEmpresaAutorizacion()"
+                                            placeholder="900123456" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                                        <button type="button" @click="buscarEmpresaAutorizacion()" class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                            <i class="fas fa-search text-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs text-gray-500 mb-1">Razón Social</label>
+                                    <input type="text" :value="autBusqueda.razon_social"
+                                        readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-sm">
+                                </div>
+                            </div>
+
+                            <!-- Natural: Tipo Doc + Nro Doc + Nombres -->
+                            <div x-show="autBusqueda.tipo_persona === 'NATURAL'" class="space-y-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Tipo Documento *</label>
+                                        <select x-model="autBusqueda.tipo_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                            <option value="CC">Cédula de Ciudadanía</option>
+                                            <option value="CE">Cédula de Extranjería</option>
+                                            <option value="PA">Pasaporte</option>
+                                            <option value="TI">Tarjeta de Identidad</option>
+                                            <option value="NIT">NIT (Natural)</option>
+                                            <option value="PE">Permiso Especial de Permanencia</option>
+                                            <option value="RC">Registro Civil</option>
+                                            <option value="CD">Carné Diplomático</option>
+                                            <option value="SC">Salvoconducto</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Número Documento *</label>
+                                        <div class="flex space-x-2">
+                                            <input type="text" x-model="autBusqueda.num_id" @keyup.enter="buscarEmpresaAutorizacion()"
+                                                placeholder="12345678" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                                            <button type="button" @click="buscarEmpresaAutorizacion()" class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                                <i class="fas fa-search text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Primer Nombre</label>
+                                        <input type="text" :value="autBusqueda.primer_nombre" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-sm uppercase">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Segundo Nombre</label>
+                                        <input type="text" :value="autBusqueda.segundo_nombre" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-sm uppercase">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Primer Apellido</label>
+                                        <input type="text" :value="autBusqueda.primer_apellido" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-sm uppercase">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Segundo Apellido</label>
+                                        <input type="text" :value="autBusqueda.segundo_apellido" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-sm uppercase">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Alerta empresa no encontrada -->
+                            <div x-show="autBusqueda.noEncontrada" class="mt-2 bg-yellow-50 border border-yellow-300 rounded-lg p-3 flex items-center justify-between">
+                                <span class="text-sm text-yellow-800">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    Contratista no encontrado en el sistema.
+                                </span>
+                                <button type="button" @click="crearEmpresaDesdeAutorizacion()" class="ml-3 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded-lg">
+                                    <i class="fas fa-plus mr-1"></i>Crear Contratista
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sede + Fechas -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Sede *</label>
+                                <select x-model="formAutorizacion.sede_id" class="w-full px-3 py-2 border rounded-lg text-sm" required>
+                                    <option value="">Seleccione sede...</option>
+                                    <template x-for="sede in sedes" :key="sede.id">
+                                        <option :value="sede.id" x-text="sede.descripcion_sede"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha Inicio *</label>
+                                <input type="date" x-model="formAutorizacion.fecha_inicio" class="w-full px-3 py-2 border rounded-lg text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Fecha Fin *</label>
+                                <input type="date" x-model="formAutorizacion.fecha_fin" class="w-full px-3 py-2 border rounded-lg text-sm" required>
+                            </div>
+                        </div>
+
+                        <!-- Labor -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Descripción de la Labor *</label>
+                            <textarea x-model="formAutorizacion.labor" rows="3" maxlength="300"
+                                class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Describa detalladamente la labor a realizar..."></textarea>
+                            <p class="text-xs text-gray-400 mt-1" x-text="(formAutorizacion.labor || '').length + '/300 caracteres'"></p>
+                        </div>
+                    </div>
+
+                    <!-- ┌─ BLOQUE 2: Planilla de Seguridad Social ───────────────── -->
+                    <div class="border border-orange-200 rounded-lg overflow-hidden">
+                        <button type="button" @click="autPlanilla.expandida = !autPlanilla.expandida"
+                            class="w-full flex items-center justify-between px-5 py-3 bg-orange-50 hover:bg-orange-100 transition">
+                            <span class="font-semibold text-orange-800 flex items-center">
+                                <i class="fas fa-file-invoice mr-2"></i>
+                                Planilla de Seguridad Social
+                                <span x-show="autPlanilla.numero" class="ml-3 text-xs bg-orange-200 text-orange-900 px-2 py-0.5 rounded-full" x-text="'Nro: ' + autPlanilla.numero"></span>
+                            </span>
+                            <i :class="autPlanilla.expandida ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-orange-600"></i>
+                        </button>
+
+                        <div x-show="autPlanilla.expandida" x-cloak class="p-5 space-y-4 bg-white">
+                            <!-- Operador -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Operador de Pago (EPS/Caja) *</label>
+                                    <select x-model="autPlanilla.operador_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        <option value="">Seleccione operador...</option>
+                                        <template x-for="op in operadoresAportes.EPS" :key="op.id">
+                                            <option :value="op.id" x-text="op.nit + ' - ' + op.nombre"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Tipo Planilla</label>
+                                    <select x-model="autPlanilla.tipo_planilla" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        <option value="">--</option>
+                                        <option value="I">I — Independiente</option>
+                                        <option value="E">E — Empleado</option>
+                                        <option value="N">N — Novedad</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Número planilla con verificación -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Número de Planilla</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" x-model="autPlanilla.numero"
+                                        @blur="verificarNumeroPlanilla()" @keyup.enter="verificarNumeroPlanilla()"
+                                        placeholder="ej: PLAN-2026-001234"
+                                        class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                        :class="autPlanilla.duplicada ? 'border-red-400 bg-red-50' : ''">
+                                    <button type="button" @click="verificarNumeroPlanilla()" class="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <!-- Alerta duplicado -->
+                                <div x-show="autPlanilla.duplicada" class="mt-1.5 bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>
+                                    <span>Este número ya fue registrado — Contratista: <strong x-text="autPlanilla.empresa_duplicada"></strong>
+                                    — Fecha: <strong x-text="autPlanilla.fecha_duplicada"></strong></span>
+                                </div>
+                            </div>
+
+                            <!-- Período + Vigencia + Fecha Pago -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Período *</label>
+                                    <select x-model="autPlanilla.periodo" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        <template x-for="per in generarPeriodos()" :key="per">
+                                            <option :value="per" x-text="per"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia hasta (dd/mm/aaaa)</label>
+                                    <input type="text" x-model="autPlanilla.vigencia_display"
+                                        @input="parseFechaVigilancia($event.target.value)"
+                                        placeholder="dd/mm/aaaa" maxlength="10"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm"
+                                        :class="autPlanilla.vigenciaError ? 'border-red-400' : ''">
+                                    <p x-show="autPlanilla.vigenciaError" class="text-xs text-red-600 mt-1" x-text="autPlanilla.vigenciaError"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Pago *</label>
+                                    <input type="date" x-model="autPlanilla.fecha_pago"
+                                        @change="alertarFechaPago()"
+                                        class="w-full px-3 py-2 border rounded-lg text-sm"
+                                        :class="autPlanilla.pagoAlerta ? 'border-yellow-400' : ''">
+                                    <p x-show="autPlanilla.pagoAlerta" class="text-xs text-yellow-600 mt-1">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>El año del pago difiere del año actual.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Subir archivo planilla -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Archivo Planilla (PDF)</label>
+                                <div class="flex items-center space-x-3">
+                                    <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                        @change="seleccionarArchivoPlanilla($event)"
+                                        class="flex-1 text-sm border rounded-lg px-3 py-1.5">
+                                    <span x-show="autPlanilla.archivo_nombre" class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
+                                        <i class="fas fa-check mr-1"></i><span x-text="autPlanilla.archivo_nombre"></span>
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    Se guardará en <code>Documentos_SST/{nro_aut}/</code> con nombre estructurado.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ┌─ BLOQUE 3: Empleados del Contratista ──────────────────── -->
+                    <div class="border border-green-200 rounded-lg overflow-hidden">
+                        <div class="flex items-center justify-between px-5 py-3 bg-green-50">
+                            <span class="font-semibold text-green-800 flex items-center">
+                                <i class="fas fa-users mr-2"></i>
+                                Empleados del Contratista
+                                <span class="ml-2 text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded-full" x-text="autEmpleados.length + ' registrado(s)'"></span>
+                            </span>
+                            <button type="button" @click="agregarEmpleadoForm()"
+                                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg flex items-center">
+                                <i class="fas fa-plus mr-1"></i> Agregar Empleado
+                            </button>
+                        </div>
+
+                        <div class="divide-y divide-gray-100">
+                            <template x-for="(emp, idx) in autEmpleados" :key="idx">
+                                <div class="p-5 bg-white space-y-4">
+                                    <!-- Header empleado -->
+                                    <div class="flex items-center justify-between">
+                                        <h5 class="font-medium text-gray-700 text-sm">
+                                            <i class="fas fa-user text-green-600 mr-2"></i>
+                                            Empleado <span x-text="idx + 1"></span>
+                                            <span x-show="emp.nombre_completo" class="ml-2 text-green-700 font-semibold" x-text="'— ' + emp.nombre_completo"></span>
+                                        </h5>
+                                        <button type="button" @click="autEmpleados.splice(idx, 1)" class="text-red-500 hover:text-red-700 text-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Documento -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Tipo Documento *</label>
+                                            <select x-model="emp.tipo_id" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                                <option value="CC">Cédula de Ciudadanía</option>
+                                                <option value="CE">Cédula de Extranjería</option>
+                                                <option value="PA">Pasaporte</option>
+                                                <option value="TI">Tarjeta de Identidad</option>
+                                                <option value="PE">Permiso Especial de Permanencia</option>
+                                                <option value="RC">Registro Civil</option>
+                                                <option value="CD">Carné Diplomático</option>
+                                                <option value="SC">Salvoconducto</option>
+                                                <option value="NIT">NIT</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Número Documento *</label>
+                                            <div class="flex space-x-2">
+                                                <input type="text" x-model="emp.num_id"
+                                                    @keyup.enter="buscarEmpleadoEnAutorizacion(idx)"
+                                                    placeholder="12345678"
+                                                    class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                                                <button type="button" @click="buscarEmpleadoEnAutorizacion(idx)"
+                                                    class="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                                    <i class="fas fa-search text-sm"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Nombres (read-only si encontrado, editable si nuevo) -->
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Primer Nombre *</label>
+                                            <input type="text" x-model="emp.primer_nombre"
+                                                @input="emp.primer_nombre = $event.target.value.toUpperCase()"
+                                                :readonly="emp.empleado_id && !emp.es_nuevo"
+                                                :class="(emp.empleado_id && !emp.es_nuevo) ? 'bg-gray-50' : ''"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm uppercase">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Segundo Nombre</label>
+                                            <input type="text" x-model="emp.segundo_nombre"
+                                                @input="emp.segundo_nombre = $event.target.value.toUpperCase()"
+                                                :readonly="emp.empleado_id && !emp.es_nuevo"
+                                                :class="(emp.empleado_id && !emp.es_nuevo) ? 'bg-gray-50' : ''"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm uppercase">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Primer Apellido *</label>
+                                            <input type="text" x-model="emp.primer_apellido"
+                                                @input="emp.primer_apellido = $event.target.value.toUpperCase()"
+                                                :readonly="emp.empleado_id && !emp.es_nuevo"
+                                                :class="(emp.empleado_id && !emp.es_nuevo) ? 'bg-gray-50' : ''"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm uppercase">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Segundo Apellido</label>
+                                            <input type="text" x-model="emp.segundo_apellido"
+                                                @input="emp.segundo_apellido = $event.target.value.toUpperCase()"
+                                                :readonly="emp.empleado_id && !emp.es_nuevo"
+                                                :class="(emp.empleado_id && !emp.es_nuevo) ? 'bg-gray-50' : ''"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm uppercase">
+                                        </div>
+                                    </div>
+
+                                    <!-- Alerta no encontrado -->
+                                    <div x-show="emp.noEncontrado" class="bg-yellow-50 border border-yellow-200 rounded p-2 flex items-center justify-between text-sm">
+                                        <span class="text-yellow-800">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i> Empleado no existe. Complete los datos para registrarlo.
+                                        </span>
+                                    </div>
+
+                                    <!-- Tipos de trabajo autorizado -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-2">Permisos de Trabajo Especial</label>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                                            <template x-for="tipo in tiposTrabajoEspecial" :key="tipo.key">
+                                                <label class="flex items-start space-x-2 cursor-pointer">
+                                                    <input type="checkbox" :checked="emp.trabajos[tipo.key]"
+                                                        @change="toggleTrabajo(emp, tipo.key, $event.target.checked)"
+                                                        class="mt-0.5 text-green-600">
+                                                    <span class="text-gray-700" x-text="tipo.label"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                        <!-- Otro tipo -->
+                                        <div x-show="emp.trabajos.trabajo_otro !== undefined" class="mt-2">
+                                            <label class="block text-xs text-gray-500 mb-1">Descripción otro tipo de trabajo</label>
+                                            <input type="text" x-model="emp.trabajo_otro_desc"
+                                                @input="emp.trabajo_otro_desc = $event.target.value.toUpperCase()"
+                                                class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="DESCRIBA EL TIPO DE TRABAJO">
+                                        </div>
+                                    </div>
+
+                                    <!-- Documentos soporte por tipo de trabajo -->
+                                    <div x-show="Object.keys(emp.trabajos).length > 0">
+                                        <label class="block text-xs font-medium text-gray-600 mb-2">Documentos Soporte (PDF por tipo de trabajo)</label>
+                                        <div class="space-y-2">
+                                            <template x-for="tipo in tiposTrabajoEspecial.filter(t => emp.trabajos[t.key])" :key="tipo.key">
+                                                <div class="flex items-center space-x-3 bg-gray-50 rounded p-2">
+                                                    <span class="text-xs text-gray-600 w-48 flex-shrink-0" x-text="tipo.label + ':'"></span>
+                                                    <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                                        @change="seleccionarDocumentoEmpleado(idx, tipo.key, $event)"
+                                                        class="flex-1 text-xs border rounded px-2 py-1">
+                                                    <span x-show="emp.documentos_archivos && emp.documentos_archivos[tipo.key]"
+                                                        class="text-xs text-green-600 whitespace-nowrap">
+                                                        <i class="fas fa-check mr-1"></i>
+                                                        <span x-text="emp.documentos_archivos && emp.documentos_archivos[tipo.key]?.name"></span>
+                                                    </span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Botón agregar otro (si ya hay al menos uno) -->
+                        <div x-show="autEmpleados.length > 0" class="px-5 py-3 bg-green-50 border-t border-green-200">
+                            <button type="button" @click="agregarEmpleadoForm()"
+                                class="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-sm rounded-lg border border-green-300">
+                                <i class="fas fa-user-plus mr-2"></i>Registrar otro empleado
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ┌─ BLOQUE 4: Observaciones y documentos adicionales ────── -->
+                    <div class="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h4 class="font-semibold text-gray-700 flex items-center">
+                            <i class="fas fa-paperclip text-gray-500 mr-2"></i>Observaciones y Documentos Adicionales
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
+                            <textarea x-model="formAutorizacion.observaciones" rows="3"
+                                class="w-full px-3 py-2 border rounded-lg text-sm"
+                                placeholder="Observaciones generales, condiciones especiales..."></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin *</label>
-                            <input type="date" x-model="formAutorizacion.fecha_fin" class="w-full px-4 py-2 border rounded-lg" :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Carta de Presentación / Otros documentos (PDF)</label>
+                            <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                @change="seleccionarCartaPresentacion($event)"
+                                class="w-full text-sm border rounded-lg px-3 py-1.5">
+                            <span x-show="autCarta.nombre" class="mt-1 inline-block text-xs text-green-700">
+                                <i class="fas fa-check mr-1"></i><span x-text="autCarta.nombre"></span>
+                            </span>
                         </div>
                     </div>
-                    
-                    <div x-show="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+
+                    <!-- Aviso solo lectura si no es borrador -->
+                    <div x-show="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'"
+                        class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                         <p class="text-sm text-yellow-800">
-                            <i class="fas fa-info-circle mr-2"></i>
-                            Solo se pueden editar autorizaciones en estado BORRADOR
+                            <i class="fas fa-lock mr-2"></i>
+                            Solo se pueden editar autorizaciones en estado <strong>BORRADOR</strong>.
+                            Estado actual: <strong x-text="(autorizacionSeleccionada?.estado || '').toUpperCase()"></strong>
                         </p>
                     </div>
                 </div>
-                
-                <div class="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-                    <button @click="mostrarModalAutorizacion = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+
+                <!-- Footer con acciones -->
+                <div class="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-between items-center border-t rounded-b-xl">
+                    <button @click="cerrarModalAutorizacion()" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg text-sm">
                         Cancelar
                     </button>
-                    <button @click="guardarAutorizacion()" x-show="!autorizacionSeleccionada || autorizacionSeleccionada.estado === 'borrador'" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
-                        <i class="fas fa-save mr-2"></i>Guardar
+                    <div class="flex space-x-3">
+                        <button x-show="!autorizacionSeleccionada || autorizacionSeleccionada.estado === 'borrador'"
+                            @click="mostrarConfirmacionGuardar()"
+                            :disabled="!formAutorizacion.empresa_id || autGuardando"
+                            class="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg text-sm flex items-center">
+                            <i class="fas fa-eye mr-2"></i>Revisar y Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Confirmación Guardar Autorización -->
+        <div x-show="mostrarConfirmAutorizacion" x-cloak class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+                <div class="bg-purple-700 text-white px-6 py-4 rounded-t-xl">
+                    <h3 class="text-lg font-bold"><i class="fas fa-clipboard-check mr-2"></i>Confirmar Guardar Autorización</h3>
+                    <p class="text-purple-200 text-sm">Revise los datos antes de guardar</p>
+                </div>
+                <div class="p-6 space-y-4 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gray-50 rounded p-3">
+                            <p class="text-xs text-gray-500">Consecutivo</p>
+                            <p class="font-semibold text-purple-700" x-text="formAutorizacion.numero_autorizacion || 'Nuevo'"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded p-3">
+                            <p class="text-xs text-gray-500">Contratista</p>
+                            <p class="font-semibold" x-text="autBusqueda.razon_social || autBusqueda.nit"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded p-3">
+                            <p class="text-xs text-gray-500">Vigencia</p>
+                            <p class="font-semibold" x-text="(formAutorizacion.fecha_inicio || '--') + ' → ' + (formAutorizacion.fecha_fin || '--')"></p>
+                        </div>
+                        <div class="bg-gray-50 rounded p-3">
+                            <p class="text-xs text-gray-500">Empleados</p>
+                            <p class="font-semibold" x-text="autEmpleados.length + ' empleado(s)'"></p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3">
+                        <p class="text-xs text-gray-500 mb-1">Labor</p>
+                        <p x-text="formAutorizacion.labor || '—'"></p>
+                    </div>
+                    <div x-show="autPlanilla.numero" class="bg-orange-50 rounded p-3 border border-orange-200">
+                        <p class="text-xs text-orange-600 font-medium mb-1">Planilla SS</p>
+                        <p>Nro: <strong x-text="autPlanilla.numero"></strong> | Período: <strong x-text="autPlanilla.periodo"></strong></p>
+                    </div>
+                    <div x-show="autEmpleados.length > 0" class="space-y-2">
+                        <p class="text-xs font-medium text-gray-500">Empleados registrados:</p>
+                        <template x-for="(emp, i) in autEmpleados" :key="i">
+                            <div class="bg-green-50 rounded p-2 border border-green-100">
+                                <p class="font-semibold text-green-800" x-text="(i+1) + '. ' + (emp.nombre_completo || ((emp.primer_nombre||'') + ' ' + (emp.primer_apellido||'') + ' ' + (emp.segundo_apellido||'')).trim() || emp.num_id)"></p>
+                                <p class="text-xs text-gray-600" x-text="emp.tipo_id + '-' + emp.num_id"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t rounded-b-xl">
+                    <button @click="mostrarConfirmAutorizacion = false" class="px-5 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg text-sm">
+                        Volver
+                    </button>
+                    <button @click="guardarAutorizacion()" :disabled="autGuardando"
+                        class="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg text-sm flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        <span x-text="autGuardando ? 'Guardando...' : 'Confirmar y Guardar'"></span>
                     </button>
                 </div>
             </div>
         </div>
+
     </div>
 
     <script>
@@ -959,12 +1421,50 @@
             // Autorizaciones
             autorizaciones: [],
             mostrarModalAutorizacion: false,
+            mostrarConfirmAutorizacion: false,
             autorizacionSeleccionada: null,
+            autGuardando: false,
             formAutorizacion: {
-                empresa_id: '', sede_id: '', labor: '', fecha_inicio: '', fecha_fin: ''
+                numero_autorizacion: '',
+                empresa_id: '', sede_id: '', labor: '',
+                fecha_inicio: '', fecha_fin: '',
+                fecha_autorizacion: new Date().toISOString().slice(0, 10),
+                observaciones: ''
             },
+            // Búsqueda de empresa dentro del modal de autorización
+            autBusqueda: {
+                tipo_persona: 'JURIDICA',
+                nit: '', tipo_id: 'CC', num_id: '',
+                razon_social: '', primer_nombre: '', segundo_nombre: '',
+                primer_apellido: '', segundo_apellido: '',
+                noEncontrada: false, resultado: null
+            },
+            // Planilla dentro del modal de autorización
+            autPlanilla: {
+                expandida: false,
+                operador_id: '', tipo_planilla: '', numero: '',
+                periodo: new Date().toISOString().slice(0, 7),
+                vigencia_display: '', vigencia_iso: '', vigenciaError: '',
+                fecha_pago: '', pagoAlerta: false,
+                archivo: null, archivo_nombre: '',
+                duplicada: false, empresa_duplicada: '', fecha_duplicada: ''
+            },
+            // Empleados dentro del modal de autorización
+            autEmpleados: [],
+            // Carta presentación
+            autCarta: { archivo: null, nombre: '' },
             filtroAutorizaciones: { estado: '', empresa_id: '', sede_id: '' },
             sedes: [],
+            tiposTrabajoEspecial: [
+                { key: 'trabajo_altura',              label: 'Trabajo en Altura' },
+                { key: 'trabajo_energias_peligrosas', label: 'Trabajo con Energías Peligrosas' },
+                { key: 'trabajo_espacios_confinados', label: 'Trabajo en Espacios Confinados' },
+                { key: 'trabajo_caliente',            label: 'Trabajo en Caliente' },
+                { key: 'trabajo_izaje_cargas',        label: 'Trabajo de Izaje de Cargas' },
+                { key: 'trabajo_excavacion',          label: 'Trabajo de Excavación' },
+                { key: 'trabajo_sustancias_quimicas', label: 'Manejo de Sustancias Químicas Peligrosas' },
+                { key: 'trabajo_otro',                label: 'Otro tipo de trabajo (especificar)' },
+            ],
 
             async init() {
                 sessionManager.init();
@@ -1230,35 +1730,363 @@
                     this.cargando = false;
                 }
             },
-            
-            abrirModalAutorizacion(autorizacion = null) {
+
+            async abrirModalAutorizacion(autorizacion = null) {
+                // Obtener consecutivo previamente para mostrarlo
+                try {
+                    const resp = await apiClient.sst.consecutivo();
+                    this.formAutorizacion.numero_autorizacion = resp.consecutivo || '';
+                } catch(e) { this.formAutorizacion.numero_autorizacion = 'AC-XXXXXXXX'; }
+
                 if (autorizacion) {
-                    this.formAutorizacion = { ...autorizacion };
-                    this.autorizacionSeleccionada = autorizacion;
-                } else {
                     this.formAutorizacion = {
-                        empresa_id: '', sede_id: '', labor: '', fecha_inicio: '', fecha_fin: ''
+                        numero_autorizacion: autorizacion.numero_autorizacion || '',
+                        empresa_id: autorizacion.empresa_id,
+                        sede_id: autorizacion.sede_id,
+                        labor: autorizacion.labor,
+                        fecha_inicio: autorizacion.fecha_inicio,
+                        fecha_fin: autorizacion.fecha_fin,
+                        fecha_autorizacion: autorizacion.fecha_autorizacion || new Date().toISOString().slice(0,10),
+                        observaciones: autorizacion.observaciones || ''
+                    };
+                    this.autorizacionSeleccionada = autorizacion;
+                    // Pre-llenar empresa buscada
+                    const emp = this.empresas.find(e => e.id == autorizacion.empresa_id);
+                    if (emp) {
+                        this.autBusqueda.tipo_persona = emp.tipo_persona;
+                        this.autBusqueda.nit = emp.tipo_persona === 'JURIDICA' ? emp.nit : emp.num_identificacion;
+                        this.autBusqueda.razon_social = emp.tipo_persona === 'JURIDICA'
+                            ? (emp.razon_social || '') : emp.nombre_completo_persona_natural || '';
+                        this.autBusqueda.resultado = emp;
+                    }
+                } else {
+                    const hoy = new Date().toISOString().slice(0, 10);
+                    this.formAutorizacion = {
+                        numero_autorizacion: this.formAutorizacion.numero_autorizacion,
+                        empresa_id: '', sede_id: '', labor: '',
+                        fecha_inicio: hoy, fecha_fin: '',
+                        fecha_autorizacion: hoy,
+                        observaciones: ''
                     };
                     this.autorizacionSeleccionada = null;
+                    this.autBusqueda = { tipo_persona: 'JURIDICA', nit: '', tipo_id: 'CC', num_id: '',
+                        razon_social: '', primer_nombre: '', segundo_nombre: '',
+                        primer_apellido: '', segundo_apellido: '', noEncontrada: false, resultado: null };
+                    this.autPlanilla = {
+                        expandida: false, operador_id: '', tipo_planilla: '', numero: '',
+                        periodo: new Date().toISOString().slice(0, 7),
+                        vigencia_display: '', vigencia_iso: '', vigenciaError: '',
+                        fecha_pago: '', pagoAlerta: false,
+                        archivo: null, archivo_nombre: '',
+                        duplicada: false, empresa_duplicada: '', fecha_duplicada: ''
+                    };
+                    this.autEmpleados = [];
+                    this.autCarta = { archivo: null, nombre: '' };
                 }
                 this.mostrarModalAutorizacion = true;
             },
-            
-            async guardarAutorizacion() {
+
+            cerrarModalAutorizacion() {
+                this.mostrarModalAutorizacion = false;
+                this.mostrarConfirmAutorizacion = false;
+            },
+
+            // ── Búsqueda empresa en modal autorización ────────────────────────────
+            async buscarEmpresaAutorizacion() {
+                this.autBusqueda.noEncontrada = false;
+                this.autBusqueda.resultado = null;
+                this.formAutorizacion.empresa_id = '';
+                const q = this.autBusqueda.tipo_persona === 'JURIDICA'
+                    ? this.autBusqueda.nit.trim()
+                    : this.autBusqueda.num_id.trim();
+                if (!q || q.length < 3) { alert('Ingrese NIT o número de documento (mínimo 3 caracteres)'); return; }
                 try {
-                    if (this.autorizacionSeleccionada) {
-                        await apiClient.sst.actualizarAutorizacion(this.autorizacionSeleccionada.id, this.formAutorizacion);
+                    const resp = await apiClient.sst.buscarEmpresa(q);
+                    if (resp.encontrado && resp.data) {
+                        const emp = resp.data;
+                        this.autBusqueda.resultado = emp;
+                        this.formAutorizacion.empresa_id = emp.id;
+                        if (emp.tipo_persona === 'JURIDICA') {
+                            this.autBusqueda.razon_social = emp.razon_social || '';
+                        } else {
+                            this.autBusqueda.primer_nombre = emp.primer_nombre || '';
+                            this.autBusqueda.segundo_nombre = emp.segundo_nombre || '';
+                            this.autBusqueda.primer_apellido = emp.primer_apellido || '';
+                            this.autBusqueda.segundo_apellido = emp.segundo_apellido || '';
+                            this.autBusqueda.razon_social = emp.nombre_completo_persona_natural || '';
+                        }
                     } else {
-                        await apiClient.sst.crearAutorizacion(this.formAutorizacion);
+                        this.autBusqueda.noEncontrada = true;
                     }
-                    this.mostrarModalAutorizacion = false;
-                    await this.cargarAutorizaciones();
-                    alert('Autorización guardada exitosamente');
                 } catch(e) {
-                    alert('Error al guardar autorización: ' + e.message);
+                    this.autBusqueda.noEncontrada = true;
                 }
             },
-            
+
+            crearEmpresaDesdeAutorizacion() {
+                this.mostrarModalAutorizacion = false;
+                this.abrirModalEmpresa();
+            },
+
+            // ── Verificar número de planilla duplicado ────────────────────────────
+            async verificarNumeroPlanilla() {
+                const num = this.autPlanilla.numero.trim();
+                if (!num) return;
+                this.autPlanilla.duplicada = false;
+                try {
+                    const params = new URLSearchParams({ numero: num });
+                    if (this.autPlanilla.operador_id) params.append('operador_id', this.autPlanilla.operador_id);
+                    const resp = await apiClient.request('GET', '/sst/autorizaciones/verificar-planilla?' + params.toString());
+                    if (resp.existe) {
+                        this.autPlanilla.duplicada = true;
+                        this.autPlanilla.empresa_duplicada = resp.planilla.empresa_nombre || '';
+                        this.autPlanilla.fecha_duplicada = resp.planilla.created_at?.slice(0, 10) || '';
+                    }
+                } catch(e) { /* ignorar error de red */ }
+            },
+
+            // ── Lista de períodos 2020-01 .. 2050-12 ──────────────────────────────
+            generarPeriodos() {
+                const periodos = [];
+                for (let a = 2020; a <= 2050; a++) {
+                    for (let m = 1; m <= 12; m++) {
+                        periodos.push(`${a}-${String(m).padStart(2, '0')}`);
+                    }
+                }
+                return periodos;
+            },
+
+            // ── Validar vigencia en formato dd/mm/aaaa ────────────────────────────
+            parseFechaVigilancia(val) {
+                this.autPlanilla.vigenciaError = '';
+                this.autPlanilla.vigencia_iso = '';
+                if (!val || val.length < 8) return;
+                const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                if (!match) { this.autPlanilla.vigenciaError = 'Formato inválido. Use dd/mm/aaaa'; return; }
+                const [, dd, mm, aaaa] = match;
+                if (parseInt(mm) < 1 || parseInt(mm) > 12) { this.autPlanilla.vigenciaError = 'Mes inválido (01-12)'; return; }
+                if (parseInt(dd) < 1 || parseInt(dd) > 31) { this.autPlanilla.vigenciaError = 'Día inválido (01-31)'; return; }
+                if (parseInt(aaaa) < 2000 || parseInt(aaaa) > 2099) { this.autPlanilla.vigenciaError = 'Año inválido (2000-2099)'; return; }
+                this.autPlanilla.vigencia_iso = `${aaaa}-${mm}-${dd}`;
+            },
+
+            // ── Alerta fecha de pago en año diferente al actual ───────────────────
+            alertarFechaPago() {
+                const anioActual = new Date().getFullYear();
+                const anioIngresado = this.autPlanilla.fecha_pago
+                    ? parseInt(this.autPlanilla.fecha_pago.slice(0, 4)) : null;
+                this.autPlanilla.pagoAlerta = anioIngresado && anioIngresado !== anioActual;
+            },
+
+            // ── Selección de archivo planilla ─────────────────────────────────────
+            seleccionarArchivoPlanilla(event) {
+                const file = event.target.files[0];
+                if (file) { this.autPlanilla.archivo = file; this.autPlanilla.archivo_nombre = file.name; }
+            },
+
+            seleccionarCartaPresentacion(event) {
+                const file = event.target.files[0];
+                if (file) { this.autCarta.archivo = file; this.autCarta.nombre = file.name; }
+            },
+
+            // ── Empleados ─────────────────────────────────────────────────────────
+            agregarEmpleadoForm() {
+                this.autEmpleados.push({
+                    empleado_id: null, tipo_id: 'CC', num_id: '',
+                    primer_nombre: '', segundo_nombre: '',
+                    primer_apellido: '', segundo_apellido: '',
+                    nombre_completo: '',
+                    cargo: '', noEncontrado: false, es_nuevo: false,
+                    trabajos: {},
+                    trabajo_otro_desc: '',
+                    documentos_archivos: {}
+                });
+            },
+
+            async buscarEmpleadoEnAutorizacion(idx) {
+                const emp = this.autEmpleados[idx];
+                if (!emp.tipo_id || !emp.num_id || emp.num_id.trim().length < 3) return;
+                emp.noEncontrado = false;
+                try {
+                    const resp = await apiClient.sst.buscarEmpleado(`${emp.tipo_id}-${emp.num_id.trim()}`);
+                    if (resp.encontrado && resp.data) {
+                        const d = resp.data;
+                        emp.empleado_id = d.id;
+                        const nombParts = (d.nombres || '').split(' ');
+                        emp.primer_nombre = nombParts[0] || '';
+                        emp.segundo_nombre = nombParts.slice(1).join(' ') || '';
+                        const apellParts = (d.apellidos || '').split(' ');
+                        emp.primer_apellido = apellParts[0] || '';
+                        emp.segundo_apellido = apellParts.slice(1).join(' ') || '';
+                        emp.nombre_completo = d.nombre_completo || d.nombres + ' ' + d.apellidos;
+                        emp.cargo = d.cargo || '';
+                        emp.es_nuevo = false;
+                        emp.noEncontrado = false;
+                    } else {
+                        emp.empleado_id = null;
+                        emp.es_nuevo = true;
+                        emp.noEncontrado = true;
+                        emp.nombre_completo = '';
+                    }
+                } catch(e) {
+                    emp.empleado_id = null;
+                    emp.es_nuevo = true;
+                    emp.noEncontrado = true;
+                }
+            },
+
+            toggleTrabajo(emp, key, checked) {
+                if (checked) {
+                    emp.trabajos[key] = true;
+                } else {
+                    delete emp.trabajos[key];
+                    if (emp.documentos_archivos) delete emp.documentos_archivos[key];
+                }
+                // Forzar reactividad Alpine
+                emp.trabajos = { ...emp.trabajos };
+            },
+
+            seleccionarDocumentoEmpleado(idx, tipoKey, event) {
+                const file = event.target.files[0];
+                if (file) {
+                    if (!this.autEmpleados[idx].documentos_archivos) {
+                        this.autEmpleados[idx].documentos_archivos = {};
+                    }
+                    this.autEmpleados[idx].documentos_archivos[tipoKey] = file;
+                }
+            },
+
+            // ── Confirmación y guardado ───────────────────────────────────────────
+            mostrarConfirmacionGuardar() {
+                if (!this.formAutorizacion.empresa_id) { alert('Seleccione el contratista'); return; }
+                if (!this.formAutorizacion.sede_id) { alert('Seleccione la sede'); return; }
+                if (!this.formAutorizacion.fecha_inicio || !this.formAutorizacion.fecha_fin) {
+                    alert('Ingrese las fechas de vigencia'); return;
+                }
+                if (!this.formAutorizacion.labor || this.formAutorizacion.labor.trim().length < 5) {
+                    alert('Ingrese la descripción de la labor (mínimo 5 caracteres)'); return;
+                }
+                this.mostrarConfirmAutorizacion = true;
+            },
+
+            async guardarAutorizacion() {
+                if (this.autGuardando) return;
+                this.autGuardando = true;
+                try {
+                    // 1) Si hay empleados nuevos, registrarlos primero
+                    for (let emp of this.autEmpleados) {
+                        if (!emp.empleado_id && emp.es_nuevo && emp.num_id) {
+                            const nombreCompleto = [emp.primer_nombre, emp.segundo_nombre].filter(Boolean).join(' ');
+                            const apellidos = [emp.primer_apellido, emp.segundo_apellido].filter(Boolean).join(' ');
+                            const resp = await apiClient.sst.crearEmpleado({
+                                empresa_id: this.formAutorizacion.empresa_id,
+                                tipo_id: emp.tipo_id,
+                                num_id: emp.num_id,
+                                nombres: nombreCompleto || emp.primer_nombre,
+                                apellidos: apellidos || emp.primer_apellido,
+                                cargo: emp.cargo || 'NO ESPECIFICADO',
+                            });
+                            emp.empleado_id = resp.data?.id;
+                        }
+                    }
+
+                    // 2) Construir payload de planilla (sin subir archivo aún)
+                    let planillaPayload = null;
+                    if (this.autPlanilla.expandida && this.autPlanilla.numero) {
+                        planillaPayload = {
+                            operador_id: this.autPlanilla.operador_id || null,
+                            numero_planilla: this.autPlanilla.numero,
+                            tipo_planilla: this.autPlanilla.tipo_planilla || null,
+                            periodo: this.autPlanilla.periodo,
+                            fecha_pago: this.autPlanilla.fecha_pago,
+                            vigencia_fin: this.autPlanilla.vigencia_iso || this.autPlanilla.fecha_pago,
+                        };
+                    }
+
+                    // 3) Construir lista de empleados para el payload
+                    const empleadosPayload = this.autEmpleados
+                        .filter(e => e.empleado_id)
+                        .map(e => ({
+                            empleado_id: e.empleado_id,
+                            trabajo_altura: !!e.trabajos.trabajo_altura,
+                            trabajo_energias_peligrosas: !!e.trabajos.trabajo_energias_peligrosas,
+                            trabajo_espacios_confinados: !!e.trabajos.trabajo_espacios_confinados,
+                            trabajo_caliente: !!e.trabajos.trabajo_caliente,
+                            trabajo_izaje_cargas: !!e.trabajos.trabajo_izaje_cargas,
+                            trabajo_excavacion: !!e.trabajos.trabajo_excavacion,
+                            trabajo_sustancias_quimicas: !!e.trabajos.trabajo_sustancias_quimicas,
+                            trabajo_otro: e.trabajo_otro_desc || null,
+                            documentos: []   // se subirán después de obtener el numero_autorizacion
+                        }));
+
+                    // 4) Crear / actualizar autorización
+                    let resp;
+                    if (this.autorizacionSeleccionada) {
+                        resp = await apiClient.sst.actualizarAutorizacion(
+                            this.autorizacionSeleccionada.id,
+                            { ...this.formAutorizacion, planilla: planillaPayload, empleados: empleadosPayload }
+                        );
+                    } else {
+                        resp = await apiClient.sst.crearAutorizacion({
+                            ...this.formAutorizacion,
+                            planilla: planillaPayload,
+                            empleados: empleadosPayload
+                        });
+                    }
+
+                    const numAut = resp.data?.numero_autorizacion || resp.data?.id;
+                    const nit = this.autBusqueda.nit || 'X';
+                    const numPlanilla = this.autPlanilla.numero || 'SIN';
+
+                    // 5) Subir archivo planilla si existe
+                    if (this.autPlanilla.archivo && numAut) {
+                        const fd = new FormData();
+                        fd.append('archivo', this.autPlanilla.archivo);
+                        fd.append('numero_autorizacion', numAut);
+                        fd.append('nit_empresa', nit);
+                        fd.append('num_id_empleado', 'PLANILLA');
+                        fd.append('numero_planilla', numPlanilla);
+                        await apiClient.sst.uploadDocumento(fd);
+                    }
+
+                    // 6) Subir documentos de empleados
+                    for (let empData of this.autEmpleados) {
+                        if (!empData.documentos_archivos) continue;
+                        for (const [tipoKey, file] of Object.entries(empData.documentos_archivos)) {
+                            if (!file) continue;
+                            const fd = new FormData();
+                            fd.append('archivo', file);
+                            fd.append('numero_autorizacion', numAut);
+                            fd.append('nit_empresa', nit);
+                            fd.append('num_id_empleado', empData.num_id || 'X');
+                            fd.append('numero_planilla', numPlanilla);
+                            await apiClient.sst.uploadDocumento(fd);
+                        }
+                    }
+
+                    // 7) Subir carta de presentación
+                    if (this.autCarta.archivo && numAut) {
+                        const fd = new FormData();
+                        fd.append('archivo', this.autCarta.archivo);
+                        fd.append('numero_autorizacion', numAut);
+                        fd.append('nit_empresa', nit);
+                        fd.append('num_id_empleado', 'CARTA');
+                        fd.append('numero_planilla', numPlanilla);
+                        await apiClient.sst.uploadDocumento(fd);
+                    }
+
+                    this.cerrarModalAutorizacion();
+                    await this.cargarAutorizaciones();
+                    alert('✅ Autorización ' + numAut + ' guardada exitosamente');
+
+                } catch(e) {
+                    alert('Error al guardar autorización: ' + (e.message || e));
+                } finally {
+                    this.autGuardando = false;
+                }
+            },
+
+
             async enviarARevision(id) {
                 if (!confirm('¿Enviar autorización a revisión?')) return;
                 try {
