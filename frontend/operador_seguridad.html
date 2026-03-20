@@ -14,24 +14,165 @@
     <div x-data="operadorSeguridadApp()" x-init="init()" x-cloak class="flex h-screen">
         <!-- Header fijo (no sidebar — operador usa tabs como operador.html) -->
         <div class="flex-1 flex flex-col">
-            <header class="bg-gradient-to-r from-orange-700 to-orange-600 text-white px-6 py-4 flex items-center justify-between shadow-lg">
-                <div class="flex items-center space-x-4">
-                    <i class="fas fa-hard-hat text-3xl"></i>
-                    <div>
-                        <h1 class="text-xl font-bold">Control de Contratistas</h1>
-                        <p class="text-orange-200 text-sm">Operador de Seguridad</p>
+            <header class="bg-gradient-to-r from-orange-700 to-orange-600 text-white px-6 py-4 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-hard-hat text-3xl"></i>
+                        <div>
+                            <h1 class="text-xl font-bold">Control de Contratistas</h1>
+                            <p class="text-orange-200 text-sm">Operador de Seguridad</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm" x-text="usuario.nombre_completo || ''"></span>
+                        <button @click="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-sign-out-alt mr-1"></i>Salir
+                        </button>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm" x-text="usuario.nombre_completo || ''"></span>
-                    <button @click="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
-                        <i class="fas fa-sign-out-alt mr-1"></i>Salir
+                
+                <!-- Tabs -->
+                <div class="flex space-x-2">
+                    <button @click="tabActiva = 'ingreso'" :class="tabActiva === 'ingreso' ? 'bg-orange-800 border-b-4 border-white' : 'bg-orange-600 hover:bg-orange-700'" class="px-6 py-2 rounded-t-lg transition font-medium">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Registrar Ingreso
+                    </button>
+                    <button @click="tabActiva = 'activos'" :class="tabActiva === 'activos' ? 'bg-orange-800 border-b-4 border-white' : 'bg-orange-600 hover:bg-orange-700'" class="px-6 py-2 rounded-t-lg transition font-medium">
+                        <i class="fas fa-building mr-2"></i>Personal en Instalaciones
                     </button>
                 </div>
             </header>
 
             <main class="flex-1 overflow-y-auto p-6">
-                <p class="text-gray-600">Contenido se implementa en checkpoints 3.3.5 → 3.3.6</p>
+                <!-- Tab: Registrar Ingreso -->
+                <div x-show="tabActiva === 'ingreso'" class="space-y-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                            <i class="fas fa-search mr-2 text-orange-600"></i>
+                            Buscar Autorización SST
+                        </h2>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ID Autorización</label>
+                            <div class="flex space-x-2">
+                                <input type="number" x-model="busquedaAutorizacion" @keyup.enter="buscarAutorizacionSST()" class="flex-1 px-4 py-2 border rounded-lg" placeholder="Ingrese ID de autorización...">
+                                <button @click="buscarAutorizacionSST()" class="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition">
+                                    <i class="fas fa-search mr-2"></i>Buscar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Datos Autorización -->
+                        <div x-show="autorizacionBuscada" class="mt-6 border-2 border-orange-200 rounded-lg p-4 bg-orange-50">
+                            <h3 class="font-bold text-lg mb-3 text-orange-800">
+                                <i class="fas fa-file-contract mr-2"></i>Datos de la Autorización
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600">Empresa</p>
+                                    <p class="font-semibold" x-text="autorizacionBuscada?.empresa?.razon_social || autorizacionBuscada?.empresa?.nombre_completo_persona_natural || 'N/A'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Labor</p>
+                                    <p class="font-semibold" x-text="autorizacionBuscada?.labor || 'N/A'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Vigencia</p>
+                                    <p class="font-semibold">
+                                        <span x-text="autorizacionBuscada?.fecha_inicio"></span>
+                                        <span class="mx-2">→</span>
+                                        <span x-text="autorizacionBuscada?.fecha_fin"></span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Estado</p>
+                                    <span x-text="autorizacionBuscada?.estado?.toUpperCase()" :class="{
+                                        'bg-green-100 text-green-800': autorizacionBuscada?.estado === 'aprobada',
+                                        'bg-yellow-100 text-yellow-800': autorizacionBuscada?.estado === 'revision',
+                                        'bg-gray-200 text-gray-800': autorizacionBuscada?.estado === 'borrador',
+                                        'bg-red-100 text-red-800': autorizacionBuscada?.estado === 'rechazada',
+                                        'bg-orange-100 text-orange-800': autorizacionBuscada?.estado === 'vencida'
+                                    }" class="px-3 py-1 rounded-full text-xs font-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulario Registro Ingreso -->
+                    <div x-show="autorizacionBuscada && autorizacionBuscada.estado === 'aprobada'" class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                            <i class="fas fa-user-check mr-2 text-orange-600"></i>
+                            Registro de Ingreso
+                        </h2>
+                        
+                        <!-- Buscar Empleado -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Empleado a Ingresar</label>
+                            <div class="flex space-x-2 mb-3">
+                                <select x-model="formIngreso.tipo_busqueda" class="px-4 py-2 border rounded-lg">
+                                    <option value="CC">CC</option>
+                                    <option value="CE">CE</option>
+                                    <option value="TI">TI</option>
+                                    <option value="PAS">PAS</option>
+                                </select>
+                                <input type="text" x-model="formIngreso.num_busqueda" @keyup.enter="buscarEmpleadoParaIngreso()" class="flex-1 px-4 py-2 border rounded-lg" placeholder="Número de documento...">
+                                <button @click="buscarEmpleadoParaIngreso()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                                    <i class="fas fa-search mr-2"></i>Buscar
+                                </button>
+                            </div>
+                            
+                            <div x-show="formIngreso.empleado_nombre" class="border rounded-lg p-4 bg-blue-50">
+                                <p class="text-sm text-gray-600">Nombre</p>
+                                <p class="font-semibold text-lg" x-text="formIngreso.empleado_nombre"></p>
+                                <p class="text-sm text-gray-600 mt-2">Cargo</p>
+                                <p class="font-medium" x-text="formIngreso.empleado_cargo"></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Sede -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sede</label>
+                            <select x-model="formIngreso.sede_id" class="w-full px-4 py-2 border rounded-lg" required>
+                                <option value="">Seleccione sede...</option>
+                                <template x-for="sede in sedes" :key="sede.id">
+                                    <option :value="sede.id" x-text="sede.nombre"></option>
+                                </template>
+                            </select>
+                        </div>
+                        
+                        <!-- Observaciones -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones (opcional)</label>
+                            <textarea x-model="formIngreso.observaciones" rows="3" class="w-full px-4 py-2 border rounded-lg" placeholder="Ingrese observaciones si es necesario..."></textarea>
+                        </div>
+                        
+                        <!-- Botón Registrar -->
+                        <div class="flex justify-end">
+                            <button @click="registrarIngresoContratista()" :disabled="!formIngreso.empleado_id || !formIngreso.sede_id" class="px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition font-bold text-lg">
+                                <i class="fas fa-check-circle mr-2"></i>Registrar Ingreso
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensaje si no hay autorización o no está aprobada -->
+                    <div x-show="!autorizacionBuscada" class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+                        <i class="fas fa-search text-gray-400 text-6xl mb-4"></i>
+                        <p class="text-gray-500 text-lg">Busque una autorización SST para iniciar el registro</p>
+                    </div>
+                    
+                    <div x-show="autorizacionBuscada && autorizacionBuscada.estado !== 'aprobada'" class="bg-red-50 border-2 border-red-300 rounded-xl p-6 text-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-4xl mb-3"></i>
+                        <p class="text-red-800 font-bold text-lg">La autorización debe estar en estado APROBADA para registrar ingresos</p>
+                    </div>
+                </div>
+                
+                <!-- Tab: Personal en Instalaciones (Placeholder para CHECKPOINT 3.3.6) -->
+                <div x-show="tabActiva === 'activos'" class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-building mr-2 text-orange-600"></i>
+                        Personal de Contratistas en Instalaciones
+                    </h2>
+                    <p class="text-gray-600">Esta sección se implementa en CHECKPOINT 3.3.6</p>
+                </div>
             </main>
         </div>
     </div>
@@ -42,10 +183,30 @@
             usuario: {},
             tabActiva: 'ingreso',
             cargando: false,
+            
+            // Búsqueda y registro
+            autorizacionBuscada: null,
+            busquedaAutorizacion: '',
+            formIngreso: {
+                empleado_id: '',
+                empleado_nombre: '',
+                empleado_cargo: '',
+                tipo_busqueda: 'CC',
+                num_busqueda: '',
+                autorizacion_sst_id: '',
+                sede_id: '',
+                observaciones: ''
+            },
+            
+            // Datos maestros
+            ingresosActivos: [],
+            sedes: [],
 
             async init() {
                 sessionManager.init();
                 await this.verificarAuth();
+                await this.cargarSedes();
+                await this.cargarIngresosActivos();
             },
 
             async verificarAuth() {
@@ -55,6 +216,145 @@
                 if (!['usuario_master', 'operador_seguridad'].includes(this.usuario.rol)) {
                     alert('No tiene permisos para acceder a este panel');
                     this.irAlLogin();
+                }
+            },
+            
+            async cargarSedes() {
+                try {
+                    const resp = await apiClient.sedes.listar();
+                    if (resp.success) {
+                        this.sedes = resp.data;
+                    }
+                } catch(e) {
+                    console.error('Error cargando sedes:', e);
+                }
+            },
+            
+            async cargarIngresosActivos() {
+                try {
+                    const resp = await apiClient.sst.listarIngresos({ activos: true });
+                    if (resp.success) {
+                        this.ingresosActivos = resp.data;
+                    }
+                } catch(e) {
+                    console.error('Error cargando ingresos activos:', e);
+                }
+            },
+            
+            async buscarAutorizacionSST() {
+                const id = this.busquedaAutorizacion;
+                if (!id) {
+                    alert('Ingrese un ID de autorización');
+                    return;
+                }
+                
+                try {
+                    const resp = await apiClient.sst.obtenerAutorizacion(id);
+                    if (resp.success && resp.data) {
+                        this.autorizacionBuscada = resp.data;
+                        
+                        // Validar que esté aprobada
+                        if (resp.data.estado !== 'aprobada') {
+                            alert('⚠️ Esta autorización no está aprobada. Estado actual: ' + resp.data.estado.toUpperCase());
+                        }
+                    } else {
+                        alert('Autorización no encontrada');
+                        this.autorizacionBuscada = null;
+                    }
+                } catch(e) {
+                    alert('Error al buscar autorización: ' + e.message);
+                    this.autorizacionBuscada = null;
+                }
+            },
+            
+            async buscarEmpleadoParaIngreso() {
+                const tipo = this.formIngreso.tipo_busqueda || 'CC';
+                const num = this.formIngreso.num_busqueda;
+                
+                if (!num) {
+                    alert('Ingrese el número de documento');
+                    return;
+                }
+                
+                if (!this.autorizacionBuscada) {
+                    alert('Primero debe buscar una autorización');
+                    return;
+                }
+                
+                try {
+                    const resp = await apiClient.sst.buscarEmpleado(tipo, num);
+                    
+                    if (resp.encontrado && resp.data) {
+                        // Verificar que pertenece a la empresa de la autorización
+                        if (resp.data.empresa_id !== this.autorizacionBuscada.empresa_id) {
+                            alert('⚠️ Este empleado NO pertenece a la empresa de la autorización seleccionada');
+                            this.formIngreso.empleado_id = '';
+                            this.formIngreso.empleado_nombre = '';
+                            this.formIngreso.empleado_cargo = '';
+                            return;
+                        }
+                        
+                        // Asignar datos del empleado
+                        this.formIngreso.empleado_id = resp.data.id;
+                        this.formIngreso.empleado_nombre = resp.data.nombre_completo;
+                        this.formIngreso.empleado_cargo = resp.data.cargo;
+                    } else {
+                        alert('Empleado no encontrado en el sistema');
+                        this.formIngreso.empleado_id = '';
+                        this.formIngreso.empleado_nombre = '';
+                        this.formIngreso.empleado_cargo = '';
+                    }
+                } catch(e) {
+                    alert('Error al buscar empleado: ' + e.message);
+                }
+            },
+            
+            async registrarIngresoContratista() {
+                if (!this.autorizacionBuscada) {
+                    alert('Seleccione una autorización');
+                    return;
+                }
+                
+                if (!this.formIngreso.empleado_id) {
+                    alert('Busque y seleccione un empleado');
+                    return;
+                }
+                
+                if (!this.formIngreso.sede_id) {
+                    alert('Seleccione una sede');
+                    return;
+                }
+                
+                try {
+                    const resp = await apiClient.sst.registrarIngreso({
+                        empleado_id: this.formIngreso.empleado_id,
+                        autorizacion_sst_id: this.autorizacionBuscada.id,
+                        sede_id: this.formIngreso.sede_id,
+                        observaciones: this.formIngreso.observaciones
+                    });
+                    
+                    if (resp.success) {
+                        alert('✅ Ingreso registrado exitosamente');
+                        
+                        // Limpiar formulario
+                        this.autorizacionBuscada = null;
+                        this.busquedaAutorizacion = '';
+                        this.formIngreso = {
+                            empleado_id: '',
+                            empleado_nombre: '',
+                            empleado_cargo: '',
+                            tipo_busqueda: 'CC',
+                            num_busqueda: '',
+                            autorizacion_sst_id: '',
+                            sede_id: '',
+                            observaciones: ''
+                        };
+                        
+                        // Recargar lista de ingresos activos
+                        await this.cargarIngresosActivos();
+                    }
+                } catch(e) {
+                    alert('Error al registrar ingreso: ' + e.message);
                 }
             },
 
