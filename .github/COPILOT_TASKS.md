@@ -7913,3 +7913,92 @@ FASE 3.3 FRONTEND SST — RESUMEN COMPLETO:
 - Duración estimada: 4-6 días
 
 ---
+
+---
+## [CLAUDE SUPERVISOR] — CHECKPOINT 3.3.6 FIX — REVISIÓN
+
+FECHA REVISIÓN: 2026-03-20 03:30
+
+VALIDACIONES REALIZADAS:
+- [x] Estándares globales: ✅ OK
+- [x] Campos de modelo correctos: ✅ OK (4 bugs corregidos)
+- [x] Seguridad OWASP: ✅ OK
+
+ARCHIVOS REVISADOS:
+- frontend/operador_seguridad.html: 4 campos corregidos en tabla Personal Activo
+  - `ing.timestamp_evento` ✅ (antes `fecha_hora_ingreso`)
+  - `ing.autorizacion_sst_id` ✅ (antes `autorizacion_id`)
+  - `ing.empresa?.nombre` ✅ (antes `ing.empleado?.empresa?.razon_social`)
+  - `ing.sede?.nombre` ✅ (ahora incluido en response)
+- backend/app/routes/sst.py: Objeto sede agregado en listar_empleados_activos()
+  - Usa `log.sede.descripcion_sede` ✅ (campo correcto del modelo Sede)
+  - joinedload(LogIngresoContratista.sede) agregado para prevenir N+1 ✅
+- backend/app/models/log_ingreso_contratista.py: Relación `sede = db.relationship('Sede')` agregada ✅
+
+CUMPLIMIENTO ESTÁNDARES:
+- 03-seguridad.md: ✅ joinedload previene N+1
+- 04-backend.md: ✅ Campos coinciden con modelo
+
+DECISIÓN FINAL:
+[✅ APROBADO — CP 3.3.6 FIX correcto. Los 4 bugs reportados están corregidos. Commit: 7ddb87c]
+
+Firma: Claude Code (Auditor)
+---
+
+---
+## [CLAUDE SUPERVISOR] — CHECKPOINT 3.3.7 — REVISIÓN
+
+FECHA REVISIÓN: 2026-03-20 03:30
+
+VALIDACIONES REALIZADAS:
+- [x] Estándares globales: ✅ OK
+- [x] Login redirects funcionan: ✅ OK
+- [x] Sidebar enlace correcto: ✅ OK
+- [x] Seguridad: ✅ OK (roles verificados antes de redirect)
+
+ARCHIVOS REVISADOS:
+- frontend/index.html (+4 líneas):
+  - `admin_sst` → `admin_sst.html` ✅
+  - `operador_seguridad` → `operador_seguridad.html` ✅
+  - Función `redirigirSegunRol()` usa `rolLimpio` (lowercase + trim) ✅
+- frontend/admin.html (+6 líneas):
+  - Botón "Módulo SST" en sidebar ✅
+  - Icono `fas fa-hard-hat` ✅
+  - Target: `admin_sst.html` via `@click="window.location.href"` ✅
+
+CUMPLIMIENTO ESTÁNDARES:
+- 03-seguridad.md: ✅ Roles validados client-side + server-side
+- 02-formularios.md: ✅ Alpine.js pattern correcto
+
+DECISIÓN FINAL:
+[✅ APROBADO — CP 3.3.7 correcto. Redirects y sidebar implementados. Commit: 55aac12]
+
+Firma: Claude Code (Auditor)
+---
+
+---
+## [CLAUDE SUPERVISOR] — FASE 3.3 COMPLETA — VALIDACIÓN FINAL
+
+FECHA REVISIÓN: 2026-03-20 03:30
+
+RESUMEN FASE 3.3 — Frontend SST:
+
+| CP | Título | Estado | Commit |
+|---|---|---|---|
+| 3.3.0 | apiClient SST + esqueletos | ✅ APROBADO | a8b3702 |
+| 3.3.1 | Sidebar + Dashboard | ✅ APROBADO | 3a0f431 |
+| 3.3.2 | CRUD Empresas | ✅ APROBADO | 6aa77e8 |
+| 3.3.3 | Empleados + Certificados | ✅ APROBADO | f5475eb |
+| 3.3.4 | Planillas + Autorizaciones | ✅ APROBADO | 95b0521 |
+| 3.3.5 | Registro Ingresos | ✅ APROBADO | 94d49cf |
+| 3.3.6 | Personal Activo + Salidas | ✅ APROBADO (fix: 7ddb87c) | 6e616b6 |
+| 3.3.7 | Login Redirects + Validación | ✅ APROBADO | 55aac12 |
+
+TOTAL: 8/8 checkpoints APROBADOS
+LÍNEAS ENTREGADAS: ~1,621 (admin_sst.html: ~1,100 + operador_seguridad.html: ~500 + index/admin: +10)
+
+DECISIÓN FINAL:
+[✅ FASE 3.3 COMPLETA — @operador puede avanzar a FASE 3.4]
+
+Firma: Claude Code (Auditor)
+---
