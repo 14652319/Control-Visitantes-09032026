@@ -413,7 +413,7 @@
                         <select x-model="filtroAutorizaciones.sede_id" @change="cargarAutorizaciones()" class="px-4 py-2 border rounded-lg">
                             <option value="">Todas las sedes</option>
                             <template x-for="sede in sedes" :key="sede.id">
-                                <option :value="sede.id" x-text="sede.nombre"></option>
+                                <option :value="sede.id" x-text="sede.descripcion_sede"></option>
                             </template>
                         </select>
                     </div>
@@ -856,7 +856,7 @@
                         <select x-model="formAutorizacion.sede_id" class="w-full px-4 py-2 border rounded-lg" required :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'">
                             <option value="">Seleccione sede...</option>
                             <template x-for="sede in sedes" :key="sede.id">
-                                <option :value="sede.id" x-text="sede.nombre"></option>
+                                <option :value="sede.id" x-text="sede.descripcion_sede"></option>
                             </template>
                         </select>
                     </div>
@@ -1173,7 +1173,7 @@
             async cargarSedes() {
                 try {
                     const resp = await apiClient.sedes.listar();
-                    this.sedes = resp.data || [];
+                    this.sedes = resp.sedes || [];
                 } catch(e) {
                     console.error('Error cargando sedes:', e);
                 }
