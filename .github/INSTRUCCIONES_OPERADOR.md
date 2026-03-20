@@ -3171,6 +3171,806 @@ feat: redirección login + validación FASE 3.3 — CHECKPOINT 3.3.7
 
 ---
 
+# ═══════════════════════════════════════════════════════════════
+# FASE 3.4 — PDF AUTORIZACIONES SST + NOTIFICACIONES EMAIL
+# Duración estimada: 4-6 días
+# Prerequisito: FASE 3.2 completa ✅ (endpoints backend)
+# Puede ejecutarse en PARALELO con FASE 3.3 (frontend)
+# ═══════════════════════════════════════════════════════════════
+
+## CONTEXTO FASE 3.4
+
+Esta fase implementa:
+1. **Generación PDF** del formato SC-SST-FOR-015 (carta autorización SST)
+2. **Notificaciones email** cuando se aprueba/rechaza una autorización
+3. **Endpoint descarga PDF** para frontend
+
+**Biblioteca PDF**: `xhtml2pdf` (decisión del proyecto — NO WeasyPrint)
+**Email**: Flask-Mail (ya implementado en `email_service.py`)
+
+---
+
+## 🛑 REGLA OBLIGATORIA — VERIFICAR ANTES DE ESCRIBIR
+
+1. Leer `backend/app/services/email_service.py` COMPLETO para copiar el patrón
+2. Leer `backend/app/models/autorizacion_sst.py` para campos exactos
+3. Leer `backend/app/models/empresa_contratista.py` para campos empresa
+4. Leer `backend/app/models/empleado_contratista.py` para campos empleado
+
+**Campos REALES (recordatorio):**
+```
+AutorizacionSST: id, empresa_id, sede_id, labor, fecha_inicio, fecha_fin,
+  estado, pdf_ruta, created_by, aprobado_by, created_at, updated_at
+
+EmpresaContratista: id, razon_social, nit, digito_verificacion,
+  representante_legal, telefono, email, tipo_persona,
+  tipo_identificacion, num_identificacion,
+  primer_nombre, segundo_nombre, primer_apellido, segundo_apellido,
+  nombre_completo_persona_natural (property)
+
+EmpleadoContratista: id, empresa_id, tipo_id, num_id, nombres, apellidos,
+  cargo, eps_id, afp_id, arl_id, nombre_completo (property)
+
+CertificadoTrabajo: id, empleado_id, tipo_certificado, nombre_certificado,
+  fecha_expedicion, fecha_vencimiento, verificado
+
+PlanillaSS: id, empresa_id, periodo, fecha_pago, vigencia_fin, estado
+```
+
+---
+
+## CHECKPOINT 3.4.0 — Instalar xhtml2pdf + crear pdf_service.py ⏱️ 2-3 horas
+
+### Qué hacer
+
+**PASO 1**: Agregar xhtml2pdf a requirements.txt:
+```
+# Agregar al final de requirements.txt:
+xhtml2pdf==0.2.16
+```
+
+Luego instalar:
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+pip install xhtml2pdf==0.2.16
+```
+
+**PASO 2**: Agregar configuración PDF en `backend/config.py`:
+
+Buscar la clase Config y agregar:
+```python
+# PDF Storage
+PDF_STORAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads', 'autorizaciones_sst')
+```
+
+**PASO 3**: Crear `backend/app/services/pdf_service.py`:
+
+```python
+"""
+========================================
+SERVICIO DE GENERACIÓN PDF
+Formato SC-SST-FOR-015 — Autorización SST
+========================================
+"""
+
+import os
+from io import BytesIO
+from datetime import datetime
+from xhtml2pdf import pisa
+from flask import current_app
+from app.extensions import db
+from app.utils.logger import logger
+
+
+def generar_pdf_autorizacion(autorizacion, empresa, empleados, planilla_vigente=None, sede=None):
+    """
+    Genera PDF del formato SC-SST-FOR-015
+
+    Args:
+        autorizacion: AutorizacionSST instance
+        empresa: EmpresaContratista instance
+        empleados: list[EmpleadoContratista] — empleados de la empresa
+        planilla_vigente: PlanillaSS instance (opcional)
+        sede: Sede instance (opcional)
+
+    Returns:
+        dict: {'success': bool, 'ruta': str, 'nombre': str}
+    """
+    try:
+        # 1. Generar número consecutivo
+        consecutivo = f"SST-{datetime.now().year}-{autorizacion.id:04d}"
+
+        # 2. Datos empresa
+        if empresa.tipo_persona == 'JURIDICA':
+            nombre_empresa = empresa.razon_social
+            doc_empresa = f"NIT: {empresa.nit}-{empresa.digito_verificacion}"
+        else:
+            nombre_empresa = empresa.nombre_completo_persona_natural
+            doc_empresa = f"{empresa.tipo_identificacion}: {empresa.num_identificacion}"
+
+        # 3. Filas de empleados
+        filas_empleados = ""
+        for i, emp in enumerate(empleados, 1):
+            # Obtener certificados vigentes
+            certs = []
+            for cert in emp.certificados:
+                if cert.fecha_vencimiento is None or cert.fecha_vencimiento >= datetime.now().date():
+                    abrev = {
+                        'ALTURAS': 'Alt',
+                        'ELECTRICO': 'Elec',
+                        'ESPACIOS_CONFINADOS': 'Esp.C',
+                        'OTRO': 'Otro'
+                    }.get(cert.tipo_certificado, cert.tipo_certificado[:4])
+                    certs.append(abrev)
+
+            filas_empleados += f"""
+            <tr>
+                <td style="padding: 6px; border: 1px solid #ccc; text-align: center;">{i}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{emp.nombre_completo}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{emp.tipo_id} {emp.num_id}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{emp.cargo or '-'}</td>
+                <td style="padding: 6px; border: 1px solid #ccc;">{', '.join(certs) if certs else '-'}</td>
+            </tr>"""
+
+        # 4. Datos planilla
+        info_planilla = "Sin planilla vigente registrada"
+        if planilla_vigente:
+            info_planilla = f"""
+            <p><strong>Periodo:</strong> {planilla_vigente.periodo}</p>
+            <p><strong>Fecha pago:</strong> {planilla_vigente.fecha_pago.strftime('%d/%m/%Y') if planilla_vigente.fecha_pago else '-'}</p>
+            <p><strong>Vigencia hasta:</strong> {planilla_vigente.vigencia_fin.strftime('%d/%m/%Y') if planilla_vigente.vigencia_fin else '-'}</p>
+            """
+
+        # 5. Nombre sede
+        nombre_sede = sede.nombre if sede else 'TODAS LAS SEDES'
+
+        # 6. Template HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; font-size: 11px; color: #333; margin: 30px; }}
+                .header {{ text-align: center; border-bottom: 3px solid #2d7a3e; padding-bottom: 15px; margin-bottom: 20px; }}
+                .header h1 {{ color: #2d7a3e; margin: 0; font-size: 16px; }}
+                .header h2 {{ color: #555; margin: 5px 0; font-size: 13px; }}
+                .header .formato {{ color: #888; font-size: 10px; }}
+                .consecutivo {{ text-align: right; font-size: 14px; font-weight: bold; color: #2d7a3e; }}
+                .seccion {{ margin: 15px 0; }}
+                .seccion h3 {{ background: #2d7a3e; color: white; padding: 6px 12px; font-size: 12px; margin: 0 0 8px 0; }}
+                table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
+                th {{ background: #f0f0f0; padding: 6px; border: 1px solid #ccc; text-align: left; font-weight: bold; }}
+                .dato {{ margin: 4px 0; }}
+                .dato strong {{ color: #555; }}
+                .firma {{ margin-top: 40px; text-align: center; }}
+                .firma .linea {{ border-top: 1px solid #333; width: 250px; margin: 0 auto; padding-top: 5px; }}
+                .footer {{ margin-top: 30px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }}
+                .validez {{ background: #fff8e1; border: 2px solid #f9a825; padding: 10px; text-align: center; margin: 15px 0; font-weight: bold; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>SUPERTIENDAS CAÑAVERAL SAS</h1>
+                <h2>AUTORIZACIÓN DE INGRESO — CONTRATISTAS</h2>
+                <p class="formato">Formato: SC-SST-FOR-015</p>
+            </div>
+
+            <p class="consecutivo">No. {consecutivo}</p>
+            <p class="dato"><strong>Fecha:</strong> {datetime.now().strftime('%d/%m/%Y')} &nbsp;&nbsp; <strong>Hora:</strong> {datetime.now().strftime('%H:%M')}</p>
+
+            <div class="seccion">
+                <h3>EMPRESA CONTRATISTA</h3>
+                <p class="dato"><strong>{doc_empresa}</strong></p>
+                <p class="dato"><strong>Nombre:</strong> {nombre_empresa}</p>
+                <p class="dato"><strong>Teléfono:</strong> {empresa.telefono or '-'} &nbsp;&nbsp; <strong>Email:</strong> {empresa.email or '-'}</p>
+            </div>
+
+            <div class="seccion">
+                <h3>PLANILLA DE SEGURIDAD SOCIAL</h3>
+                {info_planilla}
+            </div>
+
+            <div class="seccion">
+                <h3>LABOR AUTORIZADA</h3>
+                <p>{autorizacion.labor}</p>
+            </div>
+
+            <div class="seccion">
+                <h3>EMPLEADOS AUTORIZADOS</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">#</th>
+                            <th>Nombre Completo</th>
+                            <th>Documento</th>
+                            <th>Cargo</th>
+                            <th>Certificaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filas_empleados if filas_empleados else '<tr><td colspan="5" style="text-align:center; padding:10px;">Sin empleados registrados</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="seccion">
+                <h3>SEDE AUTORIZADA</h3>
+                <p>{nombre_sede}</p>
+            </div>
+
+            <div class="validez">
+                Válido desde {autorizacion.fecha_inicio.strftime('%d/%m/%Y')} hasta {autorizacion.fecha_fin.strftime('%d/%m/%Y')}
+            </div>
+
+            <div class="firma">
+                <p><strong>Aprobado por:</strong></p>
+                <br><br>
+                <div class="linea"></div>
+                <p>Administrador SST</p>
+            </div>
+
+            <div class="footer">
+                <p>SUPERTIENDAS CAÑAVERAL SAS — Sistema de Gestión SST</p>
+                <p>Documento generado automáticamente el {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        # 7. Crear directorio si no existe
+        year_folder = str(datetime.now().year)
+        storage_path = os.path.join(
+            current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+            year_folder
+        )
+        os.makedirs(storage_path, exist_ok=True)
+
+        # 8. Generar PDF
+        nombre_archivo = f"{consecutivo}.pdf"
+        ruta_completa = os.path.join(storage_path, nombre_archivo)
+
+        result = BytesIO()
+        pdf = pisa.CreatePDF(BytesIO(html_content.encode('utf-8')), dest=result)
+
+        if pdf.err:
+            logger.error(f"Error generando PDF: {pdf.err}")
+            return {'success': False, 'error': 'Error al generar PDF'}
+
+        # 9. Guardar archivo
+        with open(ruta_completa, 'wb') as f:
+            f.write(result.getvalue())
+
+        # 10. Ruta relativa para guardar en DB
+        ruta_relativa = os.path.join('autorizaciones_sst', year_folder, nombre_archivo)
+
+        logger.info(f"PDF generado: {consecutivo} para autorización #{autorizacion.id}")
+
+        return {
+            'success': True,
+            'ruta': ruta_relativa,
+            'nombre': nombre_archivo,
+            'consecutivo': consecutivo
+        }
+
+    except Exception as e:
+        logger.error(f"Error generando PDF autorización #{autorizacion.id}: {e}")
+        return {'success': False, 'error': str(e)}
+```
+
+### Verificación
+```powershell
+python -c "from xhtml2pdf import pisa; print('xhtml2pdf OK')"
+python -c "import py_compile; py_compile.compile('app/services/pdf_service.py', doraise=True); print('SYNTAX OK')"
+```
+
+### Commit
+```
+feat: servicio PDF xhtml2pdf + plantilla SC-SST-FOR-015 — CHECKPOINT 3.4.0
+```
+
+---
+
+## CHECKPOINT 3.4.1 — Endpoint generar PDF + descargar ⏱️ 2-3 horas
+
+### Qué hacer
+
+Agregar 2 endpoints nuevos al final de `backend/app/routes/sst.py`:
+
+**PASO 1**: Agregar imports necesarios al inicio de sst.py (si no existen):
+```python
+import os
+from flask import send_file
+```
+
+**PASO 2**: Endpoint para generar PDF:
+
+```python
+# ============================================================
+# ENDPOINT: POST /api/sst/autorizaciones/<id>/generar-pdf
+# Genera el PDF SC-SST-FOR-015 para una autorización aprobada
+# Acceso: admin_sst, usuario_master
+# ============================================================
+@bp.route('/autorizaciones/<int:id>/generar-pdf', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def generar_pdf_autorizacion(id):
+    """Genera PDF de autorización SST (formato SC-SST-FOR-015)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empresa_contratista import EmpresaContratista
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.planilla_ss import PlanillaSS
+        from app.models.sede import Sede
+        from app.services.pdf_service import generar_pdf_autorizacion as generar_pdf
+        from datetime import date
+
+        autorizacion = AutorizacionSST.query.get_or_404(id)
+
+        # Solo generar PDF para autorizaciones aprobadas
+        if autorizacion.estado != 'aprobada':
+            return jsonify({
+                'success': False,
+                'message': f'Solo se puede generar PDF de autorizaciones aprobadas. Estado actual: {autorizacion.estado}'
+            }), 400
+
+        empresa = EmpresaContratista.query.get(autorizacion.empresa_id)
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+
+        # Empleados de la empresa (activos)
+        empleados = EmpleadoContratista.query.filter_by(
+            empresa_id=empresa.id, estado='activo'
+        ).all()
+
+        # Planilla vigente más reciente
+        planilla = PlanillaSS.query.filter(
+            PlanillaSS.empresa_id == empresa.id,
+            PlanillaSS.vigencia_fin >= date.today()
+        ).order_by(PlanillaSS.vigencia_fin.desc()).first()
+
+        # Sede (puede ser None)
+        sede = Sede.query.get(autorizacion.sede_id) if autorizacion.sede_id else None
+
+        # Generar PDF
+        resultado = generar_pdf(autorizacion, empresa, empleados, planilla, sede)
+
+        if not resultado['success']:
+            return jsonify({'success': False, 'message': resultado.get('error', 'Error generando PDF')}), 500
+
+        # Guardar ruta en autorización
+        autorizacion.pdf_ruta = resultado['ruta']
+        db.session.commit()
+
+        logger.info(f"PDF generado para autorización #{id} por usuario {current_user.id}")
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'pdf_ruta': resultado['ruta'],
+                'nombre_archivo': resultado['nombre'],
+                'consecutivo': resultado['consecutivo']
+            },
+            'message': f"PDF {resultado['consecutivo']} generado exitosamente"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error generando PDF autorización #{id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+```
+
+**PASO 3**: Endpoint para descargar PDF:
+
+```python
+# ============================================================
+# ENDPOINT: GET /api/sst/autorizaciones/<id>/descargar-pdf
+# Descarga el PDF generado de una autorización
+# Acceso: cualquier rol SST
+# ============================================================
+@bp.route('/autorizaciones/<int:id>/descargar-pdf', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def descargar_pdf_autorizacion(id):
+    """Descarga PDF de autorización SST"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+
+        autorizacion = AutorizacionSST.query.get_or_404(id)
+
+        if not autorizacion.pdf_ruta:
+            return jsonify({'success': False, 'message': 'Esta autorización no tiene PDF generado'}), 404
+
+        # Construir ruta completa
+        ruta_completa = os.path.join(
+            current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+            '..', autorizacion.pdf_ruta
+        )
+        ruta_completa = os.path.normpath(ruta_completa)
+
+        if not os.path.exists(ruta_completa):
+            return jsonify({'success': False, 'message': 'Archivo PDF no encontrado en disco'}), 404
+
+        nombre_descarga = os.path.basename(autorizacion.pdf_ruta)
+
+        return send_file(
+            ruta_completa,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=nombre_descarga
+        )
+
+    except Exception as e:
+        logger.error(f"Error descargando PDF autorización #{id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+```
+
+### Verificación
+```powershell
+python -c "import py_compile; py_compile.compile('app/routes/sst.py', doraise=True); print('SYNTAX OK')"
+
+# Contar rutas totales
+Select-String -Path app/routes/sst.py -Pattern "@bp.route" | Measure-Object
+# Esperado: 35 (33 anteriores + 2 nuevos)
+```
+
+### Commit
+```
+feat: endpoints generar + descargar PDF autorización SST — CHECKPOINT 3.4.1
+```
+
+---
+
+## CHECKPOINT 3.4.2 — Email notificación autorización SST ⏱️ 2-3 horas
+
+### Qué hacer
+
+Extender `backend/app/services/email_service.py` con funciones para notificaciones SST.
+
+**PASO 1**: Agregar función de notificación de autorización aprobada:
+
+```python
+def enviar_notificacion_autorizacion_aprobada(autorizacion_data, empresa_data, destinatario_email, pdf_ruta=None):
+    """
+    Envía notificación email cuando una autorización SST es aprobada
+
+    Args:
+        autorizacion_data (dict): to_dict() de AutorizacionSST
+        empresa_data (dict): to_dict() de EmpresaContratista
+        destinatario_email (str): Email de la empresa contratista
+        pdf_ruta (str): Ruta al archivo PDF para adjuntar (opcional)
+    """
+    consecutivo = f"SST-{datetime.now().year}-{autorizacion_data['id']:04d}"
+    asunto = f"Autorización SST Aprobada — {consecutivo}"
+
+    nombre_empresa = empresa_data.get('razon_social') or empresa_data.get('nombre_completo_persona_natural', '')
+
+    cuerpo = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+                      color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border: 1px solid #ddd; }}
+            .info-box {{ background: white; padding: 15px; border-left: 4px solid #1565c0; margin: 15px 0; }}
+            .success {{ background: #e8f5e9; border: 2px solid #4caf50; padding: 15px; text-align: center;
+                       border-radius: 8px; margin: 15px 0; }}
+            .footer {{ background: #333; color: white; padding: 20px; text-align: center;
+                      border-radius: 0 0 10px 10px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✅ Autorización SST Aprobada</h1>
+                <p>{consecutivo}</p>
+            </div>
+            <div class="content">
+                <div class="success">
+                    <h2 style="color: #2e7d32; margin: 0;">Autorización Aprobada</h2>
+                    <p>La autorización de ingreso para contratistas ha sido aprobada.</p>
+                </div>
+
+                <div class="info-box">
+                    <p><strong>Empresa:</strong> {nombre_empresa}</p>
+                    <p><strong>Labor:</strong> {autorizacion_data.get('labor', '-')}</p>
+                    <p><strong>Válida desde:</strong> {autorizacion_data.get('fecha_inicio', '-')}</p>
+                    <p><strong>Válida hasta:</strong> {autorizacion_data.get('fecha_fin', '-')}</p>
+                    <p><strong>Sede:</strong> {autorizacion_data.get('sede_id', 'Todas')}</p>
+                </div>
+
+                <p>Los empleados de su empresa pueden presentarse en portería con documento de identidad.
+                El operador de seguridad verificará la autorización vigente en el sistema.</p>
+
+                <p><em>Si tiene alguna duda, comuníquese con el área SST.</em></p>
+            </div>
+            <div class="footer">
+                <p>SUPERTIENDAS CAÑAVERAL SAS — Sistema de Gestión SST</p>
+                <p>&copy; {datetime.now().year}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    try:
+        msg = Message(
+            asunto,
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[destinatario_email]
+        )
+        msg.html = cuerpo
+
+        # Adjuntar PDF si existe
+        if pdf_ruta:
+            import os
+            pdf_full_path = os.path.join(
+                current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+                '..', pdf_ruta
+            )
+            pdf_full_path = os.path.normpath(pdf_full_path)
+            if os.path.exists(pdf_full_path):
+                with open(pdf_full_path, 'rb') as f:
+                    msg.attach(
+                        os.path.basename(pdf_ruta),
+                        'application/pdf',
+                        f.read()
+                    )
+
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Error enviando notificación SST: {str(e)}")
+        return False
+
+
+def enviar_notificacion_autorizacion_rechazada(autorizacion_data, empresa_data, destinatario_email):
+    """
+    Envía notificación email cuando una autorización SST es rechazada
+    """
+    consecutivo = f"SST-{datetime.now().year}-{autorizacion_data['id']:04d}"
+    asunto = f"Autorización SST Rechazada — {consecutivo}"
+
+    nombre_empresa = empresa_data.get('razon_social') or empresa_data.get('nombre_completo_persona_natural', '')
+
+    cuerpo = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
+                      color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border: 1px solid #ddd; }}
+            .info-box {{ background: white; padding: 15px; border-left: 4px solid #c62828; margin: 15px 0; }}
+            .alert {{ background: #ffebee; border: 2px solid #ef5350; padding: 15px; text-align: center;
+                     border-radius: 8px; margin: 15px 0; }}
+            .footer {{ background: #333; color: white; padding: 20px; text-align: center;
+                      border-radius: 0 0 10px 10px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>❌ Autorización SST Rechazada</h1>
+                <p>{consecutivo}</p>
+            </div>
+            <div class="content">
+                <div class="alert">
+                    <h2 style="color: #c62828; margin: 0;">Autorización Rechazada</h2>
+                    <p>La solicitud de autorización requiere correcciones.</p>
+                </div>
+
+                <div class="info-box">
+                    <p><strong>Empresa:</strong> {nombre_empresa}</p>
+                    <p><strong>Labor:</strong> {autorizacion_data.get('labor', '-')}</p>
+                </div>
+
+                <p>Por favor comuníquese con el área SST de Supertiendas Cañaveral
+                para conocer los motivos del rechazo y realizar las correcciones necesarias.</p>
+            </div>
+            <div class="footer">
+                <p>SUPERTIENDAS CAÑAVERAL SAS — Sistema de Gestión SST</p>
+                <p>&copy; {datetime.now().year}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    return enviar_correo(destinatario_email, asunto, cuerpo)
+```
+
+**PASO 2**: Integrar envío de email en endpoints de aprobar/rechazar de sst.py.
+
+Buscar el endpoint `aprobar` (POST /api/sst/autorizaciones/<id>/aprobar) y agregar DESPUÉS del `db.session.commit()`:
+
+```python
+# Enviar notificación email a la empresa
+try:
+    from app.services.email_service import enviar_notificacion_autorizacion_aprobada
+    if empresa.email:
+        enviar_notificacion_autorizacion_aprobada(
+            autorizacion.to_dict(),
+            empresa.to_dict(),
+            empresa.email,
+            pdf_ruta=autorizacion.pdf_ruta
+        )
+except Exception as email_error:
+    logger.error(f"Error enviando email aprobación: {email_error}")
+    # No fallar si el email no se envía
+```
+
+Buscar el endpoint `rechazar` (POST /api/sst/autorizaciones/<id>/rechazar) y agregar DESPUÉS del `db.session.commit()`:
+
+```python
+# Enviar notificación email
+try:
+    from app.services.email_service import enviar_notificacion_autorizacion_rechazada
+    if empresa.email:
+        enviar_notificacion_autorizacion_rechazada(
+            autorizacion.to_dict(),
+            empresa.to_dict(),
+            empresa.email
+        )
+except Exception as email_error:
+    logger.error(f"Error enviando email rechazo: {email_error}")
+```
+
+⚠️ **IMPORTANTE**: El email es "fire and forget" — si falla el envío, NO debe fallar la operación. El try/except rodea SOLO el email, no el commit.
+
+### Verificación
+```powershell
+python -c "import py_compile; py_compile.compile('app/services/email_service.py', doraise=True); print('SYNTAX OK')"
+python -c "import py_compile; py_compile.compile('app/routes/sst.py', doraise=True); print('SYNTAX OK')"
+```
+
+### Commit
+```
+feat: notificaciones email aprobación/rechazo SST — CHECKPOINT 3.4.2
+```
+
+---
+
+## CHECKPOINT 3.4.3 — apiClient + botones frontend + validación final ⏱️ 2-3 horas
+
+### Qué hacer
+
+**PASO 1**: Agregar métodos al apiClient.sst en `frontend/assets/js/app.js`:
+
+Buscar el bloque `sst: {` y agregar estos métodos:
+
+```javascript
+// --- PDF ---
+async generarPdf(autorizacionId) {
+    return await apiClient.request(`/sst/autorizaciones/${autorizacionId}/generar-pdf`, { method: 'POST' });
+},
+async descargarPdf(autorizacionId) {
+    const response = await fetch(`${API_URL}/sst/autorizaciones/${autorizacionId}/descargar-pdf`, {
+        credentials: 'include'
+    });
+    if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SST-${new Date().getFullYear()}-${String(autorizacionId).padStart(4, '0')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true };
+    }
+    const data = await response.json();
+    throw new Error(data.message || 'Error descargando PDF');
+},
+```
+
+**PASO 2**: En `frontend/admin_sst.html`, agregar botones de PDF en la sección de autorizaciones.
+
+En la tabla de autorizaciones (sección implementada en CHECKPOINT 3.3.4), agregar botones:
+
+- Cuando estado === 'aprobada': Botón "📄 Generar PDF" y botón "⬇️ Descargar PDF" (si ya tiene pdf_ruta)
+- Al dar click en "Generar PDF": llamar `apiClient.sst.generarPdf(id)` → luego auto-descargar
+- Al dar click en "Descargar PDF": llamar `apiClient.sst.descargarPdf(id)`
+
+Métodos Alpine.js a agregar:
+```javascript
+async generarPdfAutorizacion(aut) {
+    try {
+        this.cargando = true;
+        const resp = await apiClient.sst.generarPdf(aut.id);
+        alert('✅ PDF generado: ' + resp.data.consecutivo);
+        // Auto-descargar
+        await apiClient.sst.descargarPdf(aut.id);
+        await this.cargarAutorizaciones();
+    } catch(e) { alert('Error: ' + e.message); }
+    finally { this.cargando = false; }
+},
+
+async descargarPdfAutorizacion(aut) {
+    try {
+        await apiClient.sst.descargarPdf(aut.id);
+    } catch(e) { alert('Error: ' + e.message); }
+}
+```
+
+Patrón del botón en HTML:
+```html
+<!-- Solo para autorizaciones aprobadas -->
+<template x-if="aut.estado === 'aprobada'">
+    <div class="flex gap-1">
+        <button @click="generarPdfAutorizacion(aut)" class="text-blue-600 hover:text-blue-800" title="Generar PDF">
+            <i class="fas fa-file-pdf"></i>
+        </button>
+        <button x-show="aut.pdf_ruta" @click="descargarPdfAutorizacion(aut)" class="text-green-600 hover:text-green-800" title="Descargar PDF">
+            <i class="fas fa-download"></i>
+        </button>
+    </div>
+</template>
+```
+
+**PASO 3**: Verificación completa:
+
+```powershell
+# Verificar sintaxis backend
+python -c "import py_compile; py_compile.compile('app/routes/sst.py', doraise=True); print('sst.py OK')"
+python -c "import py_compile; py_compile.compile('app/services/pdf_service.py', doraise=True); print('pdf_service OK')"
+python -c "import py_compile; py_compile.compile('app/services/email_service.py', doraise=True); print('email_service OK')"
+
+# Contar rutas
+Select-String -Path app/routes/sst.py -Pattern "@bp.route" | Measure-Object
+# Esperado: 35 (33 + 2 nuevos)
+
+# Verificar xhtml2pdf instalado
+python -c "from xhtml2pdf import pisa; print('xhtml2pdf OK')"
+
+# Verificar directorio uploads
+Test-Path ../uploads/autorizaciones_sst
+```
+
+**PASO 4**: Push a rama:
+```powershell
+git add -A
+git commit -m "feat: FASE 3.4 completa — PDF + email autorizaciones SST"
+git push github feature/modulo-sst
+```
+
+### Commit
+```
+feat: frontend PDF + validación FASE 3.4 — CHECKPOINT 3.4.3
+```
+
+**AL TERMINAR**: Actualiza COPILOT_TASKS.md → `[FASE 3.4 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]`
+
+---
+
+## RESUMEN FASE 3.4
+
+| Checkpoint | Descripción | Commit mensaje |
+|---|---|---|
+| 3.4.0 | xhtml2pdf + pdf_service.py (plantilla SC-SST-FOR-015) | feat: servicio PDF xhtml2pdf |
+| 3.4.1 | Endpoints generar-pdf + descargar-pdf | feat: endpoints PDF autorización |
+| 3.4.2 | Email notificación aprobación/rechazo | feat: email SST aprobación/rechazo |
+| 3.4.3 | apiClient + botones frontend + validación final | feat: FASE 3.4 completa |
+
+**NOTAS IMPORTANTES**:
+- Usar `xhtml2pdf` — NO WeasyPrint (decisión del proyecto)
+- PDF se almacena en `uploads/autorizaciones_sst/{year}/SST-YYYY-XXXX.pdf`
+- El campo `AutorizacionSST.pdf_ruta` guarda la ruta relativa
+- Email es "fire and forget" — si falla, la operación principal NO debe fallar
+- El email_service.py ya existe — solo agregar funciones nuevas, NO reescribir
+- Seguir el patrón HTML existente en `enviar_correo_registro_funcionario()` para el estilo
+
+---
+
 ### CHECKPOINT 3.1.5: Modelos SQLAlchemy (8 modelos) ⏱️ 4-5 horas
 
 **QUÉ VAS A HACER**: Crear los 8 modelos SQLAlchemy correspondientes a las tablas del módulo SST.
