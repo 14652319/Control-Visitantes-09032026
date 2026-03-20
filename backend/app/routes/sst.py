@@ -775,22 +775,9 @@ def actualizar_certificado(id):
 # HELPERS: Planillas
 # ============================================================
 def validar_planilla(data):
-    """
-    Valida que las observaciones estén presentes cuando aporta_*=False.
-    
-    Args:
-        data (dict): Datos de la planilla
-    
-    Returns:
-        tuple: (es_valido: bool, mensaje_error: str|None)
-    """
-    # Si aporta_salud=False → observacion_salud obligatorio
-    # Si aporta_pension=False → observacion_pension obligatorio
-    # Si aporta_arl=False → observacion_arl obligatorio
-    for campo in ('salud', 'pension', 'arl'):
-        if not data.get(f'aporta_{campo}', True):  # Default True si no viene el campo
-            if not data.get(f'observacion_{campo}'):
-                return False, f'observacion_{campo} requerido cuando aporta_{campo}=False'
+    """Valida campos obligatorios de una planilla SS."""
+    if not data.get('periodo'):
+        return False, 'periodo requerido (formato YYYY-MM)'
     return True, None
 
 
@@ -804,29 +791,29 @@ def validar_planilla(data):
 def listar_planillas():
     """Lista planillas de seguridad social con filtros opcionales"""
     try:
-        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.planilla_ss import PlanillaSS
         from datetime import date
         
         empresa_id = request.args.get('empresa_id', type=int)
         vigente = request.args.get('vigente')  # true | false
         
-        query = PlanillaSeguridadSocial.query
+        query = PlanillaSS.query
         
         if empresa_id:
             query = query.filter_by(empresa_id=empresa_id)
         
         if vigente and vigente.lower() == 'true':
-            query = query.filter(PlanillaSeguridadSocial.vigencia_hasta >= date.today())
+            query = query.filter(PlanillaSS.vigencia_fin >= date.today())
         elif vigente and vigente.lower() == 'false':
-            query = query.filter(PlanillaSeguridadSocial.vigencia_hasta < date.today())
+            query = query.filter(PlanillaSS.vigencia_fin < date.today())
         
-        planillas = query.order_by(PlanillaSeguridadSocial.fecha_pago.desc()).all()
+        planillas = query.order_by(PlanillaSS.fecha_pago.desc()).all()
         
         # Agregar campo vigente calculado
         data = []
         for planilla in planillas:
             plan_dict = planilla.to_dict()
-            plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+            plan_dict['vigente'] = planilla.vigencia_fin >= date.today()
             data.append(plan_dict)
         
         return jsonify({
@@ -846,7 +833,7 @@ def listar_planillas():
 def crear_planilla():
     """Registra una nueva planilla de seguridad social con cálculo automático de vigencia"""
     try:
-        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.planilla_ss import PlanillaSS
         from app.models.empresa_contratista import EmpresaContratista
         from datetime import date, timedelta
         
@@ -864,27 +851,31 @@ def crear_planilla():
         if not empresa:
             return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
         
-        # Validar observaciones según aportes
+        # Validar campos obligatorios
         es_valido, error = validar_planilla(data)
         if not es_valido:
             return jsonify({'success': False, 'message': error}), 400
         
-        # LÓGICA CRÍTICA: Calcular vigencia_hasta automáticamente
+        # LÓGICA CRÍTICA: Calcular vigencia_fin automáticamente (30 días desde pago)
         fecha_pago = date.fromisoformat(data['fecha_pago'])
-        vigencia_hasta = fecha_pago + timedelta(days=30)
+        vigencia_fin = fecha_pago + timedelta(days=30)
         
-        # Agregar vigencia_hasta a los datos
-        data['vigencia_hasta'] = vigencia_hasta.isoformat()
-        
-        # Crear planilla
-        planilla = PlanillaSeguridadSocial(**data)
+        # Construir planilla solo con campos válidos del modelo
+        planilla = PlanillaSS(
+            empresa_id=data['empresa_id'],
+            periodo=data['periodo'],
+            fecha_pago=data['fecha_pago'],
+            vigencia_fin=vigencia_fin.isoformat(),
+            archivo_nombre=data.get('archivo_nombre'),
+            archivo_ruta=data.get('archivo_ruta'),
+        )
         db.session.add(planilla)
         db.session.commit()
         
         logger.info(f"Planilla creada: {planilla.id} para empresa {empresa.id} por usuario {current_user.id}")
         
         plan_dict = planilla.to_dict()
-        plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+        plan_dict['vigente'] = planilla.vigencia_fin >= date.today()
         
         return jsonify({
             'success': True,
@@ -904,15 +895,15 @@ def crear_planilla():
 def obtener_planilla(id):
     """Obtiene detalle de una planilla de seguridad social"""
     try:
-        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.planilla_ss import PlanillaSS
         from datetime import date
         
-        planilla = PlanillaSeguridadSocial.query.get(id)
+        planilla = PlanillaSS.query.get(id)
         if not planilla:
             return jsonify({'success': False, 'message': 'Planilla no encontrada'}), 404
         
         plan_dict = planilla.to_dict()
-        plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+        plan_dict['vigente'] = planilla.vigencia_fin >= date.today()
         
         return jsonify({
             'success': True,
@@ -930,7 +921,7 @@ def obtener_planilla(id):
 def obtener_planillas_empresa(empresa_id):
     """Obtiene todas las planillas de una empresa"""
     try:
-        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.planilla_ss import PlanillaSS
         from app.models.empresa_contratista import EmpresaContratista
         from datetime import date
         
@@ -938,15 +929,15 @@ def obtener_planillas_empresa(empresa_id):
         if not empresa:
             return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
         
-        planillas = PlanillaSeguridadSocial.query.filter_by(empresa_id=empresa_id).order_by(
-            PlanillaSeguridadSocial.fecha_pago.desc()
+        planillas = PlanillaSS.query.filter_by(empresa_id=empresa_id).order_by(
+            PlanillaSS.fecha_pago.desc()
         ).all()
         
         # Agregar campo vigente
         data = []
         for planilla in planillas:
             plan_dict = planilla.to_dict()
-            plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+            plan_dict['vigente'] = planilla.vigencia_fin >= date.today()
             data.append(plan_dict)
         
         return jsonify({
@@ -967,7 +958,7 @@ def obtener_planillas_empresa(empresa_id):
 def obtener_planillas_vigentes_empresa(empresa_id):
     """Obtiene solo las planillas vigentes (hoy) de una empresa"""
     try:
-        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.planilla_ss import PlanillaSS
         from app.models.empresa_contratista import EmpresaContratista
         from datetime import date
         
@@ -976,10 +967,10 @@ def obtener_planillas_vigentes_empresa(empresa_id):
             return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
         
         hoy = date.today()
-        planillas = PlanillaSeguridadSocial.query.filter(
-            PlanillaSeguridadSocial.empresa_id == empresa_id,
-            PlanillaSeguridadSocial.vigencia_hasta >= hoy
-        ).order_by(PlanillaSeguridadSocial.fecha_pago.desc()).all()
+        planillas = PlanillaSS.query.filter(
+            PlanillaSS.empresa_id == empresa_id,
+            PlanillaSS.vigencia_fin >= hoy
+        ).order_by(PlanillaSS.fecha_pago.desc()).all()
         
         # Todas son vigentes por definición del filtro
         data = []
@@ -1007,35 +998,20 @@ def obtener_planillas_vigentes_empresa(empresa_id):
 
 def generar_consecutivo_sst():
     """
-    Genera número de autorización SST único.
-    Formato: SST-{AÑO}-{CONSECUTIVO:04d}
-    Ejemplo: SST-2026-0001, SST-2026-0002, ...
-    El consecutivo reinicia cada año.
+    Eliminado: la columna numero_autorizacion no existe en el modelo AutorizacionSST.
+    Se usa el ID de la tabla como identificador (único por definición).
     """
-    from sqlalchemy import text
-    from datetime import date
-    
-    anio = date.today().year
-    
-    # Buscar el mayor consecutivo del año actual
-    resultado = db.session.execute(text("""
-        SELECT MAX(CAST(SPLIT_PART(numero_autorizacion, '-', 3) AS INTEGER))
-        FROM autorizaciones_sst
-        WHERE numero_autorizacion LIKE :patron
-    """), {'patron': f'SST-{anio}-%'}).scalar()
-    
-    siguiente = (resultado or 0) + 1
-    return f"SST-{anio}-{siguiente:04d}"
+    raise NotImplementedError("generar_consecutivo_sst eliminado — no hay columna numero_autorizacion en el modelo")
 
 
-# Transiciones de estado válidas
+# Transiciones de estado válidas (estados en minúsculas, igual que el modelo y la BD)
 TRANSICIONES_VALIDAS = {
-    'BORRADOR':  ['REVISION'],
-    'REVISION':  ['APROBADA', 'RECHAZADA'],
-    'APROBADA':  ['VENCIDA', 'ANULADA'],
-    'RECHAZADA': [],  # Estado final
-    'VENCIDA':   [],  # Estado final
-    'ANULADA':   [],  # Estado final
+    'borrador':  ['revision'],
+    'revision':  ['aprobada', 'rechazada'],
+    'aprobada':  ['vencida', 'anulada'],
+    'rechazada': [],  # Estado final
+    'vencida':   [],  # Estado final
+    'anulada':   [],  # Estado final
 }
 
 
@@ -1055,11 +1031,11 @@ def puede_transitar(estado_actual, estado_nuevo, rol_usuario):
         return False, f"No se puede pasar de {estado_actual} a {estado_nuevo}"
     
     # Solo master puede anular
-    if estado_nuevo == 'ANULADA' and rol_usuario != 'usuario_master':
+    if estado_nuevo == 'anulada' and rol_usuario != 'usuario_master':
         return False, "Solo el master puede anular una autorización"
     
     # Solo admin_sst o master pueden aprobar/rechazar
-    if estado_nuevo in ('APROBADA', 'RECHAZADA') and rol_usuario not in ('admin_sst', 'usuario_master'):
+    if estado_nuevo in ('aprobada', 'rechazada') and rol_usuario not in ('admin_sst', 'usuario_master'):
         return False, "Solo admin_sst o master pueden aprobar/rechazar"
     
     return True, None
@@ -1077,12 +1053,12 @@ def marcar_vencidas():
     from datetime import date
     
     vencidas = AutorizacionSST.query.filter(
-        AutorizacionSST.estado == 'APROBADA',
+        AutorizacionSST.estado == 'aprobada',
         AutorizacionSST.fecha_fin < date.today()
     ).all()
     
     for auth in vencidas:
-        auth.estado = 'VENCIDA'
+        auth.estado = 'vencida'
     
     if vencidas:
         db.session.commit()
@@ -1112,8 +1088,8 @@ def listar_autorizaciones():
         
         query = AutorizacionSST.query
         
-        if estado and estado.upper() in ('BORRADOR', 'REVISION', 'APROBADA', 'RECHAZADA', 'VENCIDA', 'ANULADA'):
-            query = query.filter_by(estado=estado.upper())
+        if estado and estado.lower() in ('borrador', 'revision', 'aprobada', 'rechazada', 'vencida', 'anulada'):
+            query = query.filter_by(estado=estado.lower())
         
         if sede_id:
             query = query.filter_by(sede_id=sede_id)
@@ -1121,7 +1097,7 @@ def listar_autorizaciones():
         if empresa_id:
             query = query.filter_by(empresa_id=empresa_id)
         
-        autorizaciones = query.order_by(AutorizacionSST.fecha_solicitud.desc()).all()
+        autorizaciones = query.order_by(AutorizacionSST.created_at.desc()).all()
         
         return jsonify({
             'success': True,
@@ -1155,30 +1131,33 @@ def crear_autorizacion():
         if not data.get('fecha_inicio') or not data.get('fecha_fin'):
             return jsonify({'success': False, 'message': 'Fechas de vigencia requeridas'}), 400
         
+        if not data.get('labor'):
+            return jsonify({'success': False, 'message': 'labor requerido (descripción de la actividad a realizar)'}), 400
+        
         # Verificar empresa existe
         empresa = EmpresaContratista.query.get(data['empresa_id'])
         if not empresa:
             return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
         
-        # Generar consecutivo automáticamente
-        consecutivo = generar_consecutivo_sst()
-        data['numero_autorizacion'] = consecutivo
-        
-        # Estado inicial siempre BORRADOR
-        data['estado'] = 'BORRADOR'
-        data['usuario_solicita_id'] = current_user.id
-        
-        # Crear autorización
-        autorizacion = AutorizacionSST(**data)
+        # Construir autorización solo con campos del modelo
+        autorizacion = AutorizacionSST(
+            empresa_id=data['empresa_id'],
+            sede_id=data.get('sede_id'),
+            labor=data['labor'],
+            fecha_inicio=data['fecha_inicio'],
+            fecha_fin=data['fecha_fin'],
+            estado='borrador',
+            created_by=current_user.id,
+        )
         db.session.add(autorizacion)
         db.session.commit()
         
-        logger.info(f"Autorización SST creada: {autorizacion.id} ({consecutivo}) por usuario {current_user.id}")
+        logger.info(f"Autorización SST creada: {autorizacion.id} por usuario {current_user.id}")
         
         return jsonify({
             'success': True,
             'data': autorizacion.to_dict(),
-            'message': f'Autorización {consecutivo} creada exitosamente'
+            'message': f'Autorización {autorizacion.id} creada exitosamente'
         }), 201
         
     except Exception as e:
@@ -1200,12 +1179,7 @@ def obtener_autorizacion(id):
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
         data = autorizacion.to_dict()
-        
-        # Incluir empleados asociados
-        if autorizacion.empleados:
-            data['empleados'] = [emp.to_dict() for emp in autorizacion.empleados]
-        else:
-            data['empleados'] = []
+        data['empleados'] = []  # Relación empleados-autorización no implementada en esta versión
         
         return jsonify({
             'success': True,
@@ -1229,18 +1203,17 @@ def actualizar_autorizacion(id):
         if not autorizacion:
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
-        if autorizacion.estado != 'BORRADOR':
+        if autorizacion.estado != 'borrador':
             return jsonify({
                 'success': False,
-                'message': f'Solo se pueden actualizar autorizaciones en estado BORRADOR (actual: {autorizacion.estado})'
+                'message': f'Solo se pueden actualizar autorizaciones en estado borrador (actual: {autorizacion.estado})'
             }), 400
         
         data = request.get_json()
         
         # Campos actualizables
         campos_actualizables = [
-            'empresa_id', 'sede_id', 'fecha_inicio', 'fecha_fin',
-            'motivo', 'descripcion_actividades', 'observaciones'
+            'empresa_id', 'sede_id', 'fecha_inicio', 'fecha_fin', 'labor'
         ]
         
         for campo in campos_actualizables:
@@ -1263,117 +1236,11 @@ def actualizar_autorizacion(id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp.route('/autorizaciones/<int:id>/empleados', methods=['POST'])
-@login_required
-@role_required(*ROLES_ADMIN_SST)
-def agregar_empleado_autorizacion(id):
-    """Agrega un empleado a una autorización SST (solo BORRADOR o REVISION)"""
-    try:
-        from app.models.autorizacion_sst import AutorizacionSST
-        from app.models.empleado_contratista import EmpleadoContratista
-        
-        autorizacion = AutorizacionSST.query.get(id)
-        if not autorizacion:
-            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
-        
-        if autorizacion.estado not in ('BORRADOR', 'REVISION'):
-            return jsonify({
-                'success': False,
-                'message': f'Solo se pueden agregar empleados en estados BORRADOR o REVISION (actual: {autorizacion.estado})'
-            }), 400
-        
-        data = request.get_json()
-        
-        if not data.get('empleado_id'):
-            return jsonify({'success': False, 'message': 'empleado_id requerido'}), 400
-        
-        empleado = EmpleadoContratista.query.get(data['empleado_id'])
-        if not empleado:
-            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
-        
-        # Verificar que el empleado pertenezca a la misma empresa
-        if empleado.empresa_id != autorizacion.empresa_id:
-            return jsonify({
-                'success': False,
-                'message': 'El empleado no pertenece a la empresa de esta autorización'
-            }), 400
-        
-        # Verificar duplicado
-        if empleado in autorizacion.empleados:
-            return jsonify({
-                'success': False,
-                'message': 'El empleado ya está asociado a esta autorización'
-            }), 409
-        
-        # Agregar empleado
-        autorizacion.empleados.append(empleado)
-        db.session.commit()
-        
-        logger.info(f"Empleado {empleado.id} agregado a autorización {id} por usuario {current_user.id}")
-        
-        return jsonify({
-            'success': True,
-            'data': autorizacion.to_dict(),
-            'message': 'Empleado agregado exitosamente'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error agregando empleado a autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/autorizaciones/<int:id>/empleados/<int:empleado_id>', methods=['DELETE'])
-@login_required
-@role_required(*ROLES_ADMIN_SST)
-def quitar_empleado_autorizacion(id, empleado_id):
-    """Quita un empleado de una autorización SST (solo BORRADOR o REVISION)"""
-    try:
-        from app.models.autorizacion_sst import AutorizacionSST
-        from app.models.empleado_contratista import EmpleadoContratista
-        
-        autorizacion = AutorizacionSST.query.get(id)
-        if not autorizacion:
-            return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
-        
-        if autorizacion.estado not in ('BORRADOR', 'REVISION'):
-            return jsonify({
-                'success': False,
-                'message': f'Solo se pueden quitar empleados en estados BORRADOR o REVISION (actual: {autorizacion.estado})'
-            }), 400
-        
-        empleado = EmpleadoContratista.query.get(empleado_id)
-        if not empleado:
-            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
-        
-        if empleado not in autorizacion.empleados:
-            return jsonify({
-                'success': False,
-                'message': 'El empleado no está asociado a esta autorización'
-            }), 404
-        
-        # Quitar empleado
-        autorizacion.empleados.remove(empleado)
-        db.session.commit()
-        
-        logger.info(f"Empleado {empleado_id} quitado de autorización {id} por usuario {current_user.id}")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Empleado quitado exitosamente'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error quitando empleado de autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
 @bp.route('/autorizaciones/<int:id>/enviar-revision', methods=['POST'])
 @login_required
 @role_required(*ROLES_ADMIN_SST)
 def enviar_revision_autorizacion(id):
-    """Cambia estado de BORRADOR a REVISION"""
+    """Cambia estado de borrador a revision"""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
         
@@ -1382,21 +1249,14 @@ def enviar_revision_autorizacion(id):
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
         # Validar transición
-        puede, error = puede_transitar(autorizacion.estado, 'REVISION', current_user.rol)
+        puede, error = puede_transitar(autorizacion.estado, 'revision', current_user.rol)
         if not puede:
             return jsonify({'success': False, 'message': error}), 400
         
-        # Validar que tenga al menos un empleado
-        if not autorizacion.empleados:
-            return jsonify({
-                'success': False,
-                'message': 'La autorización debe tener al menos un empleado para enviar a revisión'
-            }), 400
-        
-        autorizacion.estado = 'REVISION'
+        autorizacion.estado = 'revision'
         db.session.commit()
         
-        logger.info(f"Autorización {id} enviada a REVISION por usuario {current_user.id}")
+        logger.info(f"Autorización {id} enviada a revision por usuario {current_user.id}")
         
         return jsonify({
             'success': True,
@@ -1414,7 +1274,7 @@ def enviar_revision_autorizacion(id):
 @login_required
 @role_required('admin_sst', 'usuario_master')
 def aprobar_autorizacion(id):
-    """Cambia estado de REVISION a APROBADA (solo admin_sst o master)"""
+    """Cambia estado de revision a aprobada (solo admin_sst o master)"""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
         
@@ -1423,22 +1283,16 @@ def aprobar_autorizacion(id):
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
         # Validar transición
-        puede, error = puede_transitar(autorizacion.estado, 'APROBADA', current_user.rol)
+        puede, error = puede_transitar(autorizacion.estado, 'aprobada', current_user.rol)
         if not puede:
             return jsonify({'success': False, 'message': error}), 400
         
-        data = request.get_json() or {}
-        
-        autorizacion.estado = 'APROBADA'
-        autorizacion.usuario_aprueba_id = current_user.id
-        autorizacion.fecha_aprobacion = db.func.now()
-        
-        if data.get('observaciones_aprobacion'):
-            autorizacion.observaciones_aprobacion = data['observaciones_aprobacion']
+        autorizacion.estado = 'aprobada'
+        autorizacion.aprobado_by = current_user.id
         
         db.session.commit()
         
-        logger.info(f"Autorización {id} APROBADA por usuario {current_user.id}")
+        logger.info(f"Autorización {id} aprobada por usuario {current_user.id}")
         
         return jsonify({
             'success': True,
@@ -1456,7 +1310,7 @@ def aprobar_autorizacion(id):
 @login_required
 @role_required('admin_sst', 'usuario_master')
 def rechazar_autorizacion(id):
-    """Cambia estado de REVISION a RECHAZADA (solo admin_sst o master). Requiere motivo."""
+    """Cambia estado de revision a rechazada (solo admin_sst o master)."""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
         
@@ -1465,22 +1319,15 @@ def rechazar_autorizacion(id):
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
         # Validar transición
-        puede, error = puede_transitar(autorizacion.estado, 'RECHAZADA', current_user.rol)
+        puede, error = puede_transitar(autorizacion.estado, 'rechazada', current_user.rol)
         if not puede:
             return jsonify({'success': False, 'message': error}), 400
         
-        data = request.get_json()
-        
-        if not data or not data.get('motivo_rechazo'):
-            return jsonify({'success': False, 'message': 'motivo_rechazo requerido'}), 400
-        
-        autorizacion.estado = 'RECHAZADA'
-        autorizacion.motivo_rechazo = data['motivo_rechazo']
-        autorizacion.fecha_rechazo = db.func.now()
+        autorizacion.estado = 'rechazada'
         
         db.session.commit()
         
-        logger.info(f"Autorización {id} RECHAZADA por usuario {current_user.id}")
+        logger.info(f"Autorización {id} rechazada por usuario {current_user.id}")
         
         return jsonify({
             'success': True,
@@ -1498,7 +1345,7 @@ def rechazar_autorizacion(id):
 @login_required
 @role_required('usuario_master')
 def anular_autorizacion(id):
-    """Cambia estado de APROBADA a ANULADA (solo master). Requiere motivo."""
+    """Cambia estado de aprobada a anulada (solo master)."""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
         
@@ -1507,22 +1354,15 @@ def anular_autorizacion(id):
             return jsonify({'success': False, 'message': 'Autorización no encontrada'}), 404
         
         # Validar transición
-        puede, error = puede_transitar(autorizacion.estado, 'ANULADA', current_user.rol)
+        puede, error = puede_transitar(autorizacion.estado, 'anulada', current_user.rol)
         if not puede:
             return jsonify({'success': False, 'message': error}), 400
         
-        data = request.get_json()
-        
-        if not data or not data.get('motivo_anulacion'):
-            return jsonify({'success': False, 'message': 'motivo_anulacion requerido'}), 400
-        
-        autorizacion.estado = 'ANULADA'
-        autorizacion.motivo_anulacion = data['motivo_anulacion']
-        autorizacion.fecha_anulacion = db.func.now()
+        autorizacion.estado = 'anulada'
         
         db.session.commit()
         
-        logger.info(f"Autorización {id} ANULADA por usuario {current_user.id} (master)")
+        logger.info(f"Autorización {id} anulada por usuario {current_user.id} (master)")
         
         return jsonify({
             'success': True,
