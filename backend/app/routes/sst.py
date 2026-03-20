@@ -765,3 +765,233 @@ def actualizar_certificado(id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+# ============================================================
+# HELPERS: Planillas
+# ============================================================
+def validar_planilla(data):
+    """
+    Valida que las observaciones estén presentes cuando aporta_*=False.
+    
+    Args:
+        data (dict): Datos de la planilla
+    
+    Returns:
+        tuple: (es_valido: bool, mensaje_error: str|None)
+    """
+    # Si aporta_salud=False → observacion_salud obligatorio
+    # Si aporta_pension=False → observacion_pension obligatorio
+    # Si aporta_arl=False → observacion_arl obligatorio
+    for campo in ('salud', 'pension', 'arl'):
+        if not data.get(f'aporta_{campo}', True):  # Default True si no viene el campo
+            if not data.get(f'observacion_{campo}'):
+                return False, f'observacion_{campo} requerido cuando aporta_{campo}=False'
+    return True, None
+
+
+# ============================================================
+# ENDPOINTS: CRUD PLANILLAS DE SEGURIDAD SOCIAL
+# ============================================================
+
+@bp.route('/planillas', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_planillas():
+    """Lista planillas de seguridad social con filtros opcionales"""
+    try:
+        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from datetime import date
+        
+        empresa_id = request.args.get('empresa_id', type=int)
+        vigente = request.args.get('vigente')  # true | false
+        
+        query = PlanillaSeguridadSocial.query
+        
+        if empresa_id:
+            query = query.filter_by(empresa_id=empresa_id)
+        
+        if vigente and vigente.lower() == 'true':
+            query = query.filter(PlanillaSeguridadSocial.vigencia_hasta >= date.today())
+        elif vigente and vigente.lower() == 'false':
+            query = query.filter(PlanillaSeguridadSocial.vigencia_hasta < date.today())
+        
+        planillas = query.order_by(PlanillaSeguridadSocial.fecha_pago.desc()).all()
+        
+        # Agregar campo vigente calculado
+        data = []
+        for planilla in planillas:
+            plan_dict = planilla.to_dict()
+            plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+            data.append(plan_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'total': len(data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando planillas SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/planillas', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def crear_planilla():
+    """Registra una nueva planilla de seguridad social con cálculo automático de vigencia"""
+    try:
+        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.empresa_contratista import EmpresaContratista
+        from datetime import date, timedelta
+        
+        data = request.get_json()
+        
+        # Validaciones
+        if not data.get('empresa_id'):
+            return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
+        
+        if not data.get('fecha_pago'):
+            return jsonify({'success': False, 'message': 'fecha_pago requerido'}), 400
+        
+        # Validar empresa existe
+        empresa = EmpresaContratista.query.get(data['empresa_id'])
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+        
+        # Validar observaciones según aportes
+        es_valido, error = validar_planilla(data)
+        if not es_valido:
+            return jsonify({'success': False, 'message': error}), 400
+        
+        # LÓGICA CRÍTICA: Calcular vigencia_hasta automáticamente
+        fecha_pago = date.fromisoformat(data['fecha_pago'])
+        vigencia_hasta = fecha_pago + timedelta(days=30)
+        
+        # Agregar vigencia_hasta a los datos
+        data['vigencia_hasta'] = vigencia_hasta.isoformat()
+        
+        # Crear planilla
+        planilla = PlanillaSeguridadSocial(**data)
+        db.session.add(planilla)
+        db.session.commit()
+        
+        logger.info(f"Planilla creada: {planilla.id} para empresa {empresa.id} por usuario {current_user.id}")
+        
+        plan_dict = planilla.to_dict()
+        plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+        
+        return jsonify({
+            'success': True,
+            'data': plan_dict,
+            'message': 'Planilla registrada exitosamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creando planilla SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/planillas/<int:id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_planilla(id):
+    """Obtiene detalle de una planilla de seguridad social"""
+    try:
+        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from datetime import date
+        
+        planilla = PlanillaSeguridadSocial.query.get(id)
+        if not planilla:
+            return jsonify({'success': False, 'message': 'Planilla no encontrada'}), 404
+        
+        plan_dict = planilla.to_dict()
+        plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+        
+        return jsonify({
+            'success': True,
+            'data': plan_dict
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo planilla {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/planillas/empresa/<int:empresa_id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_planillas_empresa(empresa_id):
+    """Obtiene todas las planillas de una empresa"""
+    try:
+        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.empresa_contratista import EmpresaContratista
+        from datetime import date
+        
+        empresa = EmpresaContratista.query.get(empresa_id)
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+        
+        planillas = PlanillaSeguridadSocial.query.filter_by(empresa_id=empresa_id).order_by(
+            PlanillaSeguridadSocial.fecha_pago.desc()
+        ).all()
+        
+        # Agregar campo vigente
+        data = []
+        for planilla in planillas:
+            plan_dict = planilla.to_dict()
+            plan_dict['vigente'] = planilla.vigencia_hasta >= date.today()
+            data.append(plan_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'empresa': empresa.to_dict(),
+            'total': len(data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo planillas de empresa {empresa_id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/planillas/vigentes/<int:empresa_id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_planillas_vigentes_empresa(empresa_id):
+    """Obtiene solo las planillas vigentes (hoy) de una empresa"""
+    try:
+        from app.models.planilla_seguridad_social import PlanillaSeguridadSocial
+        from app.models.empresa_contratista import EmpresaContratista
+        from datetime import date
+        
+        empresa = EmpresaContratista.query.get(empresa_id)
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+        
+        hoy = date.today()
+        planillas = PlanillaSeguridadSocial.query.filter(
+            PlanillaSeguridadSocial.empresa_id == empresa_id,
+            PlanillaSeguridadSocial.vigencia_hasta >= hoy
+        ).order_by(PlanillaSeguridadSocial.fecha_pago.desc()).all()
+        
+        # Todas son vigentes por definición del filtro
+        data = []
+        for planilla in planillas:
+            plan_dict = planilla.to_dict()
+            plan_dict['vigente'] = True
+            data.append(plan_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'empresa': empresa.to_dict(),
+            'total': len(data),
+            'fecha_consulta': hoy.isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo planillas vigentes de empresa {empresa_id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
