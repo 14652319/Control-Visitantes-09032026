@@ -1667,7 +1667,8 @@ def listar_empleados_activos():
         # Query principal con eager loading (previene N+1)
         query = db.session.query(LogIngresoContratista).options(
             joinedload(LogIngresoContratista.empleado)
-            .joinedload(EmpleadoContratista.empresa)
+            .joinedload(EmpleadoContratista.empresa),
+            joinedload(LogIngresoContratista.sede)
         ).join(
             subquery,
             (LogIngresoContratista.id == subquery.c.max_id) &
@@ -1700,6 +1701,11 @@ def listar_empleados_activos():
                 'id': empresa.id,
                 'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else empresa.nombre_completo_persona_natural,
             } if empresa else None
+            
+            item['sede'] = {
+                'id': log.sede_id,
+                'nombre': log.sede.nombre if log.sede else None
+            } if log.sede_id else None
             
             resultado.append(item)
         

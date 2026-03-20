@@ -24,6 +24,7 @@ class LogIngresoContratista(db.Model):
 
     empleado = db.relationship('EmpleadoContratista', back_populates='ingresos')
     autorizacion_sst = db.relationship('AutorizacionSST', back_populates='ingresos')
+    sede = db.relationship('Sede')
 
     def to_dict(self):
         return {

@@ -209,16 +209,16 @@
                                                 <p class="text-sm text-gray-500" x-text="ing.empleado?.tipo_id + '-' + ing.empleado?.num_id"></p>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <p class="text-sm" x-text="ing.empleado?.empresa?.razon_social || ing.empleado?.empresa?.nombre_completo_persona_natural || 'N/A'"></p>
+                                                <p class="text-sm" x-text="ing.empresa?.nombre || 'N/A'"></p>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <p class="font-medium text-orange-600" x-text="'#' + ing.autorizacion_id"></p>
+                                                <p class="font-medium text-orange-600" x-text="'#' + ing.autorizacion_sst_id"></p>
                                             </td>
                                             <td class="px-4 py-3">
                                                 <p class="text-sm" x-text="ing.sede?.nombre || 'N/A'"></p>
                                             </td>
                                             <td class="px-4 py-3">
-                                                <p class="text-sm font-mono" x-text="new Date(ing.fecha_hora_ingreso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })"></p>
+                                                <p class="text-sm font-mono" x-text="new Date(ing.timestamp_evento).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })"></p>
                                             </td>
                                         </tr>
                                     </template>
