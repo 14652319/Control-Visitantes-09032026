@@ -412,6 +412,30 @@ const apiClient = {
             });
         },
 
+        // --- PDF ---
+        async generarPdf(autorizacionId) {
+            return await apiClient.request(`/sst/autorizaciones/${autorizacionId}/generar-pdf`, { method: 'POST' });
+        },
+        async descargarPdf(autorizacionId) {
+            const response = await fetch(`${API_URL}/sst/autorizaciones/${autorizacionId}/descargar-pdf`, {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `SST-${new Date().getFullYear()}-${String(autorizacionId).padStart(4, '0')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                return { success: true };
+            }
+            const data = await response.json();
+            throw new Error(data.message || 'Error descargando PDF');
+        },
+
         // --- Ingresos ---
         async listarIngresos(params = {}) {
             const q = new URLSearchParams(params).toString();

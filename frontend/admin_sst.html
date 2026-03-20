@@ -477,10 +477,20 @@
                                                 </button>
                                             </div>
                                         </template>
-                                        <template x-if="aut.estado === 'aprobada' && usuario.rol === 'usuario_master'">
-                                            <button @click="anular(aut.id)" class="text-red-800 hover:text-red-900" title="Anular">
-                                                <i class="fas fa-ban"></i>
-                                            </button>
+                                        <template x-if="aut.estado === 'aprobada'">
+                                            <div class="flex space-x-2">
+                                                <button @click="generarPdfAutorizacion(aut)" class="text-blue-600 hover:text-blue-800" title="Generar PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                                <button x-show="aut.pdf_ruta" @click="descargarPdfAutorizacion(aut)" class="text-green-600 hover:text-green-800" title="Descargar PDF">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                                <template x-if="usuario.rol === 'usuario_master'">
+                                                    <button @click="anular(aut.id)" class="text-red-800 hover:text-red-900" title="Anular">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                </template>
+                                            </div>
                                         </template>
                                     </td>
                                 </tr>
@@ -1283,11 +1293,33 @@
             },
             
             async anular(id) {
-                if (!confirm('⚠️ ¿ANULAR esta autorización? Esta acción no se puede deshacer.')) return;
+                if (!confirm('¿ANULAR esta autorización? Esta acción no se puede deshacer.')) return;
                 try {
                     await apiClient.sst.anularAutorizacion(id);
                     await this.cargarAutorizaciones();
                     alert('Autorización anulada');
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+
+            async generarPdfAutorizacion(aut) {
+                try {
+                    this.cargando = true;
+                    const resp = await apiClient.sst.generarPdf(aut.id);
+                    alert('PDF generado: ' + resp.data.consecutivo);
+                    await apiClient.sst.descargarPdf(aut.id);
+                    await this.cargarAutorizaciones();
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                } finally {
+                    this.cargando = false;
+                }
+            },
+
+            async descargarPdfAutorizacion(aut) {
+                try {
+                    await apiClient.sst.descargarPdf(aut.id);
                 } catch(e) {
                     alert('Error: ' + e.message);
                 }
