@@ -352,24 +352,24 @@ Este proyecto incluye documentación profesional exhaustiva (~6,150 líneas):
 
 | Documento | Descripción | Audiencia |
 |-----------|-------------|-----------|
-| **[DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md)** | 📋 Índice completo de toda la documentación | Todos |
-| **[RESUMEN_FULL_STACK.md](RESUMEN_FULL_STACK.md)** | 🏆 Evaluación 10.0/10 y certificación enterprise | Gerencia/PM |
-| **[RESUMEN_COMPLETO.md](RESUMEN_COMPLETO.md)** | 🔍 Estado actual detallado del proyecto | Técnicos |
-| **[DEPLOY_PRODUCCION.md](DEPLOY_PRODUCCION.md)** | 🚀 Guía completa de despliegue a producción | DevOps |
+| **[docs/DOCUMENTACION_COMPLETA.md](docs/DOCUMENTACION_COMPLETA.md)** | 📋 Índice completo de toda la documentación | Todos |
+| **[docs/RESUMEN_FULL_STACK.md](docs/RESUMEN_FULL_STACK.md)** | 🏆 Evaluación 10.0/10 y certificación enterprise | Gerencia/PM |
+| **[docs/RESUMEN_COMPLETO.md](docs/RESUMEN_COMPLETO.md)** | 🔍 Estado actual detallado del proyecto | Técnicos |
+| **[docs/DEPLOY_PRODUCCION.md](docs/DEPLOY_PRODUCCION.md)** | 🚀 Guía completa de despliegue a producción | DevOps |
 | **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** | 🏗️ Arquitectura técnica y diagramas | Arquitectos |
 | **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** | 👥 Guía de contribución y estándares | Desarrolladores |
 | **[docs/api-spec.yaml](docs/api-spec.yaml)** | 🔌 Especificación OpenAPI 3.0 (47 endpoints) | Frontend/API |
 | **[docs/SENTRY_SETUP.md](docs/SENTRY_SETUP.md)** | 🐛 Configuración de monitoreo con Sentry | DevOps |
-| **[CHANGELOG.md](CHANGELOG.md)** | 📝 Historial de versiones y cambios | Todos |
+| **[docs/CHANGELOG.md](docs/CHANGELOG.md)** | 📝 Historial de versiones y cambios | Todos |
 
 ### 🎯 Guías Rápidas
 
 | Documento | Descripción |
 |-----------|-------------|
-| **[INICIO_RAPIDO.md](INICIO_RAPIDO.md)** | ⚡ Comandos y flujo diario de trabajo |
-| **[COMANDOS_RAPIDOS.md](COMANDOS_RAPIDOS.md)** | 📝 Referencia rápida de comandos |
-| **[CONFIGURACION_FOTOS.md](CONFIGURACION_FOTOS.md)** | 📷 Setup de cámara web |
-| **[CONSULTAS_SQL.sql](CONSULTAS_SQL.sql)** | 🗄️ Queries útiles de base de datos |
+| **[docs/INICIO_RAPIDO.md](docs/INICIO_RAPIDO.md)** | ⚡ Comandos y flujo diario de trabajo |
+| **[docs/COMANDOS_RAPIDOS.md](docs/COMANDOS_RAPIDOS.md)** | 📝 Referencia rápida de comandos |
+| **[docs/CONFIGURACION_FOTOS.md](docs/CONFIGURACION_FOTOS.md)** | 📷 Setup de cámara web |
+| **[docs/CONSULTAS_SQL.sql](docs/CONSULTAS_SQL.sql)** | 🗄️ Queries útiles de base de datos |
 
 ### 🏆 Certificación de Calidad
 

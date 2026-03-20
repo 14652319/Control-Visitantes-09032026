@@ -5,7 +5,7 @@ echo Sistema de Control de Visitantes
 echo ====================================
 echo.
 
-cd backend
+cd /d "%~dp0..\backend"
 
 echo [1/2] Activando entorno virtual...
 call ..\.venv\Scripts\activate.bat
