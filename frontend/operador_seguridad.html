@@ -165,13 +165,92 @@
                     </div>
                 </div>
                 
-                <!-- Tab: Personal en Instalaciones (Placeholder para CHECKPOINT 3.3.6) -->
-                <div x-show="tabActiva === 'activos'" class="bg-white rounded-xl shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-building mr-2 text-orange-600"></i>
-                        Personal de Contratistas en Instalaciones
-                    </h2>
-                    <p class="text-gray-600">Esta sección se implementa en CHECKPOINT 3.3.6</p>
+                <!-- Tab: Personal en Instalaciones -->
+                <div x-show="tabActiva === 'activos'" class="space-y-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">
+                                <i class="fas fa-building mr-2 text-orange-600"></i>
+                                Personal de Contratistas en Instalaciones
+                            </h2>
+                            <button @click="cargarIngresosActivos()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4 text-gray-600">
+                            <span class="font-semibold">Total activos:</span> 
+                            <span class="text-2xl font-bold text-orange-600" x-text="ingresosActivos.length"></span>
+                        </div>
+                        
+                        <!-- Tabla Personal Activo -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white border rounded-lg">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left">
+                                            <input type="checkbox" @change="toggleSeleccionarTodos()" class="w-5 h-5 cursor-pointer">
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Empleado</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Empresa</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Autorización</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sede</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Hora Ingreso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="ing in ingresosActivos" :key="ing.id">
+                                        <tr class="border-b hover:bg-gray-50">
+                                            <td class="px-4 py-3">
+                                                <input type="checkbox" x-model="ing.seleccionado" class="w-5 h-5 cursor-pointer">
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="font-semibold" x-text="ing.empleado?.nombre_completo || 'N/A'"></p>
+                                                <p class="text-sm text-gray-500" x-text="ing.empleado?.tipo_id + '-' + ing.empleado?.num_id"></p>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="text-sm" x-text="ing.empleado?.empresa?.razon_social || ing.empleado?.empresa?.nombre_completo_persona_natural || 'N/A'"></p>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="font-medium text-orange-600" x-text="'#' + ing.autorizacion_id"></p>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="text-sm" x-text="ing.sede?.nombre || 'N/A'"></p>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="text-sm font-mono" x-text="new Date(ing.fecha_hora_ingreso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })"></p>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            
+                            <!-- Empty state -->
+                            <div x-show="ingresosActivos.length === 0" class="text-center py-12">
+                                <i class="fas fa-inbox text-gray-400 text-6xl mb-4"></i>
+                                <p class="text-gray-500 text-lg">No hay personal de contratistas en las instalaciones</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Formulario Registro Salida -->
+                        <div x-show="ingresosActivos.length > 0" class="mt-6 border-t pt-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-door-open mr-2 text-red-600"></i>
+                                Registrar Salida
+                            </h3>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones de salida (opcional)</label>
+                                <textarea x-model="observacionesSalida" rows="2" class="w-full px-4 py-2 border rounded-lg" placeholder="Ingrese observaciones sobre la salida si es necesario..."></textarea>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button @click="registrarSalidas()" class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-bold text-lg">
+                                    <i class="fas fa-door-open mr-2"></i>Registrar Salida de Seleccionados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -201,12 +280,16 @@
             // Datos maestros
             ingresosActivos: [],
             sedes: [],
+            observacionesSalida: '',
 
             async init() {
                 sessionManager.init();
                 await this.verificarAuth();
                 await this.cargarSedes();
                 await this.cargarIngresosActivos();
+                
+                // Auto-refresh cada 60 segundos
+                setInterval(() => this.cargarIngresosActivos(), 60000);
             },
 
             async verificarAuth() {
@@ -232,9 +315,9 @@
             
             async cargarIngresosActivos() {
                 try {
-                    const resp = await apiClient.sst.listarIngresos({ activos: true });
+                    const resp = await apiClient.sst.ingresosActivos();
                     if (resp.success) {
-                        this.ingresosActivos = resp.data;
+                        this.ingresosActivos = (resp.data || []).map(ing => ({ ...ing, seleccionado: false }));
                     }
                 } catch(e) {
                     console.error('Error cargando ingresos activos:', e);
@@ -356,6 +439,49 @@
                 } catch(e) {
                     alert('Error al registrar ingreso: ' + e.message);
                 }
+            },
+            
+            async registrarSalidas() {
+                const seleccionados = this.ingresosActivos.filter(i => i.seleccionado);
+                
+                if (seleccionados.length === 0) {
+                    alert('Seleccione al menos un empleado');
+                    return;
+                }
+                
+                if (!confirm(`¿Registrar salida de ${seleccionados.length} empleado(s)?`)) {
+                    return;
+                }
+                
+                let exitosos = 0;
+                let errores = [];
+                
+                for (const ing of seleccionados) {
+                    try {
+                        await apiClient.sst.registrarSalida(ing.id, {
+                            observaciones: this.observacionesSalida || ''
+                        });
+                        exitosos++;
+                    } catch(e) {
+                        errores.push(`${ing.empleado?.nombre_completo || ing.id}: ${e.message}`);
+                    }
+                }
+                
+                if (exitosos > 0) {
+                    alert(`✅ ${exitosos} salida(s) registrada(s)`);
+                }
+                
+                if (errores.length > 0) {
+                    alert('Errores:\n' + errores.join('\n'));
+                }
+                
+                this.observacionesSalida = '';
+                await this.cargarIngresosActivos();
+            },
+            
+            toggleSeleccionarTodos() {
+                const todos = this.ingresosActivos.every(i => i.seleccionado);
+                this.ingresosActivos.forEach(i => i.seleccionado = !todos);
             },
 
             async logout() {
