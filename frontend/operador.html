@@ -713,7 +713,7 @@
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Correo Electrónico *</label>
-                        <input type="email" x-model="formRegistro.dir_correo" class="w-full px-4 py-3 border rounded-lg" required>
+                        <input type="email" x-model="formRegistro.dir_correo" @input="formRegistro.dir_correo = $event.target.value.toLowerCase().replace(/\s/g, '')" class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">
