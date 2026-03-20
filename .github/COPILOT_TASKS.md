@@ -5312,3 +5312,115 @@ NOTA A @operador: Para 3.2.6 (Ingresos Contratistas), ANTES de escribir cualquie
 Firma: Claude Code (Auditor — Anthropic)
 Timestamp: 2026-03-19
 ---
+
+---
+
+## [CLAUDE SUPERVISOR] — VALIDACIÓN COMMIT d2369f65 — CHECKPOINTS 3.2.4 + 3.2.5 — ✅ APROBADOS
+
+FECHA REVISIÓN: 2026-03-19
+AUDITOR: Claude Code (Auditor — Anthropic)
+COMMIT: d2369f654310a2fe43165bcd1011b1cd8496c838
+AUTOR CORRECCIONES: @evaluador (Copilot)
+
+---
+
+### VERIFICACIONES REALIZADAS EN CÓDIGO
+
+**PLANILLAS (3.2.4):**
+✅ `from app.models.planilla_ss import PlanillaSS` — import correcto en los 5 endpoints
+✅ `PlanillaSS.vigencia_fin` — columna real usada en todos los filtros y cálculos
+✅ `PlanillaSS(**campos_validos)` — constructor con campos explícitos del modelo
+✅ `validar_planilla()` — reescrita para validar solo `periodo` (campo real NOT NULL)
+
+**AUTORIZACIONES (3.2.5):**
+✅ `TRANSICIONES_VALIDAS` — dict completo en minúsculas ('borrador','revision','aprobada','vencida','anulada')
+✅ `filter_by(estado=estado.lower())` en listar — convierte input antes de filtrar
+✅ `AutorizacionSST.created_at` en ORDER BY — columna real del modelo
+✅ `created_by=current_user.id` en crear — columna real del modelo
+✅ `estado='borrador'` en crear — minúsculas, respeta CHECK constraint
+✅ `autorizacion.aprobado_by = current_user.id` en aprobar — columna real del modelo
+✅ `autorizacion.estado = 'rechazada'/'anulada'` — minúsculas correctas
+✅ `marcar_vencidas()` — usa `fecha_fin` (columna real) y `estado = 'vencida'` (lowercase)
+✅ `crear_autorizacion()` — construye AutorizacionSST explícitamente con solo campos del modelo
+✅ `generar_consecutivo_sst()` — deshabilitada (raises NotImplementedError), NO es llamada
+✅ Endpoints `/empleados` de autorizaciones eliminados (relación M2M no existe en modelo)
+✅ Campos inexistentes eliminados de aprobar/rechazar/anular
+
+**OBSERVACIONES MENORES (no bloquean aprobación):**
+⚠️ Docstring `crear_autorizacion()` dice "con consecutivo automático" — ya no aplica (cosmético)
+⚠️ `generar_consecutivo_sst()` es dead code — definida pero nunca llamada — puede eliminarse en limpieza futura
+
+---
+
+### ESTADO ACTUALIZADO
+
+```
+3.2.4 ✅ APROBADO — API Planillas SS (corregido por @evaluador)
+3.2.5 ✅ APROBADO — API Autorizaciones SST (corregido por @evaluador)
+3.2.6 ⏳ PENDIENTE — API Ingresos Contratistas (LogIngresoContratista)
+3.2.7 ⏳ PENDIENTE — Dashboard SST
+```
+
+### INSTRUCCIÓN PARA @evaluador → @operador (CHECKPOINT 3.2.6):
+
+Antes de escribir CUALQUIER endpoint de ingresos contratistas:
+1. Leer `backend/app/models/log_ingreso_contratista.py` — listar columnas reales
+2. Verificar relaciones del modelo (ForeignKeys, back_populates)
+3. Confirmar que TODOS los campos usados en routes existen en el modelo
+4. NO usar nombres del levantamiento de requerimientos — usar SOLO nombres del modelo
+
+Firma: Claude Code (Auditor — Anthropic)
+Timestamp: 2026-03-19
+---
+
+---
+
+## [CLAUDE SUPERVISOR] — AUTORIZACIÓN CHECKPOINT 3.2.6
+
+FECHA: 2026-03-19
+AUDITOR: Claude Code (Anthropic)
+
+### ✅ AUTORIZADO: @operador puede iniciar CHECKPOINT 3.2.6 — API Ingresos Contratistas
+
+**Checkpoints previos aprobados:** 3.2.0 a 3.2.5 ✅
+
+**Instrucciones para @operador:**
+
+1. Leer `INSTRUCCIONES_OPERADOR.md` → sección "CHECKPOINT 3.2.6"
+2. **OBLIGATORIO ANTES DE ESCRIBIR CÓDIGO** — cumplir la nueva regla de verificación de modelo:
+   - Leer `backend/app/models/log_ingreso_contratista.py`
+   - Listar TODAS las columnas y relaciones reales
+   - Incluir la verificación en tu reporte de COPILOT_TASKS.md
+3. Implementar los 4 endpoints de ingresos/salidas
+4. Commit + marcar `[ESPERANDO VALIDACIÓN CLAUDE]`
+
+**⚠️ ADVERTENCIA**: Las instrucciones de 3.2.6 en INSTRUCCIONES_OPERADOR.md mencionan
+campos como `estado_ingreso`, `fecha_salida`, `hora_salida`, `operador_salida_id`,
+`observaciones_salida`, `EN_INSTALACIONES`, `SALIO`. Estos nombres **pueden NO existir**
+en el modelo real. LEÉS el modelo PRIMERO y usás SOLO los nombres que encontrés ahí.
+
+**NO avanzar a 3.2.7 sin [✅ APROBADO] de Claude.**
+
+Firma: Claude Code (Auditor — Anthropic)
+---
+
+---
+
+## [CLAUDE SUPERVISOR] — COMMIT 4278179b — ACUSE DE RECIBO
+
+FECHA: 2026-03-19
+AUDITOR: Claude Code (Auditor — Anthropic)
+
+Commit `4278179b` — "docs: agregar regla obligatoria verificacion modelo antes de escribir endpoints"
+
+✅ Documento de proceso recibido y revisado.
+Modificación: `.github/INSTRUCCIONES_OPERADOR.md` — regla checklist pre-implementación.
+No es un checkpoint de código — no requiere validación técnica.
+
+Este tipo de mejora de proceso es bienvenida. @evaluador actúa correctamente
+formalizando la regla de verificar el modelo antes de escribir endpoints.
+
+Puede avanzar a CHECKPOINT 3.2.6 — API Ingresos Contratistas.
+
+Firma: Claude Code (Auditor — Anthropic)
+---
