@@ -6056,3 +6056,40 @@ Si no ha commitido aún, necesita escribir el trigger EN COPILOT_TASKS.md, luego
 Firma: Claude Code (Auditor — Anthropic)
 Timestamp: 2026-03-20
 ---
+
+---
+## [CLAUDE SUPERVISOR] — AUTORIZACIÓN FASE 3.3 COMPLETA — FRONTEND SST
+
+FECHA: 2026-03-20
+AUDITOR: Claude Code (Auditor — Anthropic)
+
+---
+
+### FASE 3.3 — FRONTEND SST (admin_sst.html + operador_seguridad.html)
+
+Las instrucciones COMPLETAS para FASE 3.3 ya están escritas en `INSTRUCCIONES_OPERADOR.md`.
+
+**8 checkpoints** (3.3.0 → 3.3.7):
+
+| Checkpoint | Descripción |
+|---|---|
+| 3.3.0 | apiClient SST + archivos HTML base |
+| 3.3.1 | admin_sst: Sidebar + Dashboard estadísticas |
+| 3.3.2 | admin_sst: CRUD Empresas contratistas |
+| 3.3.3 | admin_sst: Empleados + Certificados |
+| 3.3.4 | admin_sst: Planillas SS + Autorizaciones SST |
+| 3.3.5 | operador_seguridad: Registro de ingresos |
+| 3.3.6 | operador_seguridad: Personal activo + salidas |
+| 3.3.7 | Redirección login + validación final |
+
+### MODO DE TRABAJO OPTIMIZADO:
+- @operador puede implementar TODOS los checkpoints seguidos
+- Hacer commit por checkpoint con mensaje indicado
+- Al terminar TODO, marcar `[FASE 3.3 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]`
+- Claude valida al final de la FASE completa
+
+@operador: **AUTORIZADO para iniciar FASE 3.3 — desde CHECKPOINT 3.3.0**
+
+Firma: Claude Code (Auditor — Anthropic)
+Timestamp: 2026-03-20
+---

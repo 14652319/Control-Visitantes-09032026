@@ -1935,6 +1935,1242 @@ git push origin feature/modulo-sst
 
 ---
 
+# ═══════════════════════════════════════════════════════════════
+# FASE 3.3 — FRONTEND SST (admin_sst.html + operador_seguridad.html)
+# Duración estimada: 8-12 días
+# Prerequisito: FASE 3.2 completa ✅
+# ═══════════════════════════════════════════════════════════════
+
+## CONTEXTO FASE 3.3
+
+Esta fase crea las 2 interfaces web del módulo SST:
+1. **admin_sst.html** — Panel del Administrador SST (gestión completa)
+2. **operador_seguridad.html** — Panel del Operador de Seguridad (ingresos/salidas)
+
+**Patrón a seguir**: Copiar la estructura de `admin.html` y `operador.html` existentes.
+
+**Stack frontend**: Tailwind CSS 3.x (CDN) + Alpine.js 3.x (CDN) + Font Awesome 6.x (CDN)
+
+**API base**: Todas las rutas están en `/api/sst/*` (ya implementadas en FASE 3.2)
+
+---
+
+## 🛑 REGLA OBLIGATORIA — VERIFICAR ENDPOINT ANTES DE ESCRIBIR FRONTEND
+
+ANTES de escribir CUALQUIER llamada a la API:
+
+1. Abrí `backend/app/routes/sst.py` y buscá el endpoint exacto
+2. Verificá: URL, método HTTP, query params, body esperado, response JSON
+3. Usá EXCLUSIVAMENTE los campos que devuelve `to_dict()` del modelo
+4. Si un campo no existe en la respuesta del endpoint → NO lo muestres
+
+**Campos REALES por modelo (to_dict()):**
+
+```
+EmpresaContratista: id, razon_social, nit, digito_verificacion, representante_legal,
+  telefono, email, direccion, ciudad, estado, tipo_persona, tipo_identificacion,
+  num_identificacion, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido,
+  created_at, updated_at, created_by, nombre_completo_persona_natural
+
+EmpleadoContratista: id, empresa_id, tipo_id, num_id, nombres, apellidos, cargo,
+  eps_id, afp_id, arl_id, estado, created_at, updated_at, nombre_completo
+
+CertificadoTrabajo: id, empleado_id, tipo_certificado, nombre_certificado,
+  fecha_expedicion, fecha_vencimiento, archivo_nombre, archivo_ruta, verificado, created_at
+  (+ estado_vigencia: VIGENTE|PROXIMO_VENCER|VENCIDO)
+
+PlanillaSS: id, empresa_id, periodo, fecha_pago, vigencia_fin, archivo_nombre,
+  archivo_ruta, estado, created_at, verificado_por, verificado_at
+  (+ vigente: true|false calculado en endpoint)
+
+AutorizacionSST: id, empresa_id, sede_id, labor, fecha_inicio, fecha_fin, estado,
+  pdf_ruta, created_by, aprobado_by, created_at, updated_at
+
+LogIngresoContratista: id, empleado_id, autorizacion_sst_id, sede_id, tipo_evento,
+  timestamp_evento, registrado_por, observaciones
+```
+
+---
+
+## CHECKPOINT 3.3.0 — apiClient SST + archivos base ⏱️ 2-3 horas
+
+### Qué hacer
+
+**PASO 1**: Agregar sección SST al apiClient en `frontend/assets/js/app.js`
+
+```javascript
+// ============================================================
+// SST — Módulo Seguridad y Salud en el Trabajo
+// ============================================================
+sst: {
+    // --- Operadores ---
+    async operadores(tipo) {
+        const q = tipo ? `?tipo=${tipo}` : '';
+        return await apiClient.request(`/sst/operadores${q}`);
+    },
+
+    // --- Empresas ---
+    async listarEmpresas(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/empresas${q ? '?' + q : ''}`);
+    },
+    async crearEmpresa(data) {
+        return await apiClient.request('/sst/empresas', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async obtenerEmpresa(id) {
+        return await apiClient.request(`/sst/empresas/${id}`);
+    },
+    async actualizarEmpresa(id, data) {
+        return await apiClient.request(`/sst/empresas/${id}`, {
+            method: 'PUT', body: JSON.stringify(data)
+        });
+    },
+    async buscarEmpresa(q) {
+        return await apiClient.request(`/sst/empresas/buscar?q=${encodeURIComponent(q)}`);
+    },
+
+    // --- Empleados ---
+    async listarEmpleados(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/empleados${q ? '?' + q : ''}`);
+    },
+    async crearEmpleado(data) {
+        return await apiClient.request('/sst/empleados', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async obtenerEmpleado(id) {
+        return await apiClient.request(`/sst/empleados/${id}`);
+    },
+    async actualizarEmpleado(id, data) {
+        return await apiClient.request(`/sst/empleados/${id}`, {
+            method: 'PUT', body: JSON.stringify(data)
+        });
+    },
+    async buscarEmpleado(tipo, num) {
+        return await apiClient.request(`/sst/empleados/buscar?tipo=${tipo}&num=${num}`);
+    },
+
+    // --- Certificados ---
+    async listarCertificados(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/certificados${q ? '?' + q : ''}`);
+    },
+    async crearCertificado(data) {
+        return await apiClient.request('/sst/certificados', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async certificadosEmpleado(empleadoId) {
+        return await apiClient.request(`/sst/certificados/empleado/${empleadoId}`);
+    },
+    async actualizarCertificado(id, data) {
+        return await apiClient.request(`/sst/certificados/${id}`, {
+            method: 'PUT', body: JSON.stringify(data)
+        });
+    },
+
+    // --- Planillas SS ---
+    async listarPlanillas(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/planillas${q ? '?' + q : ''}`);
+    },
+    async crearPlanilla(data) {
+        return await apiClient.request('/sst/planillas', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async obtenerPlanilla(id) {
+        return await apiClient.request(`/sst/planillas/${id}`);
+    },
+    async planillasEmpresa(empresaId) {
+        return await apiClient.request(`/sst/planillas/empresa/${empresaId}`);
+    },
+    async planillasVigentes(empresaId) {
+        return await apiClient.request(`/sst/planillas/vigentes/${empresaId}`);
+    },
+
+    // --- Autorizaciones ---
+    async listarAutorizaciones(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/autorizaciones${q ? '?' + q : ''}`);
+    },
+    async crearAutorizacion(data) {
+        return await apiClient.request('/sst/autorizaciones', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async obtenerAutorizacion(id) {
+        return await apiClient.request(`/sst/autorizaciones/${id}`);
+    },
+    async actualizarAutorizacion(id, data) {
+        return await apiClient.request(`/sst/autorizaciones/${id}`, {
+            method: 'PUT', body: JSON.stringify(data)
+        });
+    },
+    async enviarRevision(id) {
+        return await apiClient.request(`/sst/autorizaciones/${id}/enviar-revision`, { method: 'POST' });
+    },
+    async aprobarAutorizacion(id) {
+        return await apiClient.request(`/sst/autorizaciones/${id}/aprobar`, { method: 'POST' });
+    },
+    async rechazarAutorizacion(id) {
+        return await apiClient.request(`/sst/autorizaciones/${id}/rechazar`, { method: 'POST' });
+    },
+    async anularAutorizacion(id) {
+        return await apiClient.request(`/sst/autorizaciones/${id}/anular`, { method: 'POST' });
+    },
+
+    // --- Ingresos ---
+    async listarIngresos(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/ingresos${q ? '?' + q : ''}`);
+    },
+    async registrarIngreso(data) {
+        return await apiClient.request('/sst/ingresos', {
+            method: 'POST', body: JSON.stringify(data)
+        });
+    },
+    async registrarSalida(id, data = {}) {
+        return await apiClient.request(`/sst/ingresos/${id}/salida`, {
+            method: 'PUT', body: JSON.stringify(data)
+        });
+    },
+    async ingresosActivos(params = {}) {
+        const q = new URLSearchParams(params).toString();
+        return await apiClient.request(`/sst/ingresos/activos${q ? '?' + q : ''}`);
+    }
+}
+```
+
+Agregar este bloque DENTRO del objeto `apiClient`, ANTES del cierre `};` — al mismo nivel que `auth:`, `visitantes:`, `sedes:`, etc.
+
+**PASO 2**: Crear archivo `frontend/admin_sst.html` con estructura base (vacía, solo esqueleto):
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SST - Control de Contratistas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div x-data="adminSstApp()" x-init="init()" x-cloak class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col">
+            <!-- Se implementa en 3.3.1 -->
+            <div class="p-6 border-b border-blue-700">
+                <h1 class="font-bold text-lg text-center">SST - Contratistas</h1>
+                <p class="text-blue-300 text-xs text-center mt-1">Seguridad y Salud en el Trabajo</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="nav-placeholder">
+                <p class="text-blue-300 text-sm">Navegación — Checkpoint 3.3.1</p>
+            </nav>
+            <div class="p-4 border-t border-blue-700">
+                <p class="text-sm" x-text="usuario.nombre_completo || 'Cargando...'"></p>
+                <button @click="logout()" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <div id="content-placeholder">
+                <h2 class="text-2xl font-bold text-gray-800">Panel SST</h2>
+                <p class="text-gray-600 mt-2">Contenido se implementa en checkpoints 3.3.1 → 3.3.6</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function adminSstApp() {
+        return {
+            usuario: {},
+            seccion: 'inicio',
+            cargando: false,
+
+            async init() {
+                sessionManager.init();
+                await this.verificarAuth();
+            },
+
+            async verificarAuth() {
+                const usuarioLocal = localStorage.getItem('usuario');
+                if (!usuarioLocal) { this.irAlLogin(); return; }
+                this.usuario = JSON.parse(usuarioLocal);
+                // Solo roles SST admin
+                if (!['usuario_master', 'admin_sst'].includes(this.usuario.rol)) {
+                    alert('No tiene permisos para acceder a este panel');
+                    this.irAlLogin();
+                }
+            },
+
+            async logout() {
+                try { await apiClient.auth.logout(); } catch(e) {}
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            },
+
+            irAlLogin() {
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            }
+        }
+    }
+    </script>
+</body>
+</html>
+```
+
+**PASO 3**: Crear archivo `frontend/operador_seguridad.html` con estructura base (vacía):
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguridad - Control de Contratistas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div x-data="operadorSeguridadApp()" x-init="init()" x-cloak class="flex h-screen">
+        <!-- Header fijo (no sidebar — operador usa tabs como operador.html) -->
+        <div class="flex-1 flex flex-col">
+            <header class="bg-gradient-to-r from-orange-700 to-orange-600 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-hard-hat text-3xl"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Control de Contratistas</h1>
+                        <p class="text-orange-200 text-sm">Operador de Seguridad</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm" x-text="usuario.nombre_completo || ''"></span>
+                    <button @click="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Salir
+                    </button>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-6">
+                <p class="text-gray-600">Contenido se implementa en checkpoints 3.3.5 → 3.3.6</p>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    function operadorSeguridadApp() {
+        return {
+            usuario: {},
+            tabActiva: 'ingreso',
+            cargando: false,
+
+            async init() {
+                sessionManager.init();
+                await this.verificarAuth();
+            },
+
+            async verificarAuth() {
+                const usuarioLocal = localStorage.getItem('usuario');
+                if (!usuarioLocal) { this.irAlLogin(); return; }
+                this.usuario = JSON.parse(usuarioLocal);
+                if (!['usuario_master', 'operador_seguridad'].includes(this.usuario.rol)) {
+                    alert('No tiene permisos para acceder a este panel');
+                    this.irAlLogin();
+                }
+            },
+
+            async logout() {
+                try { await apiClient.auth.logout(); } catch(e) {}
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            },
+
+            irAlLogin() {
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            }
+        }
+    }
+    </script>
+</body>
+</html>
+```
+
+### Verificación
+```powershell
+# Verificar que los 3 archivos existen
+Test-Path frontend/admin_sst.html     # debe dar True
+Test-Path frontend/operador_seguridad.html  # debe dar True
+
+# Verificar que apiClient.sst existe en app.js
+Select-String -Path frontend/assets/js/app.js -Pattern "sst:" | Measure-Object
+# Esperado: al menos 1 match
+```
+
+### Commit
+```
+feat: esqueleto frontend SST + apiClient.sst — CHECKPOINT 3.3.0
+```
+
+---
+
+## CHECKPOINT 3.3.1 — admin_sst.html: Sidebar + Dashboard inicio ⏱️ 3-4 horas
+
+### Qué hacer
+
+Implementar en `frontend/admin_sst.html`:
+
+**PASO 1**: Sidebar de navegación completa (reemplazar `#nav-placeholder`):
+
+Secciones del sidebar:
+- 🏠 **Inicio** (Dashboard resumen)
+- 🏢 **Empresas** (Gestión empresas contratistas)
+- 👷 **Empleados** (Gestión empleados + certificados)
+- 📋 **Planillas SS** (Validación planillas seguridad social)
+- 📝 **Autorizaciones** (Gestión autorizaciones SST)
+
+Usar el mismo patrón de `admin.html`:
+```html
+<button
+    @click="seccion = 'empresas'"
+    :class="seccion === 'empresas' ? 'bg-blue-700' : 'hover:bg-blue-700'"
+    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
+>
+    <i class="fas fa-building w-5"></i>
+    <span>Empresas</span>
+</button>
+```
+
+**PASO 2**: Dashboard de inicio con estadísticas (sección `inicio`):
+
+Card grid (4 columnas) mostrando:
+1. Total Empresas Activas → `GET /api/sst/empresas?estado=activa` → usar `total`
+2. Empleados Registrados → `GET /api/sst/empleados` → usar `total`
+3. Autorizaciones Aprobadas → `GET /api/sst/autorizaciones?estado=aprobada` → usar `total`
+4. Planillas Vigentes → `GET /api/sst/planillas?vigente=true` → usar `total`
+
+Patrón de cada card:
+```html
+<div class="bg-white rounded-xl shadow-md p-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-sm">Empresas Activas</p>
+            <p class="text-3xl font-bold text-gray-800" x-text="stats.empresas">0</p>
+        </div>
+        <div class="bg-blue-100 p-3 rounded-full">
+            <i class="fas fa-building text-blue-600 text-xl"></i>
+        </div>
+    </div>
+</div>
+```
+
+**PASO 3**: Agregar Alpine.js data properties para el dashboard:
+```javascript
+// En adminSstApp(), agregar:
+stats: { empresas: 0, empleados: 0, autorizaciones: 0, planillas: 0 },
+
+// En init(), después de verificarAuth():
+await this.cargarStats();
+
+// Método nuevo:
+async cargarStats() {
+    try {
+        const [emp, empl, aut, plan] = await Promise.all([
+            apiClient.sst.listarEmpresas({ estado: 'activa' }),
+            apiClient.sst.listarEmpleados(),
+            apiClient.sst.listarAutorizaciones({ estado: 'aprobada' }),
+            apiClient.sst.listarPlanillas({ vigente: 'true' })
+        ]);
+        this.stats = {
+            empresas: emp.total || 0,
+            empleados: empl.total || 0,
+            autorizaciones: aut.total || 0,
+            planillas: plan.total || 0
+        };
+    } catch(e) { console.error('Error stats:', e); }
+}
+```
+
+### Verificación
+```powershell
+# Abrir en navegador
+start frontend/admin_sst.html
+# Verificar: sidebar visible, 5 botones navegación, 4 cards de stats
+```
+
+### Commit
+```
+feat: admin SST sidebar + dashboard estadísticas — CHECKPOINT 3.3.1
+```
+
+---
+
+## CHECKPOINT 3.3.2 — admin_sst.html: CRUD Empresas ⏱️ 4-5 horas
+
+### Qué hacer
+
+Implementar la sección `empresas` en `admin_sst.html`.
+
+**PASO 1**: Agregar Alpine.js state para empresas:
+```javascript
+// Data properties
+empresas: [],
+empresaSeleccionada: null,
+mostrarModalEmpresa: false,
+formEmpresa: {
+    tipo_persona: 'JURIDICA',
+    // JURIDICA:
+    nit: '', digito_verificacion: '', razon_social: '', representante_legal: '',
+    // NATURAL:
+    tipo_identificacion: '', num_identificacion: '',
+    primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '',
+    // Comunes:
+    telefono: '', email: '', direccion: '', ciudad: ''
+},
+filtroEmpresas: { busqueda: '', tipo_persona: '', estado: '' },
+```
+
+**PASO 2**: Sección HTML para empresas (se muestra cuando `seccion === 'empresas'`):
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ [Header] Empresas Contratistas      [+ Nueva Empresa]  │
+│                                                          │
+│ [Filtros] Buscar: [___________] Tipo: [Todas ▼]        │
+│                                                          │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ Tabla: NIT/Doc | Nombre | Tipo Persona | Estado     │ │
+│ │ ─────────────────────────────────────────────────── │ │
+│ │ 900123456-7 | Empresa S.A.S | Jurídica  | Activa   │ │
+│ │ CC-123456   | Juan Pérez    | Natural   | Activa   │ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Columnas de la tabla**:
+- NIT/Documento: Para JURIDICA mostrar `nit`-`digito_verificacion`, para NATURAL mostrar `tipo_identificacion`-`num_identificacion`
+- Nombre: Para JURIDICA mostrar `razon_social`, para NATURAL mostrar `nombre_completo_persona_natural`
+- Tipo Persona: badge JURIDICA (azul) / NATURAL (verde)
+- Estado: badge activa (verde) / inactiva (rojo)
+- Acciones: Editar (icono lápiz), Ver detalle (icono ojo)
+
+**PASO 3**: Modal para crear/editar empresa:
+
+- Toggle tipo_persona (Jurídica / Natural) — al cambiar, ocultar/mostrar campos correspondientes
+- Campos condicionales:
+  - Si JURIDICA: nit, digito_verificacion, razon_social, representante_legal
+  - Si NATURAL: tipo_identificacion (select: CC, CE, PAS), num_identificacion, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido
+- Campos comunes: telefono, email, direccion, ciudad
+- Botón "Buscar" al lado del NIT/documento → llama `buscarEmpresa(q)` → auto-rellena si existe
+- Validación: campos obligatorios marcados con *
+- Submit → `crearEmpresa(data)` o `actualizarEmpresa(id, data)` según si es edición
+
+**PASO 4**: Métodos Alpine.js:
+```javascript
+async cargarEmpresas() {
+    this.cargando = true;
+    try {
+        const resp = await apiClient.sst.listarEmpresas(this.filtroEmpresas);
+        this.empresas = resp.data || [];
+    } catch(e) { alert('Error: ' + e.message); }
+    finally { this.cargando = false; }
+},
+
+abrirModalEmpresa(empresa = null) {
+    if (empresa) {
+        // Edición: llenar form con datos existentes
+        this.formEmpresa = { ...empresa };
+    } else {
+        // Nueva: resetear form
+        this.formEmpresa = { tipo_persona: 'JURIDICA', nit: '', ... };
+    }
+    this.empresaSeleccionada = empresa;
+    this.mostrarModalEmpresa = true;
+},
+
+async guardarEmpresa() {
+    try {
+        if (this.empresaSeleccionada) {
+            await apiClient.sst.actualizarEmpresa(this.empresaSeleccionada.id, this.formEmpresa);
+        } else {
+            await apiClient.sst.crearEmpresa(this.formEmpresa);
+        }
+        this.mostrarModalEmpresa = false;
+        await this.cargarEmpresas();
+        alert('Empresa guardada exitosamente');
+    } catch(e) { alert('Error: ' + e.message); }
+},
+
+async buscarEmpresaExistente() {
+    const q = this.formEmpresa.tipo_persona === 'JURIDICA'
+        ? this.formEmpresa.nit
+        : this.formEmpresa.num_identificacion;
+    if (!q || q.length < 3) return;
+    try {
+        const resp = await apiClient.sst.buscarEmpresa(q);
+        if (resp.encontrado) {
+            this.formEmpresa = { ...resp.data };
+            this.empresaSeleccionada = resp.data;
+            alert('Empresa encontrada — datos cargados');
+        }
+    } catch(e) { /* no encontrada, OK */ }
+}
+```
+
+### Verificación
+```powershell
+# Abrir en navegador
+# 1. Click "Empresas" en sidebar
+# 2. Verificar tabla carga (puede estar vacía si no hay datos)
+# 3. Click "+ Nueva Empresa" → modal aparece
+# 4. Toggle Jurídica/Natural → campos cambian
+# 5. Llenar datos y guardar → empresa aparece en tabla
+```
+
+### Commit
+```
+feat: CRUD empresas contratistas frontend — CHECKPOINT 3.3.2
+```
+
+---
+
+## CHECKPOINT 3.3.3 — admin_sst.html: Empleados + Certificados ⏱️ 5-6 horas
+
+### Qué hacer
+
+Implementar la sección `empleados` en `admin_sst.html`.
+
+**PASO 1**: Agregar Alpine.js state para empleados y certificados:
+```javascript
+// Data properties
+empleados: [],
+empleadoSeleccionado: null,
+mostrarModalEmpleado: false,
+mostrarModalCertificado: false,
+formEmpleado: {
+    empresa_id: '', tipo_id: 'CC', num_id: '', nombres: '', apellidos: '',
+    cargo: '', eps_id: '', afp_id: '', arl_id: ''
+},
+formCertificado: {
+    empleado_id: '', tipo_certificado: '', nombre_certificado: '',
+    fecha_expedicion: '', fecha_vencimiento: ''
+},
+filtroEmpleados: { empresa_id: '', estado: '', busqueda: '' },
+operadoresAportes: { EPS: [], AFP: [], ARL: [] },
+certificadosEmpleado: [],
+```
+
+**PASO 2**: Cargar catálogo de operadores de aportes al init:
+```javascript
+async cargarOperadores() {
+    try {
+        const [eps, afp, arl] = await Promise.all([
+            apiClient.sst.operadores('EPS'),
+            apiClient.sst.operadores('AFP'),
+            apiClient.sst.operadores('ARL')
+        ]);
+        this.operadoresAportes = {
+            EPS: eps.data || [],
+            AFP: afp.data || [],
+            ARL: arl.data || []
+        };
+    } catch(e) { console.error('Error cargando operadores:', e); }
+}
+```
+
+**PASO 3**: Sección HTML para empleados:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [Header] Empleados Contratistas        [+ Nuevo Empleado]   │
+│                                                               │
+│ [Filtros] Empresa: [Todas ▼]  Estado: [Todos ▼]             │
+│                                                               │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ Documento | Nombre | Empresa | Cargo | EPS | Estado     │ │
+│ │ CC-123456 | Juan P | Emp SA  | Obrero| EPS1| Activo     │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                               │
+│ [Al hacer click en un empleado, mostrar panel inferior       │
+│  con sus CERTIFICADOS]                                        │
+│                                                               │
+│ ┌── Certificados de: Juan Pérez ──────── [+ Certificado] ─┐ │
+│ │ Tipo        | Nombre       | Expedición | Vence  | Estado│ │
+│ │ ALTURAS     | Cert altura  | 2025-01-15 | 2026-01| VIGEN│ │
+│ │ ELECTRICO   | Cert elect   | 2024-06-01 | 2025-06| VENC │ │
+│ └──────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Columnas tabla empleados**:
+- Documento: `tipo_id`-`num_id`
+- Nombre: `nombre_completo`
+- Empresa: nombre de la empresa (necesita join — usar `empresa_id` para mostrar de lista)
+- Cargo: `cargo`
+- EPS: nombre del operador EPS (match con `operadoresAportes.EPS`)
+- Estado: badge activo (verde) / inactivo (rojo)
+- Acciones: Editar, Ver certificados
+
+**PASO 4**: Modal crear/editar empleado:
+- Select empresa (dropdown con empresas activas)
+- Tipo documento: CC, CE, TI, PAS (select)
+- Número documento (input text) + Botón "Buscar" → `buscarEmpleado(tipo, num)` → auto-rellena
+- Nombres, Apellidos (inputs text, forzar MAYÚSCULAS con `@input="formEmpleado.nombres = $event.target.value.toUpperCase()"`)
+- Cargo (input text)
+- EPS (select), AFP (select), ARL (select) — usar `operadoresAportes.EPS/AFP/ARL`
+
+**PASO 5**: Panel de certificados del empleado seleccionado:
+- Se muestra debajo de la tabla al hacer click en un empleado
+- Llama `certificadosEmpleado(empleadoId)` al seleccionar
+- Tabla con: tipo_certificado, nombre_certificado, fecha_expedicion, fecha_vencimiento, estado_vigencia (badge)
+- Botón "+ Certificado" → modal certificado
+- Badge estado_vigencia: VIGENTE (verde), PROXIMO_VENCER (amarillo), VENCIDO (rojo)
+
+**PASO 6**: Modal crear certificado:
+- Select tipo_certificado: ALTURAS, ELECTRICO, ESPACIOS_CONFINADOS, OTRO
+- Input nombre_certificado (text)
+- Input fecha_expedicion (date)
+- Input fecha_vencimiento (date, opcional)
+- El campo `empleado_id` se toma del empleado seleccionado
+
+### Verificación
+```powershell
+# 1. Click "Empleados" — tabla carga
+# 2. "+ Nuevo Empleado" — modal con selects de empresa, EPS, AFP, ARL
+# 3. Crear empleado → aparece en tabla
+# 4. Click en empleado → panel certificados abajo
+# 5. "+ Certificado" → modal, crear → aparece en lista
+```
+
+### Commit
+```
+feat: CRUD empleados + certificados frontend — CHECKPOINT 3.3.3
+```
+
+---
+
+## CHECKPOINT 3.3.4 — admin_sst.html: Planillas + Autorizaciones ⏱️ 5-7 horas
+
+### Qué hacer
+
+Implementar las secciones `planillas` y `autorizaciones` en `admin_sst.html`.
+
+### PARTE A: Sección Planillas SS
+
+**PASO 1**: Alpine.js state para planillas:
+```javascript
+planillas: [],
+mostrarModalPlanilla: false,
+formPlanilla: {
+    empresa_id: '', periodo: '', fecha_pago: ''
+},
+filtroPlanillas: { empresa_id: '', vigente: '' },
+```
+
+**PASO 2**: Sección HTML planillas:
+```
+┌─────────────────────────────────────────────────────────┐
+│ [Header] Planillas Seguridad Social    [+ Nueva Planilla]│
+│                                                          │
+│ [Filtros] Empresa: [Todas ▼]  Solo vigentes: [toggle]  │
+│                                                          │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ Empresa | Periodo | Fecha Pago | Vigencia | Estado  │ │
+│ │ Emp SA  | 2026-03 | 2026-03-15 | 2026-04-14| ✅ Vig│ │
+│ │ Emp SA  | 2026-02 | 2026-02-10 | 2026-03-12| ❌ Ven│ │
+│ └─────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Columnas tabla planillas**:
+- Empresa: nombre de empresa (match por empresa_id)
+- Periodo: `periodo` (formato YYYY-MM)
+- Fecha Pago: `fecha_pago`
+- Vigencia hasta: `vigencia_fin`
+- Estado: badge vigente (verde "Vigente") / no vigente (rojo "Vencida") — usar campo `vigente` del response
+- Estado verificación: `estado` (pendiente/verificada/rechazada)
+
+**PASO 3**: Modal crear planilla:
+- Select empresa (dropdown empresas activas)
+- Input periodo (text, placeholder: "YYYY-MM", maxlength=7)
+- Input fecha_pago (date)
+- Nota: `vigencia_fin` se calcula automáticamente en el backend (fecha_pago + 30 días)
+
+### PARTE B: Sección Autorizaciones SST
+
+**PASO 4**: Alpine.js state para autorizaciones:
+```javascript
+autorizaciones: [],
+mostrarModalAutorizacion: false,
+autorizacionSeleccionada: null,
+formAutorizacion: {
+    empresa_id: '', sede_id: '', labor: '', fecha_inicio: '', fecha_fin: ''
+},
+filtroAutorizaciones: { estado: '', empresa_id: '', sede_id: '' },
+sedes: [], // cargar de /api/sedes/
+```
+
+**PASO 5**: Cargar sedes al init:
+```javascript
+async cargarSedes() {
+    try {
+        const resp = await apiClient.sedes.listar();
+        this.sedes = resp.data || [];
+    } catch(e) { console.error('Error sedes:', e); }
+}
+```
+
+**PASO 6**: Sección HTML autorizaciones:
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [Header] Autorizaciones SST            [+ Nueva Autorización]│
+│                                                               │
+│ [Filtros] Estado: [Todos ▼]  Empresa: [Todas ▼]  Sede: [▼] │
+│                                                               │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ #ID | Empresa | Labor | Inicio | Fin | Estado | Acciones│ │
+│ │  1  | Emp SA  | Mante.| 03-15  | 03-30| 🟡BORRADOR |Ed │ │
+│ │  2  | Otra SAS| Obra  | 03-01  | 04-01| 🟢APROBADA |Anu│ │
+│ │  3  | Emp SA  | Pintu.| 02-01  | 02-28| 🔴VENCIDA  | - │ │
+│ └──────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Columnas tabla autorizaciones**:
+- ID: `id`
+- Empresa: nombre (match por empresa_id)
+- Labor: `labor` (truncar a 50 chars en tabla)
+- Fecha inicio: `fecha_inicio`
+- Fecha fin: `fecha_fin`
+- Estado: badge con colores:
+  - borrador → gris
+  - revision → amarillo
+  - aprobada → verde
+  - rechazada → rojo
+  - vencida → naranja
+  - anulada → rojo oscuro
+- Acciones (según estado):
+  - borrador: Editar, Enviar a revisión
+  - revision: Aprobar, Rechazar
+  - aprobada: Anular (solo master)
+  - otros: solo ver
+
+**PASO 7**: Modal crear/editar autorización:
+- Select empresa (dropdown)
+- Select sede (dropdown)
+- Input labor (textarea, max 300)
+- Input fecha_inicio (date)
+- Input fecha_fin (date)
+- Solo editable si estado = 'borrador'
+
+**PASO 8**: Botones de acción de estado:
+```javascript
+async enviarARevision(id) {
+    if (!confirm('¿Enviar autorización a revisión?')) return;
+    try {
+        await apiClient.sst.enviarRevision(id);
+        await this.cargarAutorizaciones();
+        alert('Autorización enviada a revisión');
+    } catch(e) { alert('Error: ' + e.message); }
+},
+
+async aprobar(id) {
+    if (!confirm('¿Aprobar esta autorización SST?')) return;
+    try {
+        await apiClient.sst.aprobarAutorizacion(id);
+        await this.cargarAutorizaciones();
+        alert('Autorización aprobada');
+    } catch(e) { alert('Error: ' + e.message); }
+},
+
+async rechazar(id) {
+    if (!confirm('¿Rechazar esta autorización SST?')) return;
+    try {
+        await apiClient.sst.rechazarAutorizacion(id);
+        await this.cargarAutorizaciones();
+        alert('Autorización rechazada');
+    } catch(e) { alert('Error: ' + e.message); }
+},
+
+async anular(id) {
+    if (!confirm('⚠️ ¿ANULAR esta autorización? Esta acción no se puede deshacer.')) return;
+    try {
+        await apiClient.sst.anularAutorizacion(id);
+        await this.cargarAutorizaciones();
+        alert('Autorización anulada');
+    } catch(e) { alert('Error: ' + e.message); }
+}
+```
+
+### Verificación
+```powershell
+# PLANILLAS:
+# 1. Click "Planillas SS" — tabla carga
+# 2. "+ Nueva Planilla" — modal, crear con empresa y periodo
+# 3. Verificar vigencia_fin calculada automáticamente
+
+# AUTORIZACIONES:
+# 1. Click "Autorizaciones" — tabla carga (auto marca vencidas)
+# 2. "+ Nueva Autorización" — modal, crear en estado borrador
+# 3. Click "Enviar a Revisión" → cambia estado
+# 4. Click "Aprobar" → cambia estado
+# 5. Verificar badges de colores por estado
+```
+
+### Commit
+```
+feat: planillas SS + autorizaciones SST frontend — CHECKPOINT 3.3.4
+```
+
+---
+
+## CHECKPOINT 3.3.5 — operador_seguridad.html: Registro Ingresos ⏱️ 4-5 horas
+
+### Qué hacer
+
+Implementar el panel completo de `frontend/operador_seguridad.html` — Tab "Registro Ingreso".
+
+**PASO 1**: Agregar tabs al header (como operador.html):
+
+2 tabs:
+- 📥 **Registrar Ingreso** (tab `ingreso`)
+- 🏢 **Personal en Instalaciones** (tab `activos`)
+
+**PASO 2**: Alpine.js state:
+```javascript
+// Data
+autorizacionBuscada: null,
+empleadosAutorizacion: [],
+busquedaAutorizacion: '',
+formIngreso: {
+    empleado_id: '',
+    autorizacion_sst_id: '',
+    sede_id: '',
+    observaciones: ''
+},
+ingresosActivos: [],
+sedes: [],
+
+// Init
+async init() {
+    sessionManager.init();
+    await this.verificarAuth();
+    await this.cargarSedes();
+    await this.cargarIngresosActivos();
+},
+```
+
+**PASO 3**: Tab "Registrar Ingreso":
+
+Flujo del operador:
+1. Buscar autorización por ID o por empresa
+2. Ver datos de la autorización (empresa, labor, fechas, estado)
+3. Seleccionar empleado de la empresa que ingresa
+4. Seleccionar sede
+5. Agregar observaciones
+6. Registrar ingreso
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 🔍 Buscar Autorización SST                                  │
+│ ID Autorización: [_____] [Buscar]                            │
+│                                                               │
+│ ┌── Datos Autorización ─────────────────────────────────── ┐ │
+│ │ Empresa: Constructora ABC SAS                             │ │
+│ │ Labor: Mantenimiento eléctrico planta 2                   │ │
+│ │ Vigencia: 2026-03-01 → 2026-03-30                        │ │
+│ │ Estado: 🟢 APROBADA                                       │ │
+│ └───────────────────────────────────────────────────────── ┘ │
+│                                                               │
+│ Empleado a ingresar:                                         │
+│ Documento: [CC ▼] [____________] [Buscar]                    │
+│ Nombre: Juan Pérez García                                    │
+│ Cargo: Electricista                                          │
+│                                                               │
+│ Sede: [Palmira ▼]                                            │
+│ Observaciones: [________________________]                    │
+│                                                               │
+│ [✅ Registrar Ingreso]                                       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**PASO 4**: Métodos:
+```javascript
+async buscarAutorizacionSST() {
+    const id = this.busquedaAutorizacion;
+    if (!id) return;
+    try {
+        const resp = await apiClient.sst.obtenerAutorizacion(id);
+        this.autorizacionBuscada = resp.data;
+        if (resp.data.estado !== 'aprobada') {
+            alert('Esta autorización no está aprobada. Estado: ' + resp.data.estado);
+            this.autorizacionBuscada = null;
+        }
+    } catch(e) { alert('Autorización no encontrada'); }
+},
+
+async buscarEmpleadoParaIngreso() {
+    const tipo = this.formIngreso.tipo_busqueda || 'CC';
+    const num = this.formIngreso.num_busqueda;
+    if (!num) return;
+    try {
+        const resp = await apiClient.sst.buscarEmpleado(tipo, num);
+        if (resp.encontrado) {
+            this.formIngreso.empleado_id = resp.data.id;
+            this.formIngreso.empleado_nombre = resp.data.nombre_completo;
+            this.formIngreso.empleado_cargo = resp.data.cargo;
+            // Verificar que el empleado pertenece a la empresa de la autorización
+            if (this.autorizacionBuscada &&
+                resp.data.empresa_id !== this.autorizacionBuscada.empresa_id) {
+                alert('⚠️ Este empleado NO pertenece a la empresa de la autorización');
+                this.formIngreso.empleado_id = '';
+            }
+        } else {
+            alert('Empleado no encontrado');
+        }
+    } catch(e) { alert('Error: ' + e.message); }
+},
+
+async registrarIngresoContratista() {
+    if (!this.autorizacionBuscada || !this.formIngreso.empleado_id) {
+        alert('Seleccione autorización y empleado');
+        return;
+    }
+    try {
+        await apiClient.sst.registrarIngreso({
+            empleado_id: this.formIngreso.empleado_id,
+            autorizacion_sst_id: this.autorizacionBuscada.id,
+            sede_id: this.formIngreso.sede_id,
+            observaciones: this.formIngreso.observaciones
+        });
+        alert('✅ Ingreso registrado exitosamente');
+        // Limpiar formulario
+        this.autorizacionBuscada = null;
+        this.formIngreso = { empleado_id: '', autorizacion_sst_id: '', sede_id: '', observaciones: '' };
+        await this.cargarIngresosActivos();
+    } catch(e) { alert('Error: ' + e.message); }
+}
+```
+
+### Verificación
+```powershell
+# 1. Abrir operador_seguridad.html en navegador
+# 2. Tab "Registrar Ingreso" activo por defecto
+# 3. Buscar autorización por ID → datos cargan
+# 4. Buscar empleado por documento → nombre aparece
+# 5. Seleccionar sede, agregar observación
+# 6. Click "Registrar Ingreso" → éxito
+```
+
+### Commit
+```
+feat: registro ingresos contratistas frontend — CHECKPOINT 3.3.5
+```
+
+---
+
+## CHECKPOINT 3.3.6 — operador_seguridad.html: Personal activo + salidas ⏱️ 3-4 horas
+
+### Qué hacer
+
+Implementar tab "Personal en Instalaciones" en `operador_seguridad.html`.
+
+**PASO 1**: Tab "Personal en Instalaciones":
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 🏢 Personal de Contratistas en Instalaciones                │
+│                                                               │
+│ Total activos: 5                     [🔄 Actualizar]         │
+│                                                               │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ ☐ | Nombre      | Empresa  | Autorización | Hora Ingreso│ │
+│ │ ☑ | Juan Pérez  | Emp SA   | #12          | 08:30       │ │
+│ │ ☑ | María López | Emp SA   | #12          | 08:32       │ │
+│ │ ☐ | Pedro Ruiz  | Otra SAS | #15          | 09:15       │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                               │
+│ Observaciones de salida: [________________________]          │
+│                                                               │
+│ [🚪 Registrar Salida de Seleccionados]                       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**PASO 2**: Alpine.js methods:
+```javascript
+async cargarIngresosActivos() {
+    try {
+        const resp = await apiClient.sst.ingresosActivos();
+        this.ingresosActivos = (resp.data || []).map(ing => ({ ...ing, seleccionado: false }));
+    } catch(e) { console.error('Error:', e); }
+},
+
+async registrarSalidas() {
+    const seleccionados = this.ingresosActivos.filter(i => i.seleccionado);
+    if (seleccionados.length === 0) {
+        alert('Seleccione al menos un empleado');
+        return;
+    }
+    if (!confirm(`¿Registrar salida de ${seleccionados.length} empleado(s)?`)) return;
+
+    let exitosos = 0;
+    let errores = [];
+    for (const ing of seleccionados) {
+        try {
+            await apiClient.sst.registrarSalida(ing.id, {
+                observaciones: this.observacionesSalida || ''
+            });
+            exitosos++;
+        } catch(e) {
+            errores.push(`${ing.empleado?.nombre_completo || ing.id}: ${e.message}`);
+        }
+    }
+
+    if (exitosos > 0) alert(`✅ ${exitosos} salida(s) registrada(s)`);
+    if (errores.length > 0) alert('Errores:\n' + errores.join('\n'));
+
+    this.observacionesSalida = '';
+    await this.cargarIngresosActivos();
+},
+
+toggleSeleccionarTodos() {
+    const todos = this.ingresosActivos.every(i => i.seleccionado);
+    this.ingresosActivos.forEach(i => i.seleccionado = !todos);
+}
+```
+
+**PASO 3**: Auto-refresh cada 60 segundos:
+```javascript
+// En init(), después de cargarIngresosActivos:
+setInterval(() => this.cargarIngresosActivos(), 60000);
+```
+
+### Verificación
+```powershell
+# 1. Tab "Personal en Instalaciones"
+# 2. Ver tabla con empleados que tienen ingreso activo
+# 3. Seleccionar checkbox de 1+ empleados
+# 4. Click "Registrar Salida" → confirmar → salida registrada
+# 5. Empleados desaparecen de la lista
+```
+
+### Commit
+```
+feat: personal activo + registro salidas frontend — CHECKPOINT 3.3.6
+```
+
+---
+
+## CHECKPOINT 3.3.7 — Redirección login + Validación final ⏱️ 2-3 horas
+
+### Qué hacer
+
+**PASO 1**: Modificar `frontend/index.html` (login) para redirigir a los nuevos paneles SST.
+
+Buscar la función de login que hace redirect después de autenticación exitosa. Agregar los nuevos roles:
+
+```javascript
+// Buscar la sección donde se hace redirect por rol después del login
+// Agregar:
+case 'admin_sst':
+    window.location.href = 'admin_sst.html';
+    break;
+case 'operador_seguridad':
+    window.location.href = 'operador_seguridad.html';
+    break;
+```
+
+⚠️ IMPORTANTE: Leer `frontend/index.html` PRIMERO para ver cómo está implementado el redirect. Puede ser un `switch`, un `if/else if`, o un objeto mapa. Seguir el patrón existente.
+
+**PASO 2**: Modificar `frontend/admin.html` — agregar enlace a panel SST en el sidebar del admin (master):
+
+```html
+<!-- En el sidebar de admin.html, agregar botón: -->
+<button
+    @click="window.location.href = 'admin_sst.html'"
+    class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3 hover:bg-green-700"
+>
+    <i class="fas fa-hard-hat w-5"></i>
+    <span>Módulo SST</span>
+</button>
+```
+
+**PASO 3**: Verificar que el servidor Flask arranca sin error y las rutas SST responden:
+```powershell
+# Activar entorno
+.\.venv\Scripts\Activate.ps1
+
+# Arrancar servidor
+cd backend
+python run.py
+# Verificar que NO hay errores de import
+# Ctrl+C para detener
+```
+
+**PASO 4**: Verificar frontend en navegador:
+```
+# 1. Abrir index.html → login como usuario_master → redirige a admin.html
+# 2. En admin.html click "Módulo SST" → abre admin_sst.html
+# 3. Verificar sidebar, dashboard, empresas, empleados, planillas, autorizaciones
+# 4. Login como admin_sst → redirige directamente a admin_sst.html
+# 5. Login como operador_seguridad → redirige a operador_seguridad.html
+# 6. Verificar tabs ingreso + personal activo
+```
+
+**PASO 5**: Push a rama:
+```powershell
+git add -A
+git commit -m "feat: FASE 3.3 completa — frontend SST"
+git push github feature/modulo-sst
+```
+
+### Commit
+```
+feat: redirección login + validación FASE 3.3 — CHECKPOINT 3.3.7
+```
+
+**AL TERMINAR**: Actualiza COPILOT_TASKS.md → `[FASE 3.3 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]`
+
+---
+
+## RESUMEN FASE 3.3
+
+| Checkpoint | Descripción | Commit mensaje |
+|---|---|---|
+| 3.3.0 | apiClient SST + archivos HTML base | feat: esqueleto frontend SST |
+| 3.3.1 | Sidebar + Dashboard inicio | feat: admin SST sidebar + dashboard |
+| 3.3.2 | CRUD Empresas frontend | feat: CRUD empresas frontend |
+| 3.3.3 | Empleados + Certificados frontend | feat: empleados + certificados frontend |
+| 3.3.4 | Planillas SS + Autorizaciones frontend | feat: planillas + autorizaciones frontend |
+| 3.3.5 | Registro ingresos contratistas | feat: registro ingresos frontend |
+| 3.3.6 | Personal activo + salidas | feat: personal activo + salidas frontend |
+| 3.3.7 | Redirección login + validación final | feat: FASE 3.3 completa |
+
+**NOTAS IMPORTANTES**:
+- Seguir exactamente el patrón de Alpine.js de `admin.html` y `operador.html`
+- Usar Tailwind CSS para estilos — NO crear archivos CSS propios
+- Colores SST: admin_sst usa azul (blue-800), operador_seguridad usa naranja (orange-700)
+- Siempre usar `apiClient.sst.*` para llamadas API
+- Forzar MAYÚSCULAS en campos de texto con `@input="...toUpperCase()"`
+- Verificar campos REALES del to_dict() antes de mostrar en tabla
+
+---
+
 ### CHECKPOINT 3.1.5: Modelos SQLAlchemy (8 modelos) ⏱️ 4-5 horas
 
 **QUÉ VAS A HACER**: Crear los 8 modelos SQLAlchemy correspondientes a las tablas del módulo SST.
