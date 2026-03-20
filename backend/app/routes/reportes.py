@@ -81,7 +81,7 @@ def reporte_visitas():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -232,7 +232,7 @@ def exportar_visitas_excel():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -299,5 +299,5 @@ def estadisticas():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

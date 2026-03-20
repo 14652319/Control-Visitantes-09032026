@@ -46,7 +46,7 @@ def listar_operadores():
         
     except Exception as e:
         logger.error(f"Error listando operadores SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -152,7 +152,7 @@ def listar_empresas():
         
     except Exception as e:
         logger.error(f"Error listando empresas SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empresas', methods=['POST'])
@@ -209,7 +209,7 @@ def crear_empresa():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando empresa SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empresas/<int:id>', methods=['GET'])
@@ -231,7 +231,7 @@ def obtener_empresa(id):
         
     except Exception as e:
         logger.error(f"Error obteniendo empresa {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empresas/<int:id>', methods=['PUT'])
@@ -282,7 +282,7 @@ def actualizar_empresa(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error actualizando empresa {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empresas/buscar', methods=['GET'])
@@ -332,7 +332,7 @@ def buscar_empresa():
         
     except Exception as e:
         logger.error(f"Error buscando empresa: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -394,7 +394,7 @@ def listar_empleados():
         
     except Exception as e:
         logger.error(f"Error listando empleados SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empleados', methods=['POST'])
@@ -451,7 +451,7 @@ def crear_empleado():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando empleado SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empleados/<int:id>', methods=['GET'])
@@ -484,7 +484,7 @@ def obtener_empleado(id):
         
     except Exception as e:
         logger.error(f"Error obteniendo empleado {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empleados/<int:id>', methods=['PUT'])
@@ -525,7 +525,7 @@ def actualizar_empleado(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error actualizando empleado {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/empleados/buscar', methods=['GET'])
@@ -590,7 +590,7 @@ def buscar_empleado():
         
     except Exception as e:
         logger.error(f"Error buscando empleado: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -640,7 +640,7 @@ def listar_certificados():
         
     except Exception as e:
         logger.error(f"Error listando certificados SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/certificados', methods=['POST'])
@@ -688,7 +688,7 @@ def crear_certificado():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando certificado SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/certificados/empleado/<int:empleado_id>', methods=['GET'])
@@ -724,7 +724,7 @@ def obtener_certificados_empleado(empleado_id):
         
     except Exception as e:
         logger.error(f"Error obteniendo certificados de empleado {empleado_id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/certificados/<int:id>', methods=['PUT'])
@@ -768,7 +768,7 @@ def actualizar_certificado(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error actualizando certificado {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -824,7 +824,7 @@ def listar_planillas():
         
     except Exception as e:
         logger.error(f"Error listando planillas SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/planillas', methods=['POST'])
@@ -886,7 +886,7 @@ def crear_planilla():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando planilla SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/planillas/<int:id>', methods=['GET'])
@@ -912,7 +912,7 @@ def obtener_planilla(id):
         
     except Exception as e:
         logger.error(f"Error obteniendo planilla {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/planillas/empresa/<int:empresa_id>', methods=['GET'])
@@ -949,7 +949,7 @@ def obtener_planillas_empresa(empresa_id):
         
     except Exception as e:
         logger.error(f"Error obteniendo planillas de empresa {empresa_id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/planillas/vigentes/<int:empresa_id>', methods=['GET'])
@@ -989,7 +989,7 @@ def obtener_planillas_vigentes_empresa(empresa_id):
         
     except Exception as e:
         logger.error(f"Error obteniendo planillas vigentes de empresa {empresa_id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -1107,7 +1107,7 @@ def listar_autorizaciones():
         
     except Exception as e:
         logger.error(f"Error listando autorizaciones SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones', methods=['POST'])
@@ -1163,7 +1163,7 @@ def crear_autorizacion():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creando autorización SST: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>', methods=['GET'])
@@ -1188,7 +1188,7 @@ def obtener_autorizacion(id):
         
     except Exception as e:
         logger.error(f"Error obteniendo autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>', methods=['PUT'])
@@ -1233,7 +1233,7 @@ def actualizar_autorizacion(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error actualizando autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>/enviar-revision', methods=['POST'])
@@ -1267,7 +1267,7 @@ def enviar_revision_autorizacion(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error enviando autorización {id} a revisión: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>/aprobar', methods=['POST'])
@@ -1303,7 +1303,7 @@ def aprobar_autorizacion(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error aprobando autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>/rechazar', methods=['POST'])
@@ -1338,7 +1338,7 @@ def rechazar_autorizacion(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error rechazando autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/autorizaciones/<int:id>/anular', methods=['POST'])
@@ -1373,7 +1373,7 @@ def anular_autorizacion(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error anulando autorización {id}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 # ============================================================
@@ -1396,6 +1396,7 @@ def listar_ingresos():
         from app.models.empleado_contratista import EmpleadoContratista
         from app.models.empresa_contratista import EmpresaContratista
         from datetime import date, datetime
+        from sqlalchemy.orm import joinedload
         
         # Filtros
         sede_id = request.args.get('sede_id', type=int)
@@ -1412,8 +1413,11 @@ def listar_ingresos():
         else:
             fecha = date.today()
         
-        # Query base
-        query = LogIngresoContratista.query
+        # Query base con eager loading (previene N+1)
+        query = LogIngresoContratista.query.options(
+            joinedload(LogIngresoContratista.empleado)
+            .joinedload(EmpleadoContratista.empresa)
+        )
         
         # Filtrar por fecha (timestamp_evento en el día especificado)
         fecha_inicio = datetime.combine(fecha, datetime.min.time())
@@ -1434,11 +1438,11 @@ def listar_ingresos():
         
         logs = query.order_by(LogIngresoContratista.timestamp_evento.desc()).all()
         
-        # Enriquecer con datos del empleado y empresa
+        # Enriquecer con datos del empleado y empresa (ya cargados por joinedload)
         resultado = []
         for log in logs:
-            empleado = EmpleadoContratista.query.get(log.empleado_id)
-            empresa = EmpresaContratista.query.get(empleado.empresa_id) if empleado else None
+            empleado = log.empleado
+            empresa = empleado.empresa if empleado else None
             
             item = log.to_dict()
             item['empleado'] = {
@@ -1464,7 +1468,7 @@ def listar_ingresos():
         
     except Exception as e:
         logger.error(f"Error listando ingresos: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/ingresos', methods=['POST'])
@@ -1560,7 +1564,7 @@ def registrar_ingreso():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error registrando ingreso: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/ingresos/<int:id>/salida', methods=['PUT'])
@@ -1623,7 +1627,7 @@ def registrar_salida(id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error registrando salida: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 
 @bp.route('/ingresos/activos', methods=['GET'])
@@ -1641,6 +1645,7 @@ def listar_empleados_activos():
         from app.models.empleado_contratista import EmpleadoContratista
         from app.models.empresa_contratista import EmpresaContratista
         from sqlalchemy import func
+        from sqlalchemy.orm import joinedload
         
         sede_id = request.args.get('sede_id', type=int)
         
@@ -1651,8 +1656,11 @@ def listar_empleados_activos():
             func.max(LogIngresoContratista.id).label('max_id')
         ).group_by(LogIngresoContratista.empleado_id).subquery()
         
-        # Query principal: obtener logs cuyo ID esté en la subconsulta y tipo_evento='ingreso'
-        query = db.session.query(LogIngresoContratista).join(
+        # Query principal con eager loading (previene N+1)
+        query = db.session.query(LogIngresoContratista).options(
+            joinedload(LogIngresoContratista.empleado)
+            .joinedload(EmpleadoContratista.empresa)
+        ).join(
             subquery,
             (LogIngresoContratista.id == subquery.c.max_id) &
             (LogIngresoContratista.empleado_id == subquery.c.empleado_id)
@@ -1665,11 +1673,11 @@ def listar_empleados_activos():
         
         logs_activos = query.all()
         
-        # Enriquecer con datos del empleado y empresa
+        # Enriquecer con datos del empleado y empresa (ya cargados por joinedload)
         resultado = []
         for log in logs_activos:
-            empleado = EmpleadoContratista.query.get(log.empleado_id)
-            empresa = EmpresaContratista.query.get(empleado.empresa_id) if empleado else None
+            empleado = log.empleado
+            empresa = empleado.empresa if empleado else None
             
             item = log.to_dict()
             item['empleado'] = {
@@ -1695,5 +1703,5 @@ def listar_empleados_activos():
         
     except Exception as e:
         logger.error(f"Error listando empleados activos: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 

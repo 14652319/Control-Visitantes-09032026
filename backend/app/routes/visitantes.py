@@ -58,7 +58,7 @@ def buscar_visitante():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -95,7 +95,7 @@ def buscar_por_nit():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -168,7 +168,7 @@ def registrar_visitante():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -299,7 +299,7 @@ def registrar_ingreso():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -352,7 +352,7 @@ def registrar_salida(log_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -437,7 +437,7 @@ def listar_visitas():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -522,5 +522,5 @@ def guardar_foto(log_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

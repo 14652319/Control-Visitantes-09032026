@@ -17,13 +17,18 @@ class Config:
     """Configuración base de la aplicación"""
     
     # Configuración de Flask
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        import warnings
+        warnings.warn('SECRET_KEY no configurada — usando valor inseguro para desarrollo local', stacklevel=2)
+        SECRET_KEY = 'dev-only-insecure-key-do-not-use-in-production'
     
-    # Base de Datos
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes'
-    )
+    # Base de Datos (OBLIGATORIO vía .env)
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    if not SQLALCHEMY_DATABASE_URI:
+        import warnings
+        warnings.warn('DATABASE_URL no configurada — usando localhost por defecto', stacklevel=2)
+        SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:postgres@localhost:5432/control_visitantes'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
     
@@ -51,8 +56,8 @@ class Config:
     DIAS_RETENCION_FOTOS = int(os.getenv('DIAS_RETENCION_FOTOS', 90))
     BORRADO_AUTOMATICO_FOTOS = os.getenv('BORRADO_AUTOMATICO_FOTOS', 'false').lower() == 'true'
     
-    # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
+    # CORS — restringido por defecto, configurar en .env para producción
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5000,http://127.0.0.1:5000').split(',')
     
     # Timezone
     TIMEZONE = 'America/Bogota'
@@ -62,9 +67,9 @@ class Config:
     MAIL_PORT = int(os.getenv('MAIL_PORT', 465))
     MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'False').lower() == 'true'
     MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'True').lower() == 'true'
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'gestordocumentalsc01@gmail.com')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', 'urjrkjlogcfdtynq')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'gestordocumentalsc01@gmail.com')
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', '')
     MAIL_MAX_EMAILS = None
     MAIL_ASCII_ATTACHMENTS = False
 
@@ -81,12 +86,22 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Validar que secretos estén configurados en producción
+    @classmethod
+    def init_app(cls, app):
+        required = ['SECRET_KEY', 'DATABASE_URL', 'MAIL_PASSWORD']
+        missing = [k for k in required if not os.environ.get(k)]
+        if missing:
+            raise RuntimeError(f'Variables de entorno requeridas no configuradas: {", ".join(missing)}')
 
 
 class TestingConfig(Config):
     """Configuración para pruebas"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:G3st0radm$2025.@localhost:5432/control_visitantes_test'
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_TEST', 'postgresql://postgres:postgres@localhost:5432/control_visitantes_test')
 
 
 # Configuración por defecto

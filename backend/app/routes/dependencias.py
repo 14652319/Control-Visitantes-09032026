@@ -38,7 +38,7 @@ def listar_dependencias():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -63,7 +63,7 @@ def obtener_dependencia(dependencia_id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -133,7 +133,7 @@ def crear_dependencia():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -187,7 +187,7 @@ def actualizar_dependencia(dependencia_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -228,5 +228,5 @@ def eliminar_dependencia(dependencia_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

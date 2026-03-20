@@ -28,7 +28,7 @@ def listar_sedes_publico():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -130,7 +130,7 @@ def crear_sede():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -177,7 +177,7 @@ def actualizar_sede(sede_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -236,5 +236,5 @@ def eliminar_sede(sede_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

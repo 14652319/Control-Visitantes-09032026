@@ -277,7 +277,7 @@ def obtener_autorizacion(id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener autorización: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -359,7 +359,7 @@ def actualizar_autorizacion(id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar autorización: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -416,7 +416,7 @@ def cancelar_autorizacion(id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al cancelar autorización: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -477,7 +477,7 @@ def eliminar_autorizacion(id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al eliminar autorización: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -535,7 +535,7 @@ def aplicar_autorizacion(id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al aplicar autorización: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -589,5 +589,5 @@ def obtener_estadisticas():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener estadísticas: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

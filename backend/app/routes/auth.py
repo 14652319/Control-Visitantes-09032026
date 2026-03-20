@@ -143,7 +143,7 @@ def login():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error en el servidor: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -180,7 +180,7 @@ def logout():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al cerrar sesión: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -197,7 +197,7 @@ def get_current_user():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -233,10 +233,12 @@ def role_required(*roles):
 
 
 @bp.route('/verificar-identificacion/<num_identificacion>', methods=['GET'])
+@limiter.limit("10 per minute")
 def verificar_identificacion(num_identificacion):
     """
     Verifica si una identificación ya está registrada
-    Endpoint público sin autenticación
+    Endpoint público para registro de funcionarios
+    Rate-limited para prevenir enumeración masiva
     """
     try:
         num_id = str(num_identificacion).strip()
@@ -245,11 +247,7 @@ def verificar_identificacion(num_identificacion):
         if usuario_existe:
             return jsonify({
                 'existe': True,
-                'message': f'Esta identificación ya está registrada en el sistema como {usuario_existe.rol.replace("usuario_", "").upper()}.',
-                'usuario': {
-                    'nombre_completo': f"{usuario_existe.primer_nombre} {usuario_existe.primer_apellido}",
-                    'estado': usuario_existe.estado
-                }
+                'message': 'Esta identificación ya está registrada en el sistema.'
             }), 200
         else:
             return jsonify({
@@ -258,6 +256,7 @@ def verificar_identificacion(num_identificacion):
             }), 200
             
     except Exception as e:
+        logger.error(f"Error verificando identificación: {e}")
         return jsonify({
             'existe': False,
             'message': 'Error al verificar'
@@ -265,10 +264,12 @@ def verificar_identificacion(num_identificacion):
 
 
 @bp.route('/verificar-correo/<correo>', methods=['GET'])
+@limiter.limit("10 per minute")
 def verificar_correo(correo):
     """
     Verifica si un correo electrónico ya está registrado
-    Endpoint público sin autenticación
+    Endpoint público para registro de funcionarios
+    Rate-limited para prevenir enumeración masiva
     """
     try:
         email = correo.lower().strip()
@@ -279,11 +280,7 @@ def verificar_correo(correo):
         if usuario_existe:
             return jsonify({
                 'existe': True,
-                'message': f'Este correo ya está registrado en el sistema.',
-                'usuario': {
-                    'nombre_completo': f"{usuario_existe.primer_nombre} {usuario_existe.primer_apellido}",
-                    'rol': usuario_existe.rol.replace("usuario_", "").upper()
-                }
+                'message': 'Este correo ya está registrado en el sistema.'
             }), 200
         else:
             return jsonify({
@@ -292,6 +289,7 @@ def verificar_correo(correo):
             }), 200
             
     except Exception as e:
+        logger.error(f"Error verificando correo: {e}")
         return jsonify({
             'existe': False,
             'message': 'Error al verificar'
@@ -426,5 +424,5 @@ def registro_funcionario():
         print(f"Error en registro: {str(e)}")
         return jsonify({
             'success': False,
-            'message': f'Error al registrar: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

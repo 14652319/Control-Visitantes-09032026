@@ -30,7 +30,7 @@ def listar_usuarios():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -55,7 +55,7 @@ def obtener_usuario(usuario_id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -148,7 +148,7 @@ def crear_usuario():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -216,7 +216,7 @@ def actualizar_usuario(usuario_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -264,7 +264,7 @@ def resetear_password(usuario_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -313,7 +313,7 @@ def desbloquear_usuario(usuario_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -377,7 +377,7 @@ def activar_usuario(usuario_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -444,5 +444,5 @@ def rechazar_usuario(usuario_id):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500

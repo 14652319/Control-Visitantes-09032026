@@ -64,7 +64,7 @@ def obtener_configuraciones():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener configuraciones: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -91,7 +91,7 @@ def obtener_configuracion(clave):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error al obtener configuración: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -178,7 +178,7 @@ def actualizar_configuracion(clave):
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar configuración: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
 
 
@@ -235,5 +235,5 @@ def actualizar_configuraciones_batch():
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': f'Error al actualizar configuraciones: {str(e)}'
+            'message': 'Error interno del servidor'
         }), 500
