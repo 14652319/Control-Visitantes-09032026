@@ -14,6 +14,12 @@ from app.models.autorizacion_ingreso import AutorizacionIngreso
 
 # Módulo SST
 from app.models.operador_aportes import OperadorAportes
+from app.models.empresa_contratista import EmpresaContratista
+from app.models.empleado_contratista import EmpleadoContratista
+from app.models.certificado_trabajo import CertificadoTrabajo
+from app.models.planilla_ss import PlanillaSS
+from app.models.autorizacion_sst import AutorizacionSST
+from app.models.log_ingreso_contratista import LogIngresoContratista
 
 __all__ = [
     'Usuario',
@@ -25,4 +31,10 @@ __all__ = [
     'AutorizacionIngreso',
     # SST
     'OperadorAportes',
+    'EmpresaContratista',
+    'EmpleadoContratista',
+    'CertificadoTrabajo',
+    'PlanillaSS',
+    'AutorizacionSST',
+    'LogIngresoContratista',
 ]
