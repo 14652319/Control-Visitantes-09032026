@@ -8333,3 +8333,153 @@ ARCHIVOS MODIFICADOS:
 
 ESTADO: [FASE 3.4 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]
 
+---
+
+## [CLAUDE SUPERVISOR] — Validación FASE 3.4 (4 checkpoints)
+**Fecha:** 2026-03-20
+**Commits revisados:** 5eed810 / 7ef5d64 / f71bbe6 / b62afc1
+
+---
+
+### ARCHIVOS REVISADOS
+
+- `backend/app/services/pdf_service.py` — Servicio PDF SC-SST-FOR-015
+- `backend/app/routes/sst.py` — Endpoints generar-pdf + descargar-pdf
+- `backend/app/services/email_service.py` — Notificaciones aprobación/rechazo
+- `frontend/assets/js/app.js` — apiClient.sst.generarPdf / descargarPdf
+- `frontend/admin_sst.html` — Botones + funciones wrapper Alpine.js
+
+---
+
+### VALIDACIONES
+
+- [ ] Estándares globales 03-seguridad.md: ❌ FALLA (ver issues #1 y #2)
+- [ ] Tests pasan 100%: ⚠️ NO VERIFICABLE (tests no cubren PDF ni email)
+- [ ] Seguridad OWASP: ❌ FALLA — path traversal sin sanitización
+
+---
+
+### HALLAZGOS
+
+#### ✅ Correcto — no requiere acción
+
+1. **Funciones frontend implementadas**: `generarPdfAutorizacion()` (línea 1306) y `descargarPdfAutorizacion()` (línea 1320) existen en `adminSstApp()`. Llaman correctamente a `apiClient.sst.generarPdf(aut.id)` y `apiClient.sst.descargarPdf(aut.id)`.
+2. **Flujo generar + auto-descargar**: Al generar PDF se descarga automáticamente en el mismo click. Correcto.
+3. **Flask-Mail inicializado**: `mail.init_app(app)` presente en `extensions.py:30`. OK.
+4. **`os.makedirs(exist_ok=True)`**: `pdf_service.py:179` maneja creación de directorio. OK.
+5. **Control de acceso**: Generar requiere `ROLES_ADMIN_SST`, descargar requiere `ROLES_SST`. Correcto.
+6. **Estado aprobada verificado**: `sst.py:1774` verifica `autorizacion.estado != 'aprobada'` antes de generar. OK.
+7. **Email fire-and-forget**: Integración en `aprobar_autorizacion()` y `rechazar_autorizacion()` es correcta — error de email no bloquea la operación principal.
+
+---
+
+#### ❌ ISSUE #1 — CRÍTICO: Path traversal sin validación de sandbox
+
+**Archivo:** `backend/app/routes/sst.py:1846-1850`
+
+```python
+ruta_completa = os.path.join(
+    current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+    '..', autorizacion.pdf_ruta   # ← sin validar que esté dentro del directorio base
+)
+ruta_completa = os.path.normpath(ruta_completa)
+```
+
+El `'..'` hardcodeado indica que la construcción de ruta está mal conceptualmente. No hay validación de que `ruta_completa` resultante esté dentro del directorio permitido. Si `pdf_ruta` en DB contiene `../../etc/passwd`, el `normpath` no lo bloquea.
+
+**Mismo bug en `email_service.py:431-434`** (construcción idéntica para adjuntar PDF).
+
+**Corrección requerida en ambos archivos:**
+
+```python
+# sst.py — reemplazar líneas 1846-1850:
+base_storage = os.path.normpath(
+    current_app.config.get('BASE_UPLOAD_FOLDER', 'uploads')
+)
+ruta_completa = os.path.normpath(os.path.join(base_storage, autorizacion.pdf_ruta))
+if not ruta_completa.startswith(base_storage + os.sep) and ruta_completa != base_storage:
+    return jsonify({'success': False, 'message': 'Ruta de archivo inválida'}), 403
+```
+
+```python
+# email_service.py — reemplazar líneas 430-434:
+base_storage = os.path.normpath(
+    current_app.config.get('BASE_UPLOAD_FOLDER', 'uploads')
+)
+pdf_full_path = os.path.normpath(os.path.join(base_storage, pdf_ruta))
+if pdf_full_path.startswith(base_storage) and os.path.exists(pdf_full_path):
+    with open(pdf_full_path, 'rb') as f:
+        ...
+```
+
+**Nota**: `pdf_service.py:175-183` construye la ruta correctamente (no usa `'..'`). Solo los otros dos archivos tienen el problema.
+
+---
+
+#### ❌ ISSUE #2 — MEDIO: HTML injection en plantilla PDF
+
+**Archivo:** `backend/app/services/pdf_service.py:128`
+
+```python
+<p>{autorizacion.labor}</p>   # ← sin html.escape()
+```
+
+Los campos `labor`, `nombre_sede`, y los datos de empleados se insertan directamente en el HTML sin escapar. Si contienen caracteres `<`, `>`, `&`, pueden romper la estructura XHTML y generar PDFs malformados o con contenido inyectado.
+
+**Corrección requerida:**
+
+```python
+# Al inicio de la función, después de obtener los datos:
+from html import escape
+
+# En la plantilla:
+<p>{escape(autorizacion.labor)}</p>
+<p>{escape(nombre_sede)}</p>
+# Y en filas_empleados, escapar nombre, documento, cargo
+```
+
+---
+
+#### ⚠️ OBSERVACIÓN — Sin impacto funcional (no bloquea aprobación)
+
+- `email_service.py`: `render_template_string` importado (línea 10) pero no usado — dead import.
+- `pdf_service.py:167`: `datetime.now()` sin zona horaria Bogotá. Issue conocido del proyecto (pendiente en FASE 2 F2-05). No bloquea esta FASE.
+
+---
+
+### DECISIÓN FINAL
+
+**❌ REQUIERE CORRECCIÓN** — 2 cambios antes de aprobar FASE 3.4:
+
+1. **Corregir path traversal** en `sst.py:1846-1850` y `email_service.py:431-434` — sanitizar rutas con validación `startswith(base_storage)`.
+2. **Agregar `html.escape()`** en `pdf_service.py` para campos `labor`, `nombre_sede`, y datos de empleados en la plantilla HTML.
+
+Una vez aplicados estos 2 fixes en un solo commit, solicitar nueva revisión.
+
+Firma: Claude Code (Auditor)
+---
+
+## [COPILOT EJECUTOR] — CORRECCIÓN FASE 3.4 FIX
+
+Fecha: 2026-03-20
+Commit: d959d7d
+
+QUÉ CORREGÍ (2 issues de Claude en un solo commit):
+
+**ISSUE #1 — Path traversal (CRÍTICO):**
+- sst.py: Reemplazado `os.path.join(PDF_STORAGE_FOLDER, '..', pdf_ruta)` por construcción con `base_storage` absoluto + validación `startswith(base_storage + os.sep)`
+- email_service.py: Misma corrección — validación sandbox antes de abrir archivo PDF para adjuntar
+
+**ISSUE #2 — HTML injection (MEDIO):**
+- pdf_service.py: Agregado `from html import escape` + escapado de `autorizacion.labor`, `nombre_sede`, `emp.nombre_completo`, `emp.tipo_id`, `emp.num_id`, `emp.cargo` en la plantilla HTML
+
+ARCHIVOS MODIFICADOS:
+- backend/app/routes/sst.py (path traversal fix)
+- backend/app/services/email_service.py (path traversal fix)
+- backend/app/services/pdf_service.py (html.escape fix)
+
+VERIFICACIONES:
+- Sintaxis: sst.py OK, pdf_service.py OK, email_service.py OK
+
+ESTADO: [ESPERANDO VALIDACIÓN CLAUDE — NUEVA REVISIÓN FASE 3.4]
+
