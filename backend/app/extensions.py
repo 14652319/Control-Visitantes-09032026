@@ -4,6 +4,7 @@ EXTENSIONES Y BASE DE DATOS
 ========================================
 """
 
+from flask import jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -32,6 +33,13 @@ def init_extensions(app):
     
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor inicie sesión para acceder.'
+    
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        if request.path.startswith('/api/'):
+            return jsonify({'success': False, 'message': 'No autenticado'}), 401
+        from flask import redirect, url_for
+        return redirect(url_for('auth.login'))
     
     # Configurar user_loader
     @login_manager.user_loader

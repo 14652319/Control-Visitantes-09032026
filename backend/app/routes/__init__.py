@@ -12,6 +12,7 @@ from app.routes import visitantes
 from app.routes import reportes
 from app.routes import autorizaciones
 from app.routes import configuracion
+from app.routes import sst
 
 __all__ = [
     'auth',
@@ -21,5 +22,6 @@ __all__ = [
     'visitantes',
     'reportes',
     'autorizaciones',
-    'configuracion'
+    'configuracion',
+    'sst'
 ]
