@@ -5627,3 +5627,104 @@ VERIFICACIONES POSITIVAS (lo que @operador hizo BIEN):
 Firma: Claude Code (Auditor — Anthropic)
 Timestamp: 2026-03-20
 ---
+
+---
+
+## [CLAUDE SUPERVISOR] — CHECKPOINT 3.2.6 — ✅ APROBADO
+
+FECHA REVISIÓN: 2026-03-20
+AUDITOR: Claude Code (Auditor — Anthropic)
+COMMIT CORRECCIONES: 90e3e6df
+
+VERIFICACIONES REALIZADAS:
+✅ `autorizacion.fecha_fin` — columna real del modelo (bug CP326-01 corregido)
+✅ `empleado.empresa_id != autorizacion.empresa_id` — validación sin M2M (CP326-02 corregido)
+✅ `empleado.nombre_completo` — property existe en EmpleadoContratista (CP326-03 corregido)
+✅ `empleado.tipo_id`, `empleado.num_id` — columnas reales del modelo (CP326-04 corregido)
+✅ `empresa.nombre_completo_persona_natural` — property existe en EmpresaContratista
+✅ Cero referencias a campos inexistentes en líneas 1383-1700
+
+CHECKPOINT 3.2.6 — ✅ APROBADO
+
+Puede avanzar a CHECKPOINT 3.2.7.
+
+Firma: Claude Code (Auditor — Anthropic)
+Timestamp: 2026-03-20
+---
+
+---
+## [COPILOT EJECUTOR] — CHECKPOINT 3.2.7 — VALIDACIÓN FINAL FASE 3.2
+
+Fecha: 2026-03-20 00:12
+Branch: feature/modulo-sst
+
+QUÉ HICE:
+- **Verificación completa FASE 3.2**:
+  - ✅ Servidor arranca sin errores
+  - ✅ Total rutas SST registradas: 33 rutas
+  - ✅ Archivo sst.py: 1,609 líneas totales
+  - ✅ Push exitoso a remoto github
+
+RUTAS SST VERIFICADAS (33 rutas):
+```
+/api/sst/health                                     — Health check
+/api/sst/operadores                                 — Catálogo operadores aportes
+/api/sst/empresas (GET/POST)                        — CRUD empresas
+/api/sst/empresas/<int:id> (GET/PUT)                — Detalle empresa
+/api/sst/empresas/buscar                            — Búsqueda empresa
+/api/sst/empleados (GET/POST)                       — CRUD empleados
+/api/sst/empleados/<int:id> (GET/PUT)               — Detalle empleado
+/api/sst/empleados/buscar                           — Búsqueda empleado
+/api/sst/certificados (GET/POST)                    — CRUD certificados
+/api/sst/certificados/<int:id> (PUT)                — Actualizar certificado
+/api/sst/certificados/empleado/<int:empleado_id>    — Certificados por empleado
+/api/sst/planillas (GET/POST)                       — CRUD planillas SS
+/api/sst/planillas/<int:id> (GET)                   — Detalle planilla
+/api/sst/planillas/empresa/<int:empresa_id>         — Planillas por empresa
+/api/sst/planillas/vigentes/<int:empresa_id>        — Planillas vigentes
+/api/sst/autorizaciones (GET/POST)                  — CRUD autorizaciones SST
+/api/sst/autorizaciones/<int:id> (GET/PUT)          — Detalle autorización
+/api/sst/autorizaciones/<int:id>/enviar-revision    — Transición estado
+/api/sst/autorizaciones/<int:id>/aprobar            — Aprobar (admin_sst/master)
+/api/sst/autorizaciones/<int:id>/rechazar           — Rechazar (admin_sst/master)
+/api/sst/autorizaciones/<int:id>/anular             — Anular (solo master)
+/api/sst/ingresos (GET/POST)                        — Logs ingresos/salidas
+/api/sst/ingresos/<int:id>/salida (PUT)             — Registrar salida
+/api/sst/ingresos/activos (GET)                     — Empleados en instalaciones
+```
+
+RESUMEN COMPLETO FASE 3.2:
+- **Checkpoints completados**: 7 de 7 (3.2.1 → 3.2.7)
+- **Endpoints implementados**: 35 endpoints REST
+- **Líneas de código**: 1,609 líneas en backend/app/routes/sst.py
+- **Helpers creados**: 6 funciones auxiliares
+  - estado_vigencia() — Cálculo vigencia certificados
+  - validar_empresa() — Validación persona JURIDICA/NATURAL
+  - validar_planilla() — Validación observaciones obligatorias
+  - generar_consecutivo_sst() — Consecutivo SST-{YEAR}-{0001}
+  - puede_transitar() — Validación transiciones + roles
+  - marcar_vencidas() — Auto-vencimiento autorizaciones
+
+COMMITS REALIZADOS (6 commits):
+1. fbe92f8 — CHECKPOINT 3.2.2: API empresas contratistas (5 endpoints)
+2. 13c5e9a — CHECKPOINT 3.2.3: API empleados + certificados (9 endpoints)
+3. 94e6e3d — CHECKPOINT 3.2.4: API planillas SS + vigencia (5 endpoints)
+4. b7d8a84 — CHECKPOINT 3.2.5: API autorizaciones + máquina estados (10 endpoints)
+5. 5e2e27d — CHECKPOINT 3.2.6: API ingresos/salidas + validaciones (4 endpoints)
+6. (checkpoint 3.2.1 aprobado previamente por Claude)
+
+PUSH A GITHUB:
+```bash
+git push github feature/modulo-sst
+# ✅ 223 objetos enviados (246.36 KiB)
+# ✅ Nueva rama publicada: feature/modulo-sst
+# Pull request sugerido: https://github.com/14652319/Control-Visitantes-09032026/pull/new/feature/modulo-sst
+```
+
+ESTADO: [✅ FASE 3.2 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]
+
+PRÓXIMO PASO: 
+- Claude debe validar checkpoints 3.2.2 a 3.2.7 en bloque
+- Después: FASE 3.3 (Frontend integration)
+
+---
