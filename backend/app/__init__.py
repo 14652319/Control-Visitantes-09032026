@@ -66,7 +66,7 @@ def create_app(config_name=None):
     })
     
     # Registrar blueprints PRIMERO (mayor prioridad)
-    from app.routes import auth, usuarios, sedes, dependencias, visitantes, reportes, autorizaciones, configuracion
+    from app.routes import auth, usuarios, sedes, dependencias, visitantes, reportes, autorizaciones, configuracion, sst
     
     app.register_blueprint(auth.bp)
     app.register_blueprint(usuarios.bp)
@@ -76,6 +76,7 @@ def create_app(config_name=None):
     app.register_blueprint(reportes.bp)
     app.register_blueprint(autorizaciones.bp)
     app.register_blueprint(configuracion.bp)
+    app.register_blueprint(sst.bp)
     
     # Ruta de health check
     @app.route('/health')
