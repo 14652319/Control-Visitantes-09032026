@@ -52,6 +52,9 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.getenv('MAX_FILE_SIZE', 5 * 1024 * 1024))  # 5MB
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     
+    # PDF Storage
+    PDF_STORAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads', 'autorizaciones_sst')
+    
     # Retención de fotografías
     DIAS_RETENCION_FOTOS = int(os.getenv('DIAS_RETENCION_FOTOS', 90))
     BORRADO_AUTOMATICO_FOTOS = os.getenv('BORRADO_AUTOMATICO_FOTOS', 'false').lower() == 'true'
@@ -101,7 +104,8 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     """Configuración para pruebas"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_TEST', 'postgresql://postgres:postgres@localhost:5432/control_visitantes_test')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_TEST', 'sqlite:///:memory:')
+    WTF_CSRF_ENABLED = False
 
 
 # Configuración por defecto

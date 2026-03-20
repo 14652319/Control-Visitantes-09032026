@@ -38,3 +38,6 @@ waitress==2.1.2
 
 # Monitoreo y Logging (Opcional)
 sentry-sdk[flask]==1.40.0
+
+# PDF Generation
+xhtml2pdf==0.2.16
