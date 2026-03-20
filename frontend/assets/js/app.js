@@ -282,6 +282,155 @@ const apiClient = {
                 body: JSON.stringify({ configuraciones })
             });
         }
+    },
+
+    // ============================================================
+    // SST — Módulo Seguridad y Salud en el Trabajo
+    // ============================================================
+    sst: {
+        // --- Operadores ---
+        async operadores(tipo) {
+            const q = tipo ? `?tipo=${tipo}` : '';
+            return await apiClient.request(`/sst/operadores${q}`);
+        },
+
+        // --- Empresas ---
+        async listarEmpresas(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/empresas${q ? '?' + q : ''}`);
+        },
+        async crearEmpresa(data) {
+            return await apiClient.request('/sst/empresas', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async obtenerEmpresa(id) {
+            return await apiClient.request(`/sst/empresas/${id}`);
+        },
+        async actualizarEmpresa(id, data) {
+            return await apiClient.request(`/sst/empresas/${id}`, {
+                method: 'PUT', body: JSON.stringify(data)
+            });
+        },
+        async buscarEmpresa(q) {
+            return await apiClient.request(`/sst/empresas/buscar?q=${encodeURIComponent(q)}`);
+        },
+
+        // --- Empleados ---
+        async listarEmpleados(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/empleados${q ? '?' + q : ''}`);
+        },
+        async crearEmpleado(data) {
+            return await apiClient.request('/sst/empleados', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async obtenerEmpleado(id) {
+            return await apiClient.request(`/sst/empleados/${id}`);
+        },
+        async actualizarEmpleado(id, data) {
+            return await apiClient.request(`/sst/empleados/${id}`, {
+                method: 'PUT', body: JSON.stringify(data)
+            });
+        },
+        async buscarEmpleado(tipo, num) {
+            return await apiClient.request(`/sst/empleados/buscar?tipo=${tipo}&num=${num}`);
+        },
+
+        // --- Certificados ---
+        async listarCertificados(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/certificados${q ? '?' + q : ''}`);
+        },
+        async crearCertificado(data) {
+            return await apiClient.request('/sst/certificados', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async certificadosEmpleado(empleadoId) {
+            return await apiClient.request(`/sst/certificados/empleado/${empleadoId}`);
+        },
+        async actualizarCertificado(id, data) {
+            return await apiClient.request(`/sst/certificados/${id}`, {
+                method: 'PUT', body: JSON.stringify(data)
+            });
+        },
+
+        // --- Planillas SS ---
+        async listarPlanillas(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/planillas${q ? '?' + q : ''}`);
+        },
+        async crearPlanilla(data) {
+            return await apiClient.request('/sst/planillas', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async obtenerPlanilla(id) {
+            return await apiClient.request(`/sst/planillas/${id}`);
+        },
+        async planillasEmpresa(empresaId) {
+            return await apiClient.request(`/sst/planillas/empresa/${empresaId}`);
+        },
+        async planillasVigentes(empresaId) {
+            return await apiClient.request(`/sst/planillas/vigentes/${empresaId}`);
+        },
+
+        // --- Autorizaciones ---
+        async listarAutorizaciones(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/autorizaciones${q ? '?' + q : ''}`);
+        },
+        async crearAutorizacion(data) {
+            return await apiClient.request('/sst/autorizaciones', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async obtenerAutorizacion(id) {
+            return await apiClient.request(`/sst/autorizaciones/${id}`);
+        },
+        async actualizarAutorizacion(id, data) {
+            return await apiClient.request(`/sst/autorizaciones/${id}`, {
+                method: 'PUT', body: JSON.stringify(data)
+            });
+        },
+        async enviarRevision(id) {
+            return await apiClient.request(`/sst/autorizaciones/${id}/enviar-revision`, { method: 'POST' });
+        },
+        async aprobarAutorizacion(id) {
+            return await apiClient.request(`/sst/autorizaciones/${id}/aprobar`, { method: 'POST' });
+        },
+        async rechazarAutorizacion(id, data) {
+            return await apiClient.request(`/sst/autorizaciones/${id}/rechazar`, { 
+                method: 'POST', body: JSON.stringify(data) 
+            });
+        },
+        async anularAutorizacion(id, data) {
+            return await apiClient.request(`/sst/autorizaciones/${id}/anular`, { 
+                method: 'POST', body: JSON.stringify(data) 
+            });
+        },
+
+        // --- Ingresos ---
+        async listarIngresos(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/ingresos${q ? '?' + q : ''}`);
+        },
+        async registrarIngreso(data) {
+            return await apiClient.request('/sst/ingresos', {
+                method: 'POST', body: JSON.stringify(data)
+            });
+        },
+        async registrarSalida(id, data = {}) {
+            return await apiClient.request(`/sst/ingresos/${id}/salida`, {
+                method: 'PUT', body: JSON.stringify(data)
+            });
+        },
+        async ingresosActivos(params = {}) {
+            const q = new URLSearchParams(params).toString();
+            return await apiClient.request(`/sst/ingresos/activos${q ? '?' + q : ''}`);
+        }
     }
 };
 

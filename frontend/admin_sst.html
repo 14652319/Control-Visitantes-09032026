@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SST - Control de Contratistas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div x-data="adminSstApp()" x-init="init()" x-cloak class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col">
+            <!-- Se implementa en 3.3.1 -->
+            <div class="p-6 border-b border-blue-700">
+                <h1 class="font-bold text-lg text-center">SST - Contratistas</h1>
+                <p class="text-blue-300 text-xs text-center mt-1">Seguridad y Salud en el Trabajo</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="nav-placeholder">
+                <p class="text-blue-300 text-sm">Navegación — Checkpoint 3.3.1</p>
+            </nav>
+            <div class="p-4 border-t border-blue-700">
+                <p class="text-sm" x-text="usuario.nombre_completo || 'Cargando...'"></p>
+                <button @click="logout()" class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <div id="content-placeholder">
+                <h2 class="text-2xl font-bold text-gray-800">Panel SST</h2>
+                <p class="text-gray-600 mt-2">Contenido se implementa en checkpoints 3.3.1 → 3.3.6</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    function adminSstApp() {
+        return {
+            usuario: {},
+            seccion: 'inicio',
+            cargando: false,
+
+            async init() {
+                sessionManager.init();
+                await this.verificarAuth();
+            },
+
+            async verificarAuth() {
+                const usuarioLocal = localStorage.getItem('usuario');
+                if (!usuarioLocal) { this.irAlLogin(); return; }
+                this.usuario = JSON.parse(usuarioLocal);
+                // Solo roles SST admin
+                if (!['usuario_master', 'admin_sst'].includes(this.usuario.rol)) {
+                    alert('No tiene permisos para acceder a este panel');
+                    this.irAlLogin();
+                }
+            },
+
+            async logout() {
+                try { await apiClient.auth.logout(); } catch(e) {}
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            },
+
+            irAlLogin() {
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            }
+        }
+    }
+    </script>
+</body>
+</html>

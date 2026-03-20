@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguridad - Control de Contratistas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="assets/js/app.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div x-data="operadorSeguridadApp()" x-init="init()" x-cloak class="flex h-screen">
+        <!-- Header fijo (no sidebar — operador usa tabs como operador.html) -->
+        <div class="flex-1 flex flex-col">
+            <header class="bg-gradient-to-r from-orange-700 to-orange-600 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-hard-hat text-3xl"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Control de Contratistas</h1>
+                        <p class="text-orange-200 text-sm">Operador de Seguridad</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm" x-text="usuario.nombre_completo || ''"></span>
+                    <button @click="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Salir
+                    </button>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-6">
+                <p class="text-gray-600">Contenido se implementa en checkpoints 3.3.5 → 3.3.6</p>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    function operadorSeguridadApp() {
+        return {
+            usuario: {},
+            tabActiva: 'ingreso',
+            cargando: false,
+
+            async init() {
+                sessionManager.init();
+                await this.verificarAuth();
+            },
+
+            async verificarAuth() {
+                const usuarioLocal = localStorage.getItem('usuario');
+                if (!usuarioLocal) { this.irAlLogin(); return; }
+                this.usuario = JSON.parse(usuarioLocal);
+                if (!['usuario_master', 'operador_seguridad'].includes(this.usuario.rol)) {
+                    alert('No tiene permisos para acceder a este panel');
+                    this.irAlLogin();
+                }
+            },
+
+            async logout() {
+                try { await apiClient.auth.logout(); } catch(e) {}
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            },
+
+            irAlLogin() {
+                localStorage.removeItem('usuario');
+                window.location.href = 'index.html';
+            }
+        }
+    }
+    </script>
+</body>
+</html>
