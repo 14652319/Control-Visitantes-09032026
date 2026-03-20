@@ -329,3 +329,439 @@ def buscar_empresa():
         logger.error(f"Error buscando empresa: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
+# ============================================================
+# HELPERS: Certificados
+# ============================================================
+def estado_vigencia(fecha_vencimiento):
+    """
+    Retorna estado de vigencia del certificado.
+    
+    Args:
+        fecha_vencimiento (date): Fecha de vencimiento del certificado
+    
+    Returns:
+        str: 'VENCIDO' | 'PROXIMO_VENCER' | 'VIGENTE'
+    """
+    from datetime import date, timedelta
+    
+    hoy = date.today()
+    if fecha_vencimiento < hoy:
+        return 'VENCIDO'
+    elif fecha_vencimiento <= hoy + timedelta(days=30):
+        return 'PROXIMO_VENCER'  # Alerta visual en frontend (próximos 30 días)
+    return 'VIGENTE'
+
+
+# ============================================================
+# ENDPOINTS: CRUD EMPLEADOS CONTRATISTAS
+# ============================================================
+
+@bp.route('/empleados', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_empleados():
+    """Lista empleados contratistas con filtros opcionales"""
+    try:
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        empresa_id = request.args.get('empresa_id', type=int)
+        estado = request.args.get('estado')  # activo | inactivo
+        
+        query = EmpleadoContratista.query
+        
+        if empresa_id:
+            query = query.filter_by(empresa_id=empresa_id)
+        
+        if estado and estado.lower() in ('activo', 'inactivo'):
+            query = query.filter_by(estado=estado.lower())
+        
+        empleados = query.order_by(
+            EmpleadoContratista.primer_apellido,
+            EmpleadoContratista.primer_nombre
+        ).all()
+        
+        return jsonify({
+            'success': True,
+            'data': [emp.to_dict() for emp in empleados],
+            'total': len(empleados)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando empleados SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/empleados', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def crear_empleado():
+    """Crea un nuevo empleado contratista"""
+    try:
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.empresa_contratista import EmpresaContratista
+        
+        data = request.get_json()
+        
+        # Validaciones
+        if not data.get('empresa_id'):
+            return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
+        
+        if not data.get('tipo_identificacion') or not data.get('num_identificacion'):
+            return jsonify({'success': False, 'message': 'Documento de identificación requerido'}), 400
+        
+        if not data.get('primer_nombre') or not data.get('primer_apellido'):
+            return jsonify({'success': False, 'message': 'Nombre y apellido requeridos'}), 400
+        
+        # Verificar que empresa existe
+        empresa = EmpresaContratista.query.get(data['empresa_id'])
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+        
+        # Verificar duplicado
+        existe = EmpleadoContratista.query.filter_by(
+            tipo_identificacion=data['tipo_identificacion'],
+            num_identificacion=data['num_identificacion']
+        ).first()
+        
+        if existe:
+            return jsonify({
+                'success': False,
+                'message': f'Ya existe un empleado con ese documento en empresa {existe.empresa_id}'
+            }), 409
+        
+        # Crear empleado
+        empleado = EmpleadoContratista(**data)
+        db.session.add(empleado)
+        db.session.commit()
+        
+        logger.info(f"Empleado contratista creado: {empleado.id} por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': empleado.to_dict(),
+            'message': 'Empleado registrado exitosamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creando empleado SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/empleados/<int:id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_empleado(id):
+    """Obtiene detalle de un empleado + certificados vigentes"""
+    try:
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        from datetime import date
+        
+        empleado = EmpleadoContratista.query.get(id)
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        # Obtener certificados vigentes
+        certificados_vigentes = CertificadoTrabajo.query.filter(
+            CertificadoTrabajo.empleado_id == id,
+            CertificadoTrabajo.fecha_vencimiento >= date.today()
+        ).all()
+        
+        data = empleado.to_dict()
+        data['certificados_vigentes'] = [cert.to_dict() for cert in certificados_vigentes]
+        
+        return jsonify({
+            'success': True,
+            'data': data
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo empleado {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/empleados/<int:id>', methods=['PUT'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def actualizar_empleado(id):
+    """Actualiza un empleado contratista"""
+    try:
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        empleado = EmpleadoContratista.query.get(id)
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        data = request.get_json()
+        
+        # Campos actualizables
+        campos_actualizables = [
+            'empresa_id', 'tipo_identificacion', 'num_identificacion',
+            'primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido',
+            'telefono', 'email', 'cargo', 'fecha_ingreso', 'estado', 'observaciones'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in data:
+                setattr(empleado, campo, data[campo])
+        
+        db.session.commit()
+        
+        logger.info(f"Empleado {id} actualizado por usuario {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'data': empleado.to_dict(),
+            'message': 'Empleado actualizado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error actualizando empleado {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/empleados/buscar', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def buscar_empleado():
+    """
+    Búsqueda inteligente de empleado por tipo + número de documento.
+    Retorna empleado + empresa + certificados vigentes.
+    
+    Query params:
+        tipo (str): Tipo de documento (CC, TI, CE, etc)
+        num (str): Número de documento
+    
+    Returns:
+        {'encontrado': bool, 'data': {...} | None}
+    """
+    try:
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        from datetime import date
+        
+        tipo_doc = request.args.get('tipo', '').strip().upper()
+        num_doc = request.args.get('num', '').strip()
+        
+        if not tipo_doc or not num_doc:
+            return jsonify({
+                'success': False,
+                'message': 'Parámetros "tipo" y "num" requeridos'
+            }), 400
+        
+        empleado = EmpleadoContratista.query.filter_by(
+            tipo_identificacion=tipo_doc,
+            num_identificacion=num_doc
+        ).first()
+        
+        if empleado:
+            # Obtener certificados vigentes
+            certificados_vigentes = CertificadoTrabajo.query.filter(
+                CertificadoTrabajo.empleado_id == empleado.id,
+                CertificadoTrabajo.fecha_vencimiento >= date.today()
+            ).all()
+            
+            data = empleado.to_dict()
+            data['certificados_vigentes'] = [cert.to_dict() for cert in certificados_vigentes]
+            
+            # Agregar datos de empresa
+            if empleado.empresa:
+                data['empresa'] = empleado.empresa.to_dict()
+            
+            return jsonify({
+                'success': True,
+                'encontrado': True,
+                'data': data
+            }), 200
+        else:
+            return jsonify({
+                'success': True,
+                'encontrado': False,
+                'data': None
+            }), 200
+        
+    except Exception as e:
+        logger.error(f"Error buscando empleado: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINTS: CRUD CERTIFICADOS DE TRABAJO
+# ============================================================
+
+@bp.route('/certificados', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def listar_certificados():
+    """Lista certificados de trabajo con filtros opcionales"""
+    try:
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        from datetime import date
+        
+        empleado_id = request.args.get('empleado_id', type=int)
+        tipo = request.args.get('tipo')  # ALTURAS | ELECTRICO | etc
+        vigente = request.args.get('vigente')  # true | false
+        
+        query = CertificadoTrabajo.query
+        
+        if empleado_id:
+            query = query.filter_by(empleado_id=empleado_id)
+        
+        if tipo and tipo.upper() in ('ALTURAS', 'ELECTRICO', 'ESPACIOS_CONFINADOS', 'MANEJO_QUIMICOS', 'PRIMEROS_AUXILIOS', 'OTRO'):
+            query = query.filter_by(tipo_certificado=tipo.upper())
+        
+        if vigente and vigente.lower() == 'true':
+            query = query.filter(CertificadoTrabajo.fecha_vencimiento >= date.today())
+        elif vigente and vigente.lower() == 'false':
+            query = query.filter(CertificadoTrabajo.fecha_vencimiento < date.today())
+        
+        certificados = query.order_by(CertificadoTrabajo.fecha_vencimiento.desc()).all()
+        
+        # Agregar estado de vigencia a cada certificado
+        data = []
+        for cert in certificados:
+            cert_dict = cert.to_dict()
+            cert_dict['estado_vigencia'] = estado_vigencia(cert.fecha_vencimiento)
+            data.append(cert_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'total': len(data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error listando certificados SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/certificados', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def crear_certificado():
+    """Registra un nuevo certificado de trabajo para un empleado"""
+    try:
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        data = request.get_json()
+        
+        # Validaciones
+        if not data.get('empleado_id'):
+            return jsonify({'success': False, 'message': 'empleado_id requerido'}), 400
+        
+        if not data.get('tipo_certificado'):
+            return jsonify({'success': False, 'message': 'tipo_certificado requerido'}), 400
+        
+        if not data.get('fecha_emision') or not data.get('fecha_vencimiento'):
+            return jsonify({'success': False, 'message': 'Fechas de emisión y vencimiento requeridas'}), 400
+        
+        # Verificar que empleado existe
+        empleado = EmpleadoContratista.query.get(data['empleado_id'])
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        # Crear certificado
+        certificado = CertificadoTrabajo(**data)
+        db.session.add(certificado)
+        db.session.commit()
+        
+        logger.info(f"Certificado creado: {certificado.id} para empleado {empleado.id} por usuario {current_user.id}")
+        
+        cert_dict = certificado.to_dict()
+        cert_dict['estado_vigencia'] = estado_vigencia(certificado.fecha_vencimiento)
+        
+        return jsonify({
+            'success': True,
+            'data': cert_dict,
+            'message': 'Certificado registrado exitosamente'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creando certificado SST: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/certificados/empleado/<int:empleado_id>', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def obtener_certificados_empleado(empleado_id):
+    """Obtiene todos los certificados de un empleado"""
+    try:
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        from app.models.empleado_contratista import EmpleadoContratista
+        
+        empleado = EmpleadoContratista.query.get(empleado_id)
+        if not empleado:
+            return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
+        
+        certificados = CertificadoTrabajo.query.filter_by(empleado_id=empleado_id).order_by(
+            CertificadoTrabajo.fecha_vencimiento.desc()
+        ).all()
+        
+        # Agregar estado de vigencia
+        data = []
+        for cert in certificados:
+            cert_dict = cert.to_dict()
+            cert_dict['estado_vigencia'] = estado_vigencia(cert.fecha_vencimiento)
+            data.append(cert_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'empleado': empleado.to_dict(),
+            'total': len(data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo certificados de empleado {empleado_id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/certificados/<int:id>', methods=['PUT'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def actualizar_certificado(id):
+    """Actualiza un certificado de trabajo"""
+    try:
+        from app.models.certificado_trabajo import CertificadoTrabajo
+        
+        certificado = CertificadoTrabajo.query.get(id)
+        if not certificado:
+            return jsonify({'success': False, 'message': 'Certificado no encontrado'}), 404
+        
+        data = request.get_json()
+        
+        # Campos actualizables
+        campos_actualizables = [
+            'tipo_certificado', 'entidad_emisora', 'numero_certificado',
+            'fecha_emision', 'fecha_vencimiento', 'observaciones'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in data:
+                setattr(certificado, campo, data[campo])
+        
+        db.session.commit()
+        
+        logger.info(f"Certificado {id} actualizado por usuario {current_user.id}")
+        
+        cert_dict = certificado.to_dict()
+        cert_dict['estado_vigencia'] = estado_vigencia(certificado.fecha_vencimiento)
+        
+        return jsonify({
+            'success': True,
+            'data': cert_dict,
+            'message': 'Certificado actualizado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error actualizando certificado {id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
