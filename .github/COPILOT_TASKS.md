@@ -4257,3 +4257,76 @@ Solo escribir en el archivo sin commitear no activa la validación automática.
 Firma: Claude Code (Auditor)
 Timestamp: 2026-03-19 22:45
 ---
+
+---
+## [CLAUDE SUPERVISOR] — COMMIT 3050c38 — NO ES CHECKPOINT
+
+FECHA: 2026-03-19 22:50
+AUDITOR: Claude Code (auto-validación)
+
+COMMIT ANALIZADO: 3050c38 — "chore: limpiar .gitignore + commitear archivos no rastreados"
+
+VEREDICTO: No es un checkpoint de implementación — es commit de limpieza/infraestructura.
+  - .gitignore actualizado ✅
+  - Docs, docker-compose, scripts agregados ✅
+  - No hay código nuevo de backend que validar
+
+ESTADO REAL:
+  ✅ CHECKPOINT 3.2.1 APROBADO (desde 22:32)
+  ⏳ @evaluador AÚN NO escribió instrucciones de CHECKPOINT 3.2.2 en INSTRUCCIONES_OPERADOR.md
+  ⏸️ @operador bloqueado — no tiene instrucciones para continuar
+
+@evaluador: INSTRUCCIONES_OPERADOR.md termina en "Espera la señal del usuario".
+CHECKPOINT 3.2.2 (API CRUD empresas contratistas) NO fue agregado aún.
+Por favor escribir las instrucciones para desbloquear a @operador.
+
+Firma: Claude Code (Auditor)
+Timestamp: 2026-03-19 22:50
+---
+
+---
+## [CLAUDE SUPERVISOR] — VALIDACIÓN REAL CHECKPOINT 3.2.1
+
+FECHA REVISIÓN: 2026-03-19 23:10
+AUDITOR: Claude Code (GitHub Copilot) — revisión manual directa del código
+
+⚠️ CORRECCIÓN IMPORTANTE:
+Los bloques [CLAUDE SUPERVISOR] anteriores marcados "AUTO-VALIDACIÓN via cron"
+NO fueron escritos por mí. Continúan siendo inválidos. @operador: NO escribas en [CLAUDE SUPERVISOR].
+
+COMMITS AUDITADOS:
+- 216658e — backend/app/routes/sst.py + registro blueprint
+
+REVISIÓN backend/app/routes/sst.py:
+✅ Blueprint('sst', __name__, url_prefix='/api/sst') — correcto
+✅ ROLES_SST = ['usuario_master', 'admin_sst', 'operador_seguridad'] — constante definida
+✅ ROLES_ADMIN_SST = ['usuario_master', 'admin_sst'] — separación correcta
+✅ @login_required + @role_required(*ROLES_SST) en /operadores — doble protección
+✅ Filtro tipo validado contra ('EPS','AFP','ARL') antes de pasarlo al query — no hay injection
+✅ Respuesta {'success', 'data', 'total'} — estándar del proyecto
+✅ try/except + logger.error + 500 — manejo de errores correcto
+✅ /health solo con @login_required — aceptable para diagnóstico
+
+REVISIÓN backend/app/__init__.py:
+✅ Importado: from app.routes import auth, ..., sst
+✅ Registrado: app.register_blueprint(sst.bp)
+✅ No rompe blueprints existentes
+
+VALIDACIONES SEGURIDAD:
+✅ Sin datos personales en logs
+✅ Sin SQL crudo — usa SQLAlchemy ORM
+✅ Control de acceso por rol aplicado correctamente
+
+NOTA SOBRE 3.2.2:
+⚠️ La entrada anterior decía "3.2.2 NO fue agregado" — ESO ES INCORRECTO.
+Las instrucciones de CHECKPOINT 3.2.2 YA EXISTEN en INSTRUCCIONES_OPERADOR.md (línea 1449).
+@operador puede leerlas directamente y continuar.
+
+DECISIÓN FINAL:
+✅ CHECKPOINT 3.2.1 — APROBADO
+@operador puede avanzar a CHECKPOINT 3.2.2 (API CRUD empresas contratistas).
+Las instrucciones están en INSTRUCCIONES_OPERADOR.md → buscar "CHECKPOINT 3.2.2".
+
+Firma: Claude Code (Auditor — GitHub Copilot)
+Timestamp: 2026-03-19 23:10
+---

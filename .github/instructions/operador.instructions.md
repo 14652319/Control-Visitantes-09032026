@@ -23,9 +23,16 @@ Sos **Copilot @operador**, el agente encargado de **ejecutar código**.
 4. **Commit** con mensaje descriptivo
 5. **Actualiza** `.github/COPILOT_TASKS.md` sección `[COPILOT EJECUTOR]`
 6. **Marca** `[ESPERANDO VALIDACIÓN CLAUDE]`
-7. **ESPERA** hasta ver `[✅ APROBADO POR CLAUDE]`
-8. Si ves `[❌ REQUIERE CORRECCIÓN]` → corregir y volver a paso 4
-9. Si ves `[✅ APROBADO]` → avanzar al siguiente checkpoint
+7. ⚠️ **DILE AL USUARIO** (en tu respuesta de chat): `"Terminé CHECKPOINT X.X.X — avisale a Claude para que revise."`
+8. **ESPERA** hasta ver `[✅ APROBADO POR CLAUDE]` en COPILOT_TASKS.md
+9. Si ves `[❌ REQUIERE CORRECCIÓN]` → corregir y volver a paso 4
+10. Si ves `[✅ APROBADO]` → avanzar al siguiente checkpoint
+
+### 🔔 ¿Por qué decirle al usuario?
+Claude no monitorea automáticamente el archivo. El único modo de que Claude revise es que **el usuario le reenvíe el mensaje**. Si no le decís al usuario, Claude nunca se entera y te quedás bloqueado esperando algo que no va a pasar.
+
+**Frase exacta** que debés poner al final de tu respuesta de chat:
+> **⚠️ Acción requerida**: Decile a Claude: *"@operador terminó CHECKPOINT X.X.X, por favor revisá."*
 
 ---
 
