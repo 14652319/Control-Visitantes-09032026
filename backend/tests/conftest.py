@@ -1,14 +1,5 @@
 """
 ========================================
-CONFIGURACIÓN DE PYTEST
-Fixtures y configuración global de tests
-========================================
-"""
-
-import sys
-import os
-"""
-========================================
 TESTS DE CONFIGURACIÓN (PYTEST)
 Sistema de Control de Visitantes
 ========================================
@@ -17,151 +8,6 @@ Sistema de Control de Visitantes
 import pytest
 import sys
 import os
-
-# Agregar el directorio backend al path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from app import create_app
-from app.extensions import db
-from app.models import Usuario, Sede, Dependencia, Visitante
-from config import Config
-
-
-class TestConfig(Config):
-    """Configuración para tests"""
-    TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SECRET_KEY = 'test-secret-key'
-    JWT_SECRET_KEY = 'test-jwt-secret'
-    WTF_CSRF_ENABLED = False
-
-
-@pytest.fixture(scope='session')
-def app():
-    """Crear aplicación de prueba"""
-    app = create_app()
-    app.config.from_object(TestConfig)
-    
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
-
-@pytest.fixture(scope='function')
-def client(app):
-    """Cliente de prueba"""
-    return app.test_client()
-
-
-@pytest.fixture(scope='function')
-def db_session(app):
-    """Sesión de base de datos para cada test"""
-    with app.app_context():
-        # Limpiar todas las tablas
-        db.session.query(Usuario).delete()
-        db.session.query(Visitante).delete()
-        db.session.query(Dependencia).delete()
-        db.session.query(Sede).delete()
-        db.session.commit()
-        
-        yield db.session
-        
-        # Limpiar después del test
-        db.session.rollback()
-
-
-@pytest.fixture
-def sede_prueba(db_session):
-    """Crear una sede de prueba"""
-    sede = Sede(
-        codigo_sede='SEDE01',
-        nombre_sede='Sede Principal',
-        nombre_director='Director Prueba',
-        estado='ACTIVO'
-    )
-    db_session.add(sede)
-    db_session.commit()
-    return sede
-
-
-@pytest.fixture
-def dependencia_prueba(db_session, sede_prueba):
-    """Crear una dependencia de prueba"""
-    dependencia = Dependencia(
-        codigo_dependencia='DEP01',
-        nombre_dependencia='Recursos Humanos',
-        sede_id=sede_prueba.id,
-        estado='ACTIVO'
-    )
-    db_session.add(dependencia)
-    db_session.commit()
-    return dependencia
-
-
-@pytest.fixture
-def usuario_master(db_session, sede_prueba):
-    """Crear un usuario master de prueba"""
-    from werkzeug.security import generate_password_hash
-    
-    usuario = Usuario(
-        usuario='admin_test',
-        password_hash=generate_password_hash('Admin@123'),
-        tipo_usuario='usuario_master',
-        nombre_completo='Administrador Test',
-        num_identificacion='1234567890',
-        telefono='3001234567',
-        correo='admin@test.com',
-        sede_id=sede_prueba.id,
-        estado='ACTIVO'
-    )
-    db_session.add(usuario)
-    db_session.commit()
-    return usuario
-
-
-@pytest.fixture
-def usuario_operador(db_session, sede_prueba):
-    """Crear un usuario operador de prueba"""
-    from werkzeug.security import generate_password_hash
-    
-    usuario = Usuario(
-        usuario='operador_test',
-        password_hash=generate_password_hash('Oper@123'),
-        tipo_usuario='usuario_operador',
-        nombre_completo='Operador Test',
-        num_identificacion='0987654321',
-        telefono='3009876543',
-        correo='operador@test.com',
-        sede_id=sede_prueba.id,
-        estado='ACTIVO'
-    )
-    db_session.add(usuario)
-    db_session.commit()
-    return usuario
-
-
-@pytest.fixture
-def visitante_prueba(db_session):
-    """Crear un visitante de prueba"""
-    visitante = Visitante(
-        tipo_identificacion='CC',
-        num_identificacion='12345678',
-        primer_nombre='Juan',
-        segundo_nombre='Carlos',
-        primer_apellido='Pérez',
-        segundo_apellido='García',
-        num_telefono='3001234567',
-        dir_correo='juan.perez@empresa.com',
-        empresa='Empresa Test SAS',
-        nit_empresa='900123456-1',
-        estado='ACTIVO'
-    )
-    db_session.add(visitante)
-    db_session.commit()
-    return visitante
-
 from datetime import datetime
 
 # Agregar el directorio backend al path
@@ -169,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 from app import create_app
 from app.extensions import db
-from app.models import Usuario, Sede, Dependencia, Visitante, AutorizacionIngreso
+from app.models import Usuario, Sede, Dependencia, Visitante, AutorizacionIngreso, LogVisitante, LogEvento
 
 
 @pytest.fixture(scope='session')
@@ -200,7 +46,9 @@ def client(app):
 def db_session(app):
     """Sesión de base de datos limpia para cada test"""
     with app.app_context():
-        # Limpiar todas las tablas
+        # Limpiar todas las tablas (orden por dependencias FK)
+        db.session.query(LogEvento).delete()
+        db.session.query(LogVisitante).delete()
         db.session.query(AutorizacionIngreso).delete()
         db.session.query(Visitante).delete()
         db.session.query(Usuario).delete()
@@ -302,9 +150,8 @@ def dependencia_test(db_session, sede_test):
     """Crea una dependencia de prueba"""
     dependencia = Dependencia(
         prefijo_dependencia='TEST',
-        descripcion='DEPENDENCIA DE PRUEBA'
+        descripcion_dependencia='DEPENDENCIA DE PRUEBA'
     )
-    dependencia.sedes.append(sede_test)
     db_session.session.add(dependencia)
     db_session.session.commit()
     return dependencia

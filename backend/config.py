@@ -106,6 +106,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL_TEST', 'sqlite:///:memory:')
     WTF_CSRF_ENABLED = False
+    RATELIMIT_ENABLED = False
 
 
 # Configuración por defecto
