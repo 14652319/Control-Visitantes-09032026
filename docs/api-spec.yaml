@@ -1,0 +1,443 @@
+# ========================================
+# DOCUMENTACIÓN API - OpenAPI 3.0
+# Sistema de Control de Visitantes
+# ========================================
+
+openapi: 3.0.3
+info:
+  title: API Sistema de Control de Visitantes
+  description: |
+    API REST para el sistema de control de acceso de visitantes de Supertiendas Cañaveral SAS.
+    
+    ## Características principales:
+    - Autenticación basada en sesiones con Flask-Login
+    - 3 roles de usuario: Master, Operador, Funcionario
+    - Gestión completa de visitantes con captura de fotos
+    - Sistema de pre-autorizaciones
+    - Reportes y exportación a Excel
+    - Auditoría completa con logs de eventos
+    
+    ## Autenticación:
+    Todas las rutas excepto `/health` y `/api/auth/login` requieren autenticación.
+    Las cookies de sesión se manejan automáticamente.
+    
+  version: 1.0.0
+  contact:
+    name: Supertiendas Cañaveral SAS
+    email: soporte@supertiendas.com
+  license:
+    name: Propietario
+    
+servers:
+  - url: http://localhost:5000/api
+    description: Servidor de desarrollo
+  - url: https://visitantes.supertiendas.com/api
+    description: Servidor de producción
+
+tags:
+  - name: Auth
+    description: Autenticación y gestión de sesiones
+  - name: Visitantes
+    description: Gestión de visitantes e ingresos
+  - name: Usuarios
+    description: Gestión de usuarios del sistema
+  - name: Sedes
+    description: Gestión de sedes
+  - name: Dependencias
+    description: Gestión de dependencias
+  - name: Autorizaciones
+    description: Pre-autorizaciones de ingreso
+  - name: Reportes
+    description: Reportes y estadísticas
+  - name: Configuración
+    description: Configuración del sistema
+
+paths:
+  # ==========================================
+  # AUTENTICACIÓN
+  # ==========================================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      description: Autenticar usuario y crear sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: Admin@2025
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Login exitoso
+                  usuario:
+                    $ref: '#/components/schemas/Usuario'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      description: Cerrar sesión del usuario actual
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Sesión cerrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/check-session:
+    get:
+      tags: [Auth]
+      summary: Verificar sesión activa
+      description: Verifica si hay una sesión activa
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Sesión válida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: true
+                  usuario:
+                    $ref: '#/components/schemas/Usuario'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Obtener usuario actual
+      description: Obtiene información del usuario autenticado
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Información del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+
+  # ==========================================
+  # VISITANTES
+  # ==========================================
+  /visitantes/buscar:
+    get:
+      tags: [Visitantes]
+      summary: Buscar visitante por identificación
+      description: Busca un visitante registrado por tipo y número de identificación
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: tipo_identificacion
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [CC, CE, TI, PA, NIT]
+        - name: num_identificacion
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resultado de búsqueda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  encontrado:
+                    type: boolean
+                  visitante:
+                    $ref: '#/components/schemas/Visitante'
+
+  /visitantes/registrar:
+    post:
+      tags: [Visitantes]
+      summary: Registrar nuevo visitante
+      description: Crea un nuevo registro de visitante en el sistema
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitanteInput'
+      responses:
+        '200':
+          description: Visitante registrado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  visitante:
+                    $ref: '#/components/schemas/Visitante'
+
+  /visitantes/listar:
+    get:
+      tags: [Visitantes]
+      summary: Listar visitas
+      description: Lista las visitas con filtros y paginación
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Búsqueda por identificación o nombre
+        - name: fecha_desde
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: fecha_hasta
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [EN_INSTALACIONES, SALIO]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: por_pagina
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Lista de visitas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  visitas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LogVisita'
+                  total:
+                    type: integer
+                  pagina:
+                    type: integer
+                  por_pagina:
+                    type: integer
+                  total_paginas:
+                    type: integer
+
+# ==========================================
+# COMPONENTES REUTILIZABLES
+# ==========================================
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Autenticación basada en sesiones de Flask
+
+  schemas:
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+        usuario:
+          type: string
+        tipo_usuario:
+          type: string
+          enum: [usuario_master, usuario_operador, usuario_funcionario]
+        nombre_completo:
+          type: string
+        correo:
+          type: string
+          format: email
+        sede_id:
+          type: integer
+        estado:
+          type: string
+          enum: [ACTIVO, INACTIVO, BLOQUEADO, PENDIENTE]
+
+    Visitante:
+      type: object
+      properties:
+        id:
+          type: integer
+        tipo_identificacion:
+          type: string
+        num_identificacion:
+          type: string
+        primer_nombre:
+          type: string
+        segundo_nombre:
+          type: string
+        primer_apellido:
+          type: string
+        segundo_apellido:
+          type: string
+        nombre_completo:
+          type: string
+        num_telefono:
+          type: string
+        dir_correo:
+          type: string
+        empresa:
+          type: string
+        nit_empresa:
+          type: string
+        estado:
+          type: string
+
+    VisitanteInput:
+      type: object
+      required:
+        - tipo_identificacion
+        - num_identificacion
+        - primer_nombre
+        - primer_apellido
+        - num_telefono
+        - dir_correo
+        - empresa
+        - nit_empresa
+      properties:
+        tipo_identificacion:
+          type: string
+          enum: [CC, CE, TI, PA, NIT]
+        num_identificacion:
+          type: string
+        primer_nombre:
+          type: string
+        segundo_nombre:
+          type: string
+        primer_apellido:
+          type: string
+        segundo_apellido:
+          type: string
+        num_telefono:
+          type: string
+        dir_correo:
+          type: string
+          format: email
+        empresa:
+          type: string
+        nit_empresa:
+          type: string
+
+    LogVisita:
+      type: object
+      properties:
+        id:
+          type: integer
+        visitante_id:
+          type: integer
+        visitante_nombre:
+          type: string
+        visitante_identificacion:
+          type: string
+        fecha_hora_entrada:
+          type: string
+          format: date-time
+        fecha_hora_salida:
+          type: string
+          format: date-time
+        estado:
+          type: string
+          enum: [EN_INSTALACIONES, SALIO]
+        dependencia_destino:
+          type: string
+        elementos_ingresados:
+          type: string
+        observaciones:
+          type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: No autorizado - Sesión requerida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Forbidden:
+      description: Prohibido - Sin permisos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

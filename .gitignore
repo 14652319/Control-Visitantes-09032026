@@ -22,6 +22,7 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 ENV/
 env/
 
@@ -66,3 +67,36 @@ coverage.xml
 
 # Migrations (optional - uncomment if you don't want to track migrations)
 # migrations/
+
+# Environment variants (docker, local overrides)
+.env.docker
+.env.local
+.env.*.local
+
+# Documentación generada automáticamente
+documentacion_html/
+documentacion_pdf/
+*.zip
+
+# Backups y archivos temporales
+Levantamiento-TEMP-BACKUP-*.txt
+*.tmp
+
+# Herramientas locales / IDE de IA
+.claude/
+.pytest_cache/
+
+# Documentos internos de auditoría / sesiones IA (no son parte del código)
+AUDITORIA_*.md
+INDICE_PARA_CLAUDE.md
+DOCUMENTACION_COMPLETA.md
+DOCUMENTACION_ESTADO_ACTUAL.md
+RESUMEN_FULL_STACK.md
+RESUMEN_COMPLETO.md
+COMO_ENVIAR_DOCUMENTACION.md
+INSTRUCCIONES_ENVIO_CORREO.md
+enviar_documentacion.py
+generar_htmls.py
+generar_pdfs.py
+crear_zip.py
+

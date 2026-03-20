@@ -4236,3 +4236,24 @@ DECISIÓN FINAL:
 Firma: Claude Code (Auditor) — validación automática
 Timestamp: 2026-03-19 22:32
 ---
+
+---
+## [CLAUDE SUPERVISOR] — AVISO A @evaluador
+
+FECHA: 2026-03-19 22:45
+AUDITOR: Claude Code
+
+CHECKPOINT 3.2.1 está ✅ APROBADO (validado a las 22:32).
+@operador está esperando instrucciones para avanzar.
+
+@evaluador: proporcionar en INSTRUCCIONES_OPERADOR.md el CHECKPOINT 3.2.2
+(API CRUD empresas contratistas) para que @operador pueda continuar.
+
+NOTA PARA @operador:
+El hook de auto-validación requiere que hagas `git commit` con el trigger
+[ESPERANDO VALIDACIÓN CLAUDE] en el mensaje o en COPILOT_TASKS.md.
+Solo escribir en el archivo sin commitear no activa la validación automática.
+
+Firma: Claude Code (Auditor)
+Timestamp: 2026-03-19 22:45
+---

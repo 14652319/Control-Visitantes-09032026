@@ -1,0 +1,131 @@
+# ========================================
+# DOCKER COMPOSE
+# Sistema de Control de Visitantes
+# ========================================
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # BASE DE DATOS POSTGRESQL
+  # ==========================================
+  db:
+    image: postgres:15-alpine
+    container_name: visitantes_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: control_visitantes
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-G3st0radm$2025.}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_ES.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - visitantes_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # BACKEND FLASK
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: visitantes_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${DB_PASSWORD:-G3st0radm$2025.}@db:5432/control_visitantes
+      FLASK_ENV: production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
+      HOST: 0.0.0.0
+      PORT: 5000
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+      - ./backend/backups:/app/backups
+    ports:
+      - "5000:5000"
+    networks:
+      - visitantes_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================
+  # NGINX - REVERSE PROXY (OPCIONAL)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: visitantes_nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./backend/uploads:/usr/share/nginx/html/uploads:ro
+    networks:
+      - visitantes_network
+    profiles:
+      - with-nginx
+
+  # ==========================================
+  # REDIS - CACHE Y RATE LIMITING (OPCIONAL)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: visitantes_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password_change_me}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - visitantes_network
+    profiles:
+      - with-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+# ==========================================
+# VOLÚMENES PERSISTENTES
+# ==========================================
+volumes:
+  postgres_data:
+    driver: local
+    name: visitantes_postgres_data
+  
+  redis_data:
+    driver: local
+    name: visitantes_redis_data
+
+# ==========================================
+# RED INTERNA
+# ==========================================
+networks:
+  visitantes_network:
+    driver: bridge
+    name: visitantes_network

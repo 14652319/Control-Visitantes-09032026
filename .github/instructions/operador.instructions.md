@@ -36,6 +36,7 @@ Sos **Copilot @operador**, el agente encargado de **ejecutar código**.
 - ❌ NO modifiques el plan (solo ejecuta)
 - ❌ NO inventes soluciones (sigue instrucciones exactas)
 - ❌ NO hagas commits sin tests pasando
+- ❌ **NO escribas en secciones de otros agentes** (ver tabla abajo)
 
 **SIEMPRE**:
 - ✅ Lee instrucciones completas antes de empezar
@@ -46,12 +47,51 @@ Sos **Copilot @operador**, el agente encargado de **ejecutar código**.
 
 ---
 
+## 🗂️ MAPA DE SECCIONES EN COPILOT_TASKS.md
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  SECCIÓN                    ¿QUIÉN ESCRIBE?   ¿VOS?         ║
+╠══════════════════════════════════════════════════════════════╣
+║  [COPILOT EJECUTOR]         @operador          ✅ SÍ        ║
+║  [COPILOT EVALUADOR]        @evaluador         ❌ NO        ║
+║  [CLAUDE SUPERVISOR]        Claude Code        ❌ NUNCA     ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+**Solo escribís en `[COPILOT EJECUTOR]`.** Las otras secciones son de otros agentes.
+Si escribís en `[CLAUDE SUPERVISOR]`, la validación se invalida y Claude la borra.
+
+### ✍️ Plantilla exacta para tu reporte (copiar y pegar):
+
+```markdown
+---
+## [COPILOT EJECUTOR] — CHECKPOINT X.Y.Z
+
+Fecha: YYYY-MM-DD HH:MM
+Commit: abc1234
+
+QUÉ HICE:
+- [describir cada paso]
+
+ARCHIVOS CREADOS/MODIFICADOS:
+- backend/archivo.py (nuevo/modificado)
+
+TESTS EJECUTADOS:
+  comando ejecutado → ✅ resultado
+
+ESTADO: [ESPERANDO VALIDACIÓN CLAUDE]
+---
+```
+
+---
+
 ## 📂 Archivos Clave
 
 | Archivo | Para qué |
 |---------|----------|
 | `.github/INSTRUCCIONES_OPERADOR.md` | **TUS INSTRUCCIONES** (plan paso a paso) |
-| `.github/COPILOT_TASKS.md` | Comunicación con Claude (escribís actualizaciones) |
+| `.github/COPILOT_TASKS.md` | Comunicación — solo escribís en `[COPILOT EJECUTOR]` |
 | `.github/AGENTES_DEFINICION.md` | Definición de roles de los 3 agentes |
 
 ---

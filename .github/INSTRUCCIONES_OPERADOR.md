@@ -23,39 +23,43 @@
 8. Si ves [✅ APROBADO], avanzas al siguiente CHECKPOINT
 ```
 
-### 📝 Formato de Actualización en COPILOT_TASKS.md
+---
 
-Después de cada checkpoint, escribí esto en `.github/COPILOT_TASKS.md` sección `[COPILOT EJECUTOR]`:
+## ⛔ MAPA DE SECCIONES — QUIÉN ESCRIBE DÓNDE
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  SECCIÓN                    ¿QUIÉN ESCRIBE?   ¿VOS?         ║
+╠══════════════════════════════════════════════════════════════╣
+║  [COPILOT EJECUTOR]         @operador          ✅ SÍ        ║
+║  [COPILOT EVALUADOR]        @evaluador         ❌ NO        ║
+║  [CLAUDE SUPERVISOR]        Claude Code        ❌ NUNCA     ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+**Solo escribís en `[COPILOT EJECUTOR]`.**
+Si escribís en `[CLAUDE SUPERVISOR]`, Claude lo borra y la validación queda inválida.
+
+---
+
+### 📝 Plantilla para actualizar COPILOT_TASKS.md (copiar y pegar exacto)
 
 ```markdown
 ---
-CHECKPOINT X.Y.Z - [Título]
-Fecha: 2026-03-19 14:30
+## [COPILOT EJECUTOR] — CHECKPOINT X.Y.Z
+
+Fecha: YYYY-MM-DD HH:MM
 Commit: abc1234
 
 QUÉ HICE:
-- Creé archivo migrate_add_indices_visitantes.py
-- Ejecuté migración: 3 índices creados
-- Corrí tests de verificación
+- [paso 1]
+- [paso 2]
 
-ARCHIVOS MODIFICADOS/CREADOS:
-- backend/migrate_add_indices_visitantes.py (nuevo)
+ARCHIVOS CREADOS/MODIFICADOS:
+- backend/archivo.py (nuevo)
 
 TESTS EJECUTADOS:
-```powershell
-python backend/migrate_add_indices_visitantes.py
-# Resultado: ✅ Índices creados exitosamente
-
-psql -U postgres -d control_visitantes -c "\d visitantes"
-# Resultado: ✅ idx_visitante_identificacion existe
-```
-
-COMMIT:
-```bash
-git add backend/migrate_add_indices_visitantes.py
-git commit -m "feat: agregar índices optimización búsquedas visitantes (CHECKPOINT 1.1)"
-git push origin feature/modulo-sst
-```
+  python backend/archivo.py → ✅ OK
 
 ESTADO: [ESPERANDO VALIDACIÓN CLAUDE]
 ---

@@ -3008,3 +3008,2775 @@ seguridad, mantenibilidad y experiencia del usuario.
 ================================================================================
 FIN DE LA SECCIÓN DE ADICIONES
 ================================================================================
+
+================================================================================
+29. MÓDULO DE CONTRATISTAS Y SISTEMA DE GESTIÓN SST
+================================================================================
+FECHA DE ESPECIFICACIÓN: 18/03/2026
+ESTADO: PENDIENTE DE IMPLEMENTACIÓN
+PRIORIDAD: ALTA
+
+================================================================================
+29.1. CONTEXTO Y NECESIDAD DEL NEGOCIO
+================================================================================
+
+SITUACIÓN ACTUAL:
+    El sistema maneja SOLO visitantes estándar con un flujo simple:
+    - Funcionario crea autorización previa (opcional)
+    - Operador registra ingreso/salida del visitante
+    - Master administra todo
+
+NUEVA NECESIDAD:
+    Extender el sistema para manejar CONTRATISTAS, MERCADERISTAS y TRANSPORTADORES
+    con requisitos legales y de seguridad industrial más estrictos:
+    
+    ✅ Validación de documentación legal (planillas seguridad social)
+    ✅ Certificaciones de seguridad (trabajo en alturas, riesgo eléctrico)
+    ✅ Vigencias de cobertura de seguridad social
+    ✅ Generación de cartas de autorización con formato oficial
+    ✅ Trazabilidad completa de validaciones
+    ✅ Consecutivos de autorización
+    ✅ Auto-guardado para evitar pérdida de información
+
+IMPACTO:
+    - Cumplimiento normativo Resolución 4272 de 2021 (EPP)
+    - Ley 100/1993 Sistema Seguridad Social Integral
+    - Estándares corporativos Supertiendas Cañaveral SAS
+
+
+================================================================================
+29.2. ANÁLISIS DEL SISTEMA ACTUAL
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ARQUITECTURA ACTUAL (VISITANTES)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+TABLAS EXISTENTES:
+    ✅ usuarios (con roles: master, operador, funcionario)
+    ✅ sedes
+    ✅ dependencias
+    ✅ visitantes
+    ✅ log_visitantes (registros de entrada/salida)
+    ✅ autorizaciones_ingreso (pre-autorizaciones)
+    ✅ log_eventos (auditoría)
+    ✅ configuracion_sistema
+
+FLUJO ACTUAL:
+    1. VISITANTE ESTÁNDAR:
+       funcionario → crea autorización previa (opcional)
+       operador → busca visitante → registra ingreso → registra salida
+    
+    2. PERMISOS:
+       - usuario_master: acceso total, todas las sedes
+       - usuario_funcionario: solo autorizaciones, su sede
+       - usuario_operador: registros de ingreso/salida, su sede
+
+LIMITACIONES PARA CONTRATISTAS:
+    ❌ No valida documentación legal (planillas SS)
+    ❌ No gestiona certificados de seguridad
+    ❌ No genera cartas oficiales con formato corporativo
+    ❌ No maneja vigencias de cobertura
+    ❌ No soporta múltiples empleados por empresa contratista
+    ❌ No tiene consecutivos de autorización oficial
+
+
+================================================================================
+29.3. SOLUCIÓN PROPUESTA: MÓDULO DUAL
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              ARQUITECTURA DUAL: VISITANTES + CONTRATISTAS                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CONCEPTO CLAVE: 
+    Mantener sistema actual de VISITANTES intacto, agregar módulo paralelo
+    para CONTRATISTAS con flujo completamente independiente pero integrado
+    en la misma base de datos.
+
+ESTRATEGIA:
+    ┌──────────────────────────┐         ┌──────────────────────────┐
+    │   MÓDULO VISITANTES      │         │   MÓDULO CONTRATISTAS    │
+    │   (Sistema actual)       │         │   (Nuevo - SST)          │
+    ├──────────────────────────┤         ├──────────────────────────┤
+    │ - funcionario            │         │ - admin_sst              │
+    │ - operador               │         │ - operador_seguridad     │
+    │ - master                 │         │ - master                 │
+    ├──────────────────────────┤         ├──────────────────────────┤
+    │ Tablas:                  │         │ Tablas:                  │
+    │ - visitantes             │         │ - empresas_contratistas  │
+    │ - log_visitantes         │         │ - empleados_contratistas │
+    │ - autorizaciones_ingreso │         │ - planillas_ss           │
+    │                          │         │ - certificados_trabajo   │
+    │                          │         │ - autorizaciones_sst     │
+    │                          │         │ - log_ingresos_cont.     │
+    └──────────────────────────┘         └──────────────────────────┘
+                │                                    │
+                └────────────────┬───────────────────┘
+                                 │
+                         ┌───────▼───────┐
+                         │  COMPARTIDO   │
+                         ├───────────────┤
+                         │ - usuarios    │
+                         │ - sedes       │
+                         │ - log_eventos │
+                         │ - config      │
+                         └───────────────┘
+
+
+================================================================================
+29.4. NUEVOS ROLES DEL SISTEMA
+================================================================================
+
+ROL: admin_sst (Administrador Sistema de Gestión y Salud en el Trabajo)
+────────────────────────────────────────────────────────────────────────
+RESPONSABILIDADES:
+    ✅ Recibir documentación de contratistas por correo
+    ✅ Validar planillas de seguridad social en operadores (Compensar, New EPS, etc)
+    ✅ Validar certificados de trabajo (alturas, eléctrico, otros)
+    ✅ Registrar datos de empresas contratistas
+    ✅ Registrar empleados del contratista con sus certificaciones
+    ✅ Generar cartas de autorización oficial (PDF formato SC-SST-FOR-015)
+    ✅ Asignar consecutivos de autorización
+    ✅ Aprobar/Rechazar autorizaciones
+    ✅ Consultar histórico de autorizaciones SST
+
+ACCESO:
+    - Su sede asignada (si no es master)
+    - Panel: admin_sst.html
+    - Rutas: /api/sst/*
+
+NIVEL DE PERMISOS:
+    - NO puede registrar ingresos/salidas (eso es del operador_seguridad)
+    - NO puede gestionar usuarios (solo master)
+    - SÍ puede consultar reportes de contratistas
+    - SÍ puede modificar autorizaciones en estado BORRADOR
+    - NO puede modificar autorizaciones APROBADAS
+
+
+ROL: operador_seguridad (Operador de Seguridad en Porterías)
+─────────────────────────────────────────────────────────────
+RESPONSABILIDADES:
+    ✅ Registrar ingreso/salida de CONTRATISTAS
+    ✅ Verificar autorización SST vigente
+    ✅ Registrar ingreso/salida de MERCADERISTAS
+    ✅ Registrar ingreso/salida de TRANSPORTADORES
+    ✅ En casos especiales: registrar VISITANTES estándar
+    ✅ Agregar observaciones al registro
+    ✅ Consultar autorizaciones SST vigentes
+
+ACCESO:
+    - Su sede asignada
+    - Panel: operador_seguridad.html
+    - Rutas: /api/sst/ingresos/*
+
+NIVEL DE PERMISOS:
+    - NO puede crear autorizaciones SST (solo admin_sst)
+    - SÍ puede usar autorizaciones SST aprobadas
+    - SÍ puede registrar ingresos/salidas
+    - SÍ puede agregar observaciones
+    - NO puede editar datos del contratista
+
+
+ACTUALIZACIÓN DE ROLES EXISTENTES:
+──────────────────────────────────
+usuario_master:
+    ✅ Mantiene todos los permisos actuales
+    ✅ + Acceso total a módulo SST
+    ✅ + Puede crear usuarios admin_sst y operador_seguridad
+    ✅ + Puede generar reportes de contratistas
+    ✅ + Puede aprobar/rechazar autorizaciones SST
+
+usuario_funcionario:
+    ✅ Mantiene permisos actuales (solo autorizaciones de visitantes)
+    ❌ NO tiene acceso a módulo SST (es independiente)
+
+usuario_operador:
+    ✅ Mantiene permisos actuales (solo visitantes estándar)
+    ❌ NO puede registrar contratistas (eso es operador_seguridad)
+
+
+================================================================================
+29.5. NUEVAS TABLAS DE BASE DE DATOS
+================================================================================
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: empresas_contratistas
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Registro de empresas contratistas (personas jurídicas o naturales)
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    tipo_persona            VARCHAR(50) NOT NULL           # 'JURIDICA' | 'NATURAL'
+    
+    -- Si es PERSONA JURIDICA:
+    nit                     VARCHAR(50) UNIQUE             # NIT sin puntos ni guiones
+    razon_social            VARCHAR(200)                   # Razón social completa
+    digito_verificacion     VARCHAR(1)                     # Dígito de verificación
+    
+    -- Si es PERSONA NATURAL:
+    tipo_identificacion     VARCHAR(50)                    # 'CC' | 'CE' | 'TI' | 'NIT' | 'PAS'
+    num_identificacion      VARCHAR(50) UNIQUE             # Número de documento
+    primer_nombre           VARCHAR(100)
+    segundo_nombre          VARCHAR(100)
+    primer_apellido         VARCHAR(100)
+    segundo_apellido        VARCHAR(100)
+    
+    -- Comunes:
+    telefono                VARCHAR(50)
+    correo                  VARCHAR(100)
+    direccion               VARCHAR(200)
+    estado                  VARCHAR(50) DEFAULT 'ACTIVO'   # 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO'
+    
+    -- Auditoría:
+    fecha_creacion          TIMESTAMP DEFAULT NOW()
+    fecha_modificacion      TIMESTAMP DEFAULT NOW()
+    usuario_registro_id     INTEGER REFERENCES usuarios(id)
+    
+    -- Índices:
+    CREATE INDEX idx_contratista_nit ON empresas_contratistas(nit);
+    CREATE INDEX idx_contratista_doc ON empresas_contratistas(tipo_identificacion, num_identificacion);
+
+VALIDACIONES:
+    ✅ Si tipo_persona='JURIDICA': nit y razon_social obligatorios
+    ✅ Si tipo_persona='NATURAL': tipo_identificacion, num_identificacion, nombres obligatorios
+    ✅ Auto-completado: Si NIT/documento ya existe, cargar datos existentes
+    ✅ Unicidad: NIT único, (tipo_id + num_id) único
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: operadores_aportes
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Catálogo de operadores de seguridad social en Colombia
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    tipo_operador           VARCHAR(50) NOT NULL           # 'EPS' | 'AFP' | 'ARL'
+    nit                     VARCHAR(50) UNIQUE NOT NULL
+    razon_social            VARCHAR(200) NOT NULL
+    codigo_operador         VARCHAR(20)                    # Código oficial FOSYGA/MinSalud
+    estado                  VARCHAR(50) DEFAULT 'ACTIVO'
+    url_consulta            VARCHAR(500)                   # URL para validar planillas
+    
+    fecha_creacion          TIMESTAMP DEFAULT NOW()
+    
+    CREATE INDEX idx_operador_tipo ON operadores_aportes(tipo_operador);
+
+DATOS PRE-CARGADOS:
+    -- EPS (Ejemplos):
+    INSERT INTO operadores_aportes (tipo_operador, nit, razon_social, codigo_operador) VALUES
+    ('EPS', '800251440', 'NUEVA EPS S.A.', 'EPS037'),
+    ('EPS', '800088702', 'SURA EPS', 'EPS005'),
+    ('EPS', '800130907', 'SALUD TOTAL EPS S.A.', 'EPS018'),
+    ('EPS', '830003564', 'COMPENSAR EPS', 'EPS020'),
+    ('EPS', '800088562', 'SANITAS EPS', 'EPS005');
+    
+    -- AFP (Ejemplos):
+    INSERT INTO operadores_aportes (tipo_operador, nit, razon_social) VALUES
+    ('AFP', '800088739', 'PORVENIR S.A.'),
+    ('AFP', '800144331', 'PROTECCION S.A.'),
+    ('AFP', '860002180', 'COLFONDOS S.A.');
+    
+    -- ARL (Ejemplos):
+    INSERT INTO operadores_aportes (tipo_operador, nit, razon_social) VALUES
+    ('ARL', '800088702', 'SURA ARL'),
+    ('ARL', '860002180', 'POSITIVA ARL'),
+    ('ARL', '800144331', 'LIBERTY ARL');
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: planillas_seguridad_social
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Registro de planillas de seguridad social validadas
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    empresa_id              INTEGER NOT NULL REFERENCES empresas_contratistas(id)
+    
+    -- Datos de la planilla:
+    operador_aportes_id     INTEGER REFERENCES operadores_aportes(id)  # EPS/AFP/ARL principal
+    numero_planilla         VARCHAR(100) NOT NULL                      # Número oficial
+    tipo_planilla           VARCHAR(10) NOT NULL                       # 'I'=Independiente, 'E'=Empleado, 'N'=Novedad
+    
+    -- Períodos de aporte:
+    periodo_salud_inicio    DATE                                        # Ej: 2026-03-01
+    periodo_salud_fin       DATE                                        # Ej: 2026-03-31
+    periodo_pension_inicio  DATE
+    periodo_pension_fin     DATE
+    periodo_arl_inicio      DATE
+    periodo_arl_fin         DATE
+    
+    -- Vigencia calculada (30 días después del pago):
+    fecha_pago              DATE NOT NULL                               # ¿Cuándo se pagó?
+    vigencia_hasta          DATE NOT NULL                               # fecha_pago + 30 días
+    
+    -- Aportes (booleanos):
+    aporta_salud            BOOLEAN DEFAULT TRUE
+    observacion_salud       TEXT                                        # Si NO aporta, ¿por qué?
+    aporta_pension          BOOLEAN DEFAULT TRUE
+    observacion_pension     TEXT                                        # Ej: "Pensionado"
+    aporta_arl              BOOLEAN DEFAULT TRUE
+    observacion_arl         TEXT                                        # Ej: "No aplica por edad"
+    
+    -- Archivo adjunto:
+    ruta_archivo_planilla   VARCHAR(500)                                # uploads/planillas/{empresa_id}/{fecha}/planilla_{num}.pdf
+    
+    -- Auditoría:
+    fecha_registro          TIMESTAMP DEFAULT NOW()
+    usuario_registro_id     INTEGER REFERENCES usuarios(id)             # admin_sst que registró
+    
+    CREATE INDEX idx_planilla_empresa ON planillas_seguridad_social(empresa_id);
+    CREATE INDEX idx_planilla_vigencia ON planillas_seguridad_social(vigencia_hasta);
+
+VALIDACIONES:
+    ✅ numero_planilla único por operador
+    ✅ vigencia_hasta = fecha_pago + 30 días (calculado automáticamente)
+    ✅ Si aporta_salud=FALSE, observacion_salud obligatorio
+    ✅ Si aporta_pension=FALSE, observacion_pension obligatorio
+    ✅ Persona natural: puede NO aportar pensión (pensionado, edad)
+    ✅ Persona jurídica: DEBE aportar todo
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: certificados_trabajo
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Certificaciones de seguridad y trabajo especializado
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    tipo_certificado        VARCHAR(50) NOT NULL           # 'ALTURAS' | 'ELECTRICO' | 'ESPACIOS_CONFINADOS' | 'OTRO'
+    numero_certificado      VARCHAR(100)                   # Número del certificado
+    
+    -- Validez:
+    fecha_expedicion        DATE NOT NULL
+    fecha_vencimiento       DATE NOT NULL
+    vigente                 BOOLEAN GENERATED ALWAYS AS (fecha_vencimiento >= CURRENT_DATE) STORED
+    
+    -- Entidad emisora:
+    entidad_emisora         VARCHAR(200)                   # Ej: "SENA", "COLMENA ARL"
+    codigo_entidad          VARCHAR(50)
+    
+    -- Archivo adjunto:
+    ruta_archivo            VARCHAR(500)                   # uploads/certificados/{tipo}/{fecha}/cert_{id}.pdf
+    
+    -- Auditoría:
+    fecha_registro          TIMESTAMP DEFAULT NOW()
+    usuario_registro_id     INTEGER REFERENCES usuarios(id)
+    
+    CREATE INDEX idx_certificado_tipo ON certificados_trabajo(tipo_certificado);
+    CREATE INDEX idx_certificado_vigencia ON certificados_trabajo(vigente);
+
+VALIDACIONES:
+    ✅ fecha_vencimiento > fecha_expedicion
+    ✅ Campo vigente se calcula automático
+    ✅ Alerta cuando fecha_vencimiento < (CURRENT_DATE + 30 días) → "Próximo a vencer"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: empleados_contratistas
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Empleados/trabajadores de empresas contratistas
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    empresa_id              INTEGER NOT NULL REFERENCES empresas_contratistas(id)
+    
+    -- Datos personales:
+    tipo_identificacion     VARCHAR(50) NOT NULL           # 'CC' | 'CE' | 'TI' | 'PAS'
+    num_identificacion      VARCHAR(50) NOT NULL
+    primer_nombre           VARCHAR(100) NOT NULL
+    segundo_nombre          VARCHAR(100)
+    primer_apellido         VARCHAR(100) NOT NULL
+    segundo_apellido        VARCHAR(100)
+    
+    -- Contacto:
+    telefono                VARCHAR(50)
+    correo                  VARCHAR(100)
+    
+    -- Estado:
+    estado                  VARCHAR(50) DEFAULT 'ACTIVO'   # 'ACTIVO' | 'INACTIVO' | 'RETIRADO'
+    
+    -- Auditoría:
+    fecha_creacion          TIMESTAMP DEFAULT NOW()
+    fecha_modificacion      TIMESTAMP DEFAULT NOW()
+    usuario_registro_id     INTEGER REFERENCES usuarios(id)
+    
+    -- Constraint de unicidad:
+    CONSTRAINT uk_empleado_doc UNIQUE (tipo_identificacion, num_identificacion)
+    
+    CREATE INDEX idx_empleado_empresa ON empleados_contratistas(empresa_id);
+    CREATE INDEX idx_empleado_doc ON empleados_contratistas(tipo_identificacion, num_identificacion);
+
+VALIDACIONES:
+    ✅ (tipo_identificacion + num_identificacion) único en toda la tabla
+    ✅ Auto-completado: Si documento ya existe, cargar nombres
+    ✅ Un empleado puede estar en múltiples empresas (casos de sub-contratación)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: autorizaciones_sst
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Autorizaciones de SST para ingreso de contratistas (la principal)
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    numero_autorizacion     VARCHAR(50) UNIQUE NOT NULL    # Consecutivo: "SST-2026-0001"
+    empresa_id              INTEGER NOT NULL REFERENCES empresas_contratistas(id)
+    planilla_ss_id          INTEGER NOT NULL REFERENCES planillas_seguridad_social(id)
+    
+    -- Vigencia BASADA EN LA PLANILLA:
+    fecha_autorizacion      DATE NOT NULL DEFAULT CURRENT_DATE
+    hora_autorizacion       TIME NOT NULL DEFAULT CURRENT_TIME
+    vigencia_inicio         DATE NOT NULL                  # Copia de planilla.periodo_salud_inicio
+    vigencia_fin            DATE NOT NULL                  # Copia de planilla.vigencia_hasta
+    
+    -- Sede:
+    sede_id                 INTEGER NOT NULL REFERENCES sedes(id)
+    
+    -- Estado del proceso:
+    estado                  VARCHAR(50) NOT NULL DEFAULT 'BORRADOR'
+    # 'BORRADOR'  - En proceso de registro (puede editar)
+    # 'REVISION'  - Completo, pendiente aprobación
+    # 'APROBADA'  - Aprobada por admin_sst (genera PDF)
+    # 'RECHAZADA' - Rechazada (con motivo)
+    # 'VENCIDA'   - Pasó vigencia_fin (auto-marcado)
+    # 'ANULADA'   - Anulada manualmente
+    
+    motivo_rechazo          TEXT                           # Si estado='RECHAZADA'
+    
+    -- Responsable SST que firma:
+    responsable_sst_id      INTEGER REFERENCES usuarios(id)  # admin_sst
+    nombre_responsable      VARCHAR(200)                   # Nombre completo para PDF
+    cargo_responsable       VARCHAR(100)                   # Ej: "Seguridad y Salud en el Trabajo"
+    
+    -- Archivo PDF generado:
+    ruta_pdf_generado       VARCHAR(500)                   # uploads/autorizaciones_sst/{año}/{consecutivo}.pdf
+    
+    -- Auditoría:
+    fecha_creacion          TIMESTAMP DEFAULT NOW()
+    fecha_modificacion      TIMESTAMP DEFAULT NOW()
+    fecha_aprobacion        TIMESTAMP                      # Cuándo se aprobó
+    usuario_registro_id     INTEGER NOT NULL REFERENCES usuarios(id)
+    usuario_aprobacion_id   INTEGER REFERENCES usuarios(id)
+    
+    CREATE INDEX idx_autoriz_sst_numero ON autorizaciones_sst(numero_autorizacion);
+    CREATE INDEX idx_autoriz_sst_empresa ON autorizaciones_sst(empresa_id);
+    CREATE INDEX idx_autoriz_sst_estado ON autorizaciones_sst(estado);
+    CREATE INDEX idx_autoriz_sst_vigencia ON autorizaciones_sst(vigencia_fin);
+
+VALIDACIONES:
+    ✅ numero_autorizacion único (formato: SST-{AÑO}-{CONSECUTIVO:04d})
+    ✅ Solo estado='BORRADOR' permite edición
+    ✅ Transiciones válidas:
+       BORRADOR → REVISION → APROBADA | RECHAZADA
+       APROBADA → VENCIDA (auto, si vigencia_fin < hoy)
+       APROBADA → ANULADA (manual, solo master)
+    ✅ PDF se genera SOLO cuando estado='APROBADA'
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: empleados_por_autorizacion
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Relación muchos-a-muchos entre autorizaciones SST y empleados
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    autorizacion_sst_id     INTEGER NOT NULL REFERENCES autorizaciones_sst(id) ON DELETE CASCADE
+    empleado_id             INTEGER NOT NULL REFERENCES empleados_contratistas(id)
+    planilla_ss_id          INTEGER REFERENCES planillas_seguridad_social(id)  # Planilla de ESTE empleado
+    
+    -- Certificaciones de ESTE empleado:
+    cert_alturas_id         INTEGER REFERENCES certificados_trabajo(id)
+    cert_electrico_id       INTEGER REFERENCES certificados_trabajo(id)
+    cert_espacios_conf_id   INTEGER REFERENCES certificados_trabajo(id)
+    
+    -- Autorizaciones de trabajo:
+    autorizado_alturas      BOOLEAN DEFAULT FALSE
+    autorizado_electrico    BOOLEAN DEFAULT FALSE
+    autorizado_esp_conf     BOOLEAN DEFAULT FALSE
+    restricciones           TEXT                           # Ej: "NO autorizado para trabajo en alturas"
+    
+    -- Aportes ESPECÍFICOS de este empleado (pueden diferir de la planilla principal):
+    aporta_salud            BOOLEAN DEFAULT TRUE
+    observacion_salud       TEXT
+    aporta_pension          BOOLEAN DEFAULT TRUE
+    observacion_pension     TEXT
+    aporta_arl              BOOLEAN DEFAULT TRUE
+    observacion_arl         TEXT
+    
+    -- Auditoría:
+    fecha_registro          TIMESTAMP DEFAULT NOW()
+    
+    CONSTRAINT uk_autoriz_empleado UNIQUE (autorizacion_sst_id, empleado_id)
+    
+    CREATE INDEX idx_emp_aut_autorizacion ON empleados_por_autorizacion(autorizacion_sst_id);
+    CREATE INDEX idx_emp_aut_empleado ON empleados_por_autorizacion(empleado_id);
+
+VALIDACIONES:
+    ✅ Un empleado no puede estar duplicado en la misma autorización
+    ✅ Certificados deben estar vigentes (fecha_vencimiento >= vigencia_fin autorización)
+    ✅ Si autorizado_alturas=TRUE, cert_alturas_id obligatorio
+    ✅ Si autorizado_electrico=TRUE, cert_electrico_id obligatorio
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TABLA: log_ingresos_contratistas
+═══════════════════════════════════════════════════════════════════════════════
+DESCRIPCIÓN: Registro de ingresos/salidas de empleados de contratistas
+
+ESTRUCTURA:
+    id                      SERIAL PRIMARY KEY
+    autorizacion_sst_id     INTEGER NOT NULL REFERENCES autorizaciones_sst(id)
+    empleado_id             INTEGER NOT NULL REFERENCES empleados_contratistas(id)
+    empresa_id              INTEGER NOT NULL REFERENCES empresas_contratistas(id)
+    
+    -- Fecha/Hora:
+    fecha_ingreso           DATE NOT NULL DEFAULT CURRENT_DATE
+    hora_ingreso            TIME NOT NULL DEFAULT CURRENT_TIME
+    fecha_salida            DATE
+    hora_salida             TIME
+    
+    -- Estado:
+    estado_ingreso          VARCHAR(50) DEFAULT 'EN_INSTALACIONES'  # 'EN_INSTALACIONES' | 'SALIO'
+    
+    -- Sede y ubicación:
+    sede_id                 INTEGER NOT NULL REFERENCES sedes(id)
+    area_trabajo            VARCHAR(200)                   # Área física donde trabajará
+    
+    -- Elementos ingresados:
+    elementos_ingresados    TEXT                           # Herramientas, equipos, vehículos
+    
+    -- Responsables:
+    operador_ingreso_id     INTEGER NOT NULL REFERENCES usuarios(id)  # operador_seguridad
+    operador_salida_id      INTEGER REFERENCES usuarios(id)
+    supervisor_obra         VARCHAR(200)                   # Nombre supervisor de la obra
+    
+    -- Observaciones:
+    observaciones_ingreso   TEXT
+    observaciones_salida    TEXT
+    
+    -- Auditoría:
+    fecha_registro          TIMESTAMP DEFAULT NOW()
+    
+    CREATE INDEX idx_ingreso_cont_fecha ON log_ingresos_contratistas(fecha_ingreso);
+    CREATE INDEX idx_ingreso_cont_estado ON log_ingresos_contratistas(estado_ingreso);
+    CREATE INDEX idx_ingreso_cont_empresa ON log_ingresos_contratistas(empresa_id);
+
+VALIDACIONES:
+    ✅ Solo se puede registrar ingreso si autorizacion_sst.estado='APROBADA'
+    ✅ Solo se puede registrar ingreso si autorizacion_sst.vigencia_fin >= CURRENT_DATE
+    ✅ Transición: EN_INSTALACIONES → SALIO (irreversible)
+    ✅ fecha_salida >= fecha_ingreso
+
+
+================================================================================
+29.6. FLUJOS DE TRABAJO DETALLADOS
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│         FLUJO 1: REGISTRO Y VALIDACIÓN DE DOCUMENTACIÓN SST                │
+│         Actor: admin_sst (Sistema de Gestión y Salud en el Trabajo)        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PASO 1: RECEPCIÓN DE DOCUMENTACIÓN (Externo al sistema)
+────────────────────────────────────────────────────────
+    Contratista envía por correo:
+    ✉ Carta de presentación de empleados
+    ✉ Planilla de seguridad social (PDF)
+    ✉ Certificados de trabajo en alturas (si aplica)
+    ✉ Certificados de riesgo eléctrico (si aplica)
+    ✉ Otros certificados requeridos
+
+PASO 2: INICIO DE REGISTRO EN EL SISTEMA
+─────────────────────────────────────────
+    admin_sst accede al sistema:
+    └─ Panel: admin_sst.html
+       └─ Opción: "Nueva Autorización SST"
+          └─ Botón: [+ Registrar Validación de Planilla]
+
+PASO 3: REGISTRAR EMPRESA CONTRATISTA
+──────────────────────────────────────
+    Pantalla: "Datos de la Empresa Contratista"
+    
+    Campo: Tipo de Persona
+        ( ) Persona Jurídica
+        ( ) Persona Natural
+    
+    ┌─ SI PERSONA JURÍDICA ─────────────────────────────────────┐
+    │                                                             │
+    │  NIT: [__________] (sin puntos ni guiones)                │
+    │                                                             │
+    │  [Al presionar TAB o perder foco]                         │
+    │  → Sistema busca: SELECT * FROM empresas_contratistas     │
+    │                   WHERE nit = '{nit_ingresado}'           │
+    │                                                             │
+    │  ┌─ SI EXISTE ────────────────────────────────────────┐   │
+    │  │ ✅ Auto-completar:                                 │   │
+    │  │    Razón Social: [CONSTRUCTORA XYZ S.A.S.    ]   │   │
+    │  │    Teléfono:     [3001234567                 ]   │   │
+    │  │    Correo:       [info@constructora.com      ]   │   │
+    │  │    Dirección:    [Calle 50 #25-30 Local 3    ]   │   │
+    │  │                                                     │   │
+    │  │ [💡 Empresa ya registrada - Datos cargados]       │   │
+    │  └─────────────────────────────────────────────────────┘   │
+    │                                                             │
+    │  ┌─ SI NO EXISTE ──────────────────────────────────────┐  │
+    │  │ ⚠️ Mensaje emergente (toast):                      │  │
+    │  │ "Esta empresa no está registrada.                  │  │
+    │  │  ¿Desea guardarla en el sistema?"                  │  │
+    │  │                                                      │  │
+    │  │  [Sí, guardar]  [No, cancelar]                     │  │
+    │  │                                                      │  │
+    │  │ Si [Sí, guardar]:                                  │  │
+    │  │    → Habilitar campos para rellenar:               │  │
+    │  │       Razón Social: [_________________]  *         │  │
+    │  │       Dígito Verif: [_]                            │  │
+    │  │       Teléfono:     [_________________]  *         │  │
+    │  │       Correo:       [_________________]  *         │  │
+    │  │       Dirección:    [_________________]            │  │
+    │  │                                                      │  │
+    │  │    → [Guardar] ejecuta:                            │  │
+    │  │       INSERT INTO empresas_contratistas ...        │  │
+    │  │       auto_guardado_temporal()                     │  │
+    │  └──────────────────────────────────────────────────────┘  │
+    └──────────────────────────────────────────────────────────┘
+    
+    ┌─ SI PERSONA NATURAL ──────────────────────────────────────┐
+    │                                                             │
+    │  Tipo Documento: [▼ Cédula de Ciudadanía  ]               │
+    │                   (CC, CE, TI, PAS)                        │
+    │                                                             │
+    │  Núm. Documento: [__________]                             │
+    │                                                             │
+    │  [Al presionar TAB]                                        │
+    │  → Sistema busca: SELECT * FROM empresas_contratistas     │
+    │                   WHERE tipo_identificacion = 'CC'         │
+    │                   AND num_identificacion = '{num}'         │
+    │                                                             │
+    │  ┌─ SI EXISTE ────────────────────────────────────────┐   │
+    │  │ ✅ Auto-completar nombres:                         │   │
+    │  │    Primer Nombre:   [JUAN              ]          │   │
+    │  │    Segundo Nombre:  [CARLOS            ]          │   │
+    │  │    Primer Apellido: [PÉREZ             ]          │   │
+    │  │    Segundo Apellido:[GÓMEZ             ]          │   │
+    │  └─────────────────────────────────────────────────────┘   │
+    │                                                             │
+    │  ┌─ SI NO EXISTE ──────────────────────────────────────┐  │
+    │  │ [Misma lógica de confirmación que persona jurídica]│  │
+    │  └──────────────────────────────────────────────────────┘  │
+    └───────────────────────────────────────────────────────────┘
+    
+    [Botón: Continuar →]
+
+PASO 4: REGISTRAR PLANILLA DE SEGURIDAD SOCIAL
+───────────────────────────────────────────────
+    Pantalla: "Validación de Planilla de Seguridad Social"
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ DATOS DE LA PLANILLA                                      │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ Operador de Aportes Principal:                           │
+    │ [▼ 800251440 - NUEVA EPS S.A.          ]                │
+    │    (Lista de operadores_aportes con filtro tipo='EPS')   │
+    │                                                            │
+    │ Número de Planilla: [_________________]  *               │
+    │                                                            │
+    │ Tipo de Planilla:                                         │
+    │   ( ) I - Independiente                                   │
+    │   ( ) E - Empleado                                        │
+    │   ( ) N - Novedad                                         │
+    │                                                            │
+    │ ┌────────────────────────────────────────────────────┐   │
+    │ │ PERÍODOS DE APORTE                                 │   │
+    │ ├────────────────────────────────────────────────────┤   │
+    │ │                                                      │   │
+    │ │ Salud:                                              │   │
+    │ │   Inicio: [DD/MM/AAAA 📅]  Fin: [DD/MM/AAAA 📅]  │   │
+    │ │   Ej: 01/03/2026            31/03/2026             │   │
+    │ │                                                      │   │
+    │ │ Pensión:                                            │   │
+    │ │   Inicio: [DD/MM/AAAA 📅]  Fin: [DD/MM/AAAA 📅]  │   │
+    │ │                                                      │   │
+    │ │ ARL:                                                │   │
+    │ │   Inicio: [DD/MM/AAAA 📅]  Fin: [DD/MM/AAAA 📅]  │   │
+    │ │                                                      │   │
+    │ └──────────────────────────────────────────────────────┘   │
+    │                                                            │
+    │ Fecha de Pago de la Planilla: [DD/MM/AAAA 📅]  *        │
+    │ Ej: 13/03/2026                                            │
+    │                                                            │
+    │ 💡 Vigencia Calculada Automática: 12/04/2026             │
+    │    (fecha_pago + 30 días)                                 │
+    │                                                            │
+    │ ┌────────────────────────────────────────────────────┐   │
+    │ │ VERIFICACIÓN DE APORTES                            │   │
+    │ ├────────────────────────────────────────────────────┤   │
+    │ │                                                      │   │
+    │ │ ☑ Aporta a Salud (EPS)                            │   │
+    │ │                                                      │   │
+    │ │ ☑ Aporta a Pensión (AFP)                          │   │
+    │ │   ☐ Si NO aporta:                                 │   │
+    │ │      Observación: [____________________]           │   │
+    │ │      (Ej: "Pensionado", "Mayor de 60 años")       │   │
+    │ │                                                      │   │
+    │ │ ☑ Aporta a ARL                                    │   │
+    │ │   ☐ Si NO aporta:                                 │   │
+    │ │      Observación: [____________________]           │   │
+    │ │                                                      │   │
+    │ └──────────────────────────────────────────────────────┘   │
+    │                                                            │
+    │ Cargar Planilla (PDF): [Seleccionar archivo 📎]         │
+    │                        (Opcional)                          │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+    
+    [💾 Auto-guardado cada 2 minutos]
+    [Botón: Continuar →]
+
+PASO 5: REGISTRAR EMPLEADOS DEL CONTRATISTA
+────────────────────────────────────────────
+    Pantalla: "Empleados a Autorizar"
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ [+ Agregar Empleado]                                      │
+    └──────────────────────────────────────────────────────────┘
+    
+    ┌────────────────────────────────────────────────────────────┐
+    │ EMPLEADO #1                                      [❌ Quitar]│
+    ├────────────────────────────────────────────────────────────┤
+    │                                                              │
+    │ Tipo Documento: [▼ Cédula de Ciudadanía  ]                │
+    │ Núm. Documento: [__________]                               │
+    │                                                              │
+    │ [Auto-completado si existe en empleados_contratistas]      │
+    │ Primer Nombre:   [CARLOS            ]  *                   │
+    │ Segundo Nombre:  [ANDRÉS            ]                      │
+    │ Primer Apellido: [LÓPEZ             ]  *                   │
+    │ Segundo Apellido:[MARTÍNEZ          ]                      │
+    │                                                              │
+    │ ┌──────────────────────────────────────────────────────┐   │
+    │ │ APORTES DE SEGURIDAD SOCIAL                          │   │
+    │ ├──────────────────────────────────────────────────────┤   │
+    │ │                                                        │   │
+    │ │ ☑ Aporta Salud   [Periodo: 01/03/2026 - 31/03/2026]│   │
+    │ │   ☐ NO aporta → Observación: [____________]        │   │
+    │ │                                                        │   │
+    │ │ ☑ Aporta Pensión [Periodo: 01/03/2026 - 31/03/2026]│   │
+    │ │   ☐ NO aporta → Observación: [____________]        │   │
+    │ │                                                        │   │
+    │ │ ☑ Aporta ARL     [Periodo: 01/03/2026 - 31/03/2026]│   │
+    │ │   ☐ NO aporta → Observación: [____________]        │   │
+    │ │                                                        │   │
+    │ │ 💡 Por defecto copia los datos de la planilla       │   │
+    │ │    registrada arriba, pero se puede personalizar     │   │
+    │ └──────────────────────────────────────────────────────┘   │
+    │                                                              │
+    │ ┌──────────────────────────────────────────────────────┐   │
+    │ │ AUTORIZACIONES DE TRABAJO                            │   │
+    │ ├──────────────────────────────────────────────────────┤   │
+    │ │                                                        │   │
+    │ │ ☐ Autorizado para Trabajo en Alturas                │   │
+    │ │   → Si marcado, mostrar:                             │   │
+    │ │      Certificado: [Seleccionar archivo 📎]          │   │
+    │ │      Núm. Cert: [____________]                       │   │
+    │ │      Vigencia: [DD/MM/AAAA 📅]  (debe estar vigente)│   │
+    │ │                                                        │   │
+    │ │ ☐ Autorizado para Riesgo Eléctrico                  │   │
+    │ │   → Si marcado, mostrar:                             │   │
+    │ │      Certificado: [Seleccionar archivo 📎]          │   │
+    │ │      Núm. Cert: [____________]                       │   │
+    │ │      Vigencia: [DD/MM/AAAA 📅]                      │   │
+    │ │                                                        │   │
+    │ │ ☐ Autorizado para Espacios Confinados               │   │
+    │ │   → Si marcado, mostrar campos de certificado        │   │
+    │ │                                                        │   │
+    │ └──────────────────────────────────────────────────────┘   │
+    │                                                              │
+    │ Restricciones Adicionales:                                  │
+    │ [________________________________________________]          │
+    │ Ej: "NO autorizado para trabajo en alturas"                │
+    │                                                              │
+    │ [💾 Auto-guardar empleado]                                 │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+    
+    [+ Agregar Otro Empleado]
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ RESUMEN DE EMPLEADOS REGISTRADOS                          │
+    ├──────────────────────────────────────────────────────────┤
+    │ 1. CARLOS ANDRÉS LÓPEZ MARTÍNEZ (CC 1234567)             │
+    │    ✅ Alturas  ❌ Eléctrico                              │
+    │                                              [✏ Editar]   │
+    │                                                            │
+    │ 2. JUAN DAVID GÓMEZ RUIZ (CC 9876543)                    │
+    │    ✅ Alturas  ✅ Eléctrico                              │
+    │                                              [✏ Editar]   │
+    │                                                            │
+    │ 3. MARÍA FERNANDA TORRES DÍAZ (CC 5555555)               │
+    │    ❌ Alturas  ✅ Eléctrico                              │
+    │                                              [✏ Editar]   │
+    │                                                            │
+    │ Total empleados: 3                                        │
+    └──────────────────────────────────────────────────────────┘
+    
+    [Botón: Continuar a Revisión →]
+
+PASO 6: REVISIÓN Y CONFIRMACIÓN
+────────────────────────────────
+    Pantalla: "Revisión Final de la Autorización SST"
+    
+    ┌──────────────────────────────────────────────────────────────┐
+    │ RESUMEN DE LA AUTORIZACIÓN                                    │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                                │
+    │ Empresa: CONSTRUCTORA XYZ S.A.S. (NIT 900000000)             │
+    │                                                                │
+    │ Planilla: 2026030001                                          │
+    │ Operador: NUEVA EPS S.A.                                      │
+    │ Vigencia: 13/03/2026 - 12/04/2026 (30 días)                  │
+    │                                                                │
+    │ Empleados autorizados: 3                                      │
+    │ [Ver detalle ▼]                                               │
+    │                                                                │
+    │ Sede destino: [▼ SEDE CAÑAVERAL  ]  *                       │
+    │                                                                │
+    │ Responsable SST:                                              │
+    │   Nombre: [MARÍA MIRLADYS TEJADA MINA          ]  *          │
+    │   Cargo:  [SEGURIDAD Y SALUD EN EL TRABAJO     ]  *          │
+    │                                                                │
+    │ ┌──────────────────────────────────────────────────────────┐ │
+    │ │ ⚠️ VALIDACIONES AUTOMÁTICAS                             │ │
+    │ ├──────────────────────────────────────────────────────────┤ │
+    │ │ ✅ Planilla vigente (vigencia_hasta >= hoy)              │ │
+    │ │ ✅ Todos los empleados tienen datos completos            │ │
+    │ │ ✅ Certificados de alturas vigentes                      │ │
+    │ │ ✅ Certificados eléctricos vigentes                      │ │
+    │ │ ⚠️ Empleado #3 NO autorizado para trabajo en alturas    │ │
+    │ └──────────────────────────────────────────────────────────┘ │
+    │                                                                │
+    │ ¿Confirma que todos los datos son correctos?                 │
+    │                                                                │
+    │ [Regresar a editar]  [❌ Cancelar]  [✅ APROBAR Y GENERAR]  │
+    │                                                                │
+    └────────────────────────────────────────────────────────────────┘
+
+PASO 7: APROBACIÓN Y GENERACIÓN DE PDF
+───────────────────────────────────────
+    Al presionar [✅ APROBAR Y GENERAR]:
+    
+    Backend ejecuta:
+    
+    1. UPDATE autorizaciones_sst
+       SET estado = 'APROBADA',
+           fecha_aprobacion = NOW(),
+           usuario_aprobacion_id = {user_id},
+           numero_autorizacion = generar_consecutivo(),
+           nombre_responsable = '{nombre}',
+           cargo_responsable = '{cargo}'
+       WHERE id = {autorizacion_id}
+    
+    2. generar_consecutivo():
+       └─ SELECT MAX(numero_autorizacion) FROM autorizaciones_sst
+          WHERE numero_autorizacion LIKE 'SST-{AÑO}-%'
+       └─ Extraer número: SST-2026-0001 → 0001
+       └─ Incrementar: 0001 + 1 = 0002
+       └─ Retornar: 'SST-2026-0002'
+    
+    3. generar_pdf_autorizacion():
+       Plantilla: SC-SST-FOR-015 (Formato de Autorización)
+       
+       Contenido:
+       ╔═══════════════════════════════════════════════════════════╗
+       ║             SUPERTIENDAS CAÑAVERAL SAS                    ║
+       ║         SISTEMA DE GESTIÓN DE SEGURIDAD Y SALUD           ║
+       ║                                                            ║
+       ║  AUTORIZACIÓN DE INGRESO - CONTRATISTAS                   ║
+       ║  Formato: SC-SST-FOR-015                                  ║
+       ╠═══════════════════════════════════════════════════════════╣
+       ║                                                            ║
+       ║  No. Autorización: SST-2026-0002                          ║
+       ║  Fecha: 18/03/2026         Hora: 14:30                    ║
+       ║                                                            ║
+       ║  EMPRESA CONTRATISTA:                                     ║
+       ║  NIT: 900000000-1                                         ║
+       ║  Razón Social: CONSTRUCTORA XYZ S.A.S.                   ║
+       ║  Contacto: 300-1234567                                    ║
+       ║                                                            ║
+       ║  PLANILLA DE SEGURIDAD SOCIAL:                            ║
+       ║  Número: 2026030001                                       ║
+       ║  Operador: NUEVA EPS S.A.                                 ║
+       ║  Vigencia: 13/03/2026 al 12/04/2026                      ║
+       ║                                                            ║
+       ║  EMPLEADOS AUTORIZADOS:                                   ║
+       ║  ┌────┬──────────────────────────┬──────────┬────────┐  ║
+       ║  │ No.│ Nombre                   │ Cédula   │ Cert.  │  ║
+       ║  ├────┼──────────────────────────┼──────────┼────────┤  ║
+       ║  │ 1  │ CARLOS ANDRÉS LÓPEZ M.   │ 1234567  │ Alt    │  ║
+       ║  │ 2  │ JUAN DAVID GÓMEZ RUIZ    │ 9876543  │ Alt,El │  ║
+       ║  │ 3  │ MARÍA FERNANDA TORRES D. │ 5555555  │ El     │  ║
+       ║  └────┴──────────────────────────┴──────────┴────────┘  ║
+       ║                                                            ║
+       ║  RESTRICCIONES:                                           ║
+       ║  • Empleado #3: NO autorizado para trabajo en alturas    ║
+       ║                                                            ║
+       ║  SEDE AUTORIZADA: SEDE CAÑAVERAL                          ║
+       ║                                                            ║
+       ║  ───────────────────────────────────────────────────────  ║
+       ║                                                            ║
+       ║  Aprobado por:                                            ║
+       ║  MARÍA MIRLADYS TEJADA MINA                               ║
+       ║  Seguridad y Salud en el Trabajo                          ║
+       ║                                                            ║
+       ║  Firma: _____________________                             ║
+       ║                                                            ║
+       ║  Este documento autoriza el ingreso del personal del      ║
+       ║  contratista a las instalaciones de Supertiendas          ║
+       ║  Cañaveral SAS, condicionado a la vigencia de la          ║
+       ║  planilla de seguridad social y las restricciones         ║
+       ║  mencionadas.                                             ║
+       ║                                                            ║
+       ║  Validez: Hasta el 12/04/2026                             ║
+       ╚═══════════════════════════════════════════════════════════╝
+       
+       └─ Guardar en: uploads/autorizaciones_sst/2026/SST-2026-0002.pdf
+       └─ UPDATE autorizaciones_sst 
+          SET ruta_pdf_generado = '{ruta}'
+    
+    4. Enviar notificación por correo:
+       Para: contratista@empresa.com
+       Asunto: "Autorización SST Aprobada - SST-2026-0002"
+       Adjunto: SST-2026-0002.pdf
+       
+       Cuerpo:
+       "Se adjunta la autorización de ingreso para los empleados
+        del contratista CONSTRUCTORA XYZ S.A.S.
+        
+        Vigencia: 13/03/2026 al 12/04/2026
+        No. Autorización: SST-2026-0002
+        
+        Presente esta autorización al operador de seguridad
+        en la portería para el registro de ingreso."
+
+    Pantalla muestra:
+    ┌──────────────────────────────────────────────────────────┐
+    │ ✅ AUTORIZACIÓN APROBADA EXITOSAMENTE                    │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ No. Autorización: SST-2026-0002                           │
+    │ PDF Generado: SST-2026-0002.pdf                           │
+    │                                                            │
+    │ [📥 Descargar PDF]  [📧 Enviar por Correo]               │
+    │                                                            │
+    │ [🏠 Volver al Inicio]  [➕ Nueva Autorización]           │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│             FLUJO 2: REGISTRO DE INGRESO DE CONTRATISTAS                   │
+│             Actor: operador_seguridad (en portería)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CONTEXTO:
+    El contratista llega a la portería con la autorización SST impresa (PDF)
+
+PASO 1: BÚSQUEDA DE AUTORIZACIÓN
+─────────────────────────────────
+    Pantalla: "Registro de Ingreso - Contratistas"
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ BUSCAR AUTORIZACIÓN SST                                   │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ Buscar por:                                               │
+    │   ( ) No. Autorización                                    │
+    │   ( ) NIT/Cédula Empresa                                  │
+    │   ( ) Cédula Empleado                                     │
+    │                                                            │
+    │ [_________________]  [🔍 Buscar]                         │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+    
+    Backend ejecuta:
+    SELECT a.*, e.razon_social, e.nit, p.numero_planilla, p.vigencia_hasta
+    FROM autorizaciones_sst a
+    JOIN empresas_contratistas e ON a.empresa_id = e.id
+    JOIN planillas_seguridad_social p ON a.planilla_ss_id = p.id
+    WHERE a.numero_autorizacion = '{numero}'
+      AND a.estado = 'APROBADA'
+      AND a.vigencia_fin >= CURRENT_DATE
+      AND a.sede_id = {sede_operador}
+
+PASO 2: VISUALIZACIÓN DE AUTORIZACIÓN
+──────────────────────────────────────
+    Si encuentra la autorización:
+    
+    ┌──────────────────────────────────────────────────────────────┐
+    │ ✅ AUTORIZACIÓN VÁLIDA: SST-2026-0002                        │
+    ├──────────────────────────────────────────────────────────────┤
+    │                                                                │
+    │ Empresa: CONSTRUCTORA XYZ S.A.S.                             │
+    │ Vigencia: 13/03/2026 - 12/04/2026  [✅ VIGENTE]              │
+    │                                                                │
+    │ ┌────────────────────────────────────────────────────────┐   │
+    │ │ EMPLEADOS AUTORIZADOS (3)                              │   │
+    │ ├────┬──────────────────────────┬──────────┬────────────┤   │
+    │ │ ☐  │ CARLOS ANDRÉS LÓPEZ M.   │ 1234567  │ Alt        │   │
+    │ │ ☐  │ JUAN DAVID GÓMEZ RUIZ    │ 9876543  │ Alt, El    │   │
+    │ │ ☐  │ MARÍA FERNANDA TORRES D. │ 5555555  │ El         │   │
+    │ └────┴──────────────────────────┴──────────┴────────────┘   │
+    │                                                                │
+    │ ⚠️ RESTRICCIONES:                                             │
+    │    Empleado #3: NO autorizado para trabajo en alturas        │
+    │                                                                │
+    └────────────────────────────────────────────────────────────────┘
+    
+    Validaciones automáticas:
+    ✅ vigencia_fin >= CURRENT_DATE
+    ✅ estado = 'APROBADA'
+    ✅ sede_id coincide con sede del operador
+    ✅ Certificados vigentes
+
+PASO 3: SELECCIONAR EMPLEADOS QUE INGRESAN
+───────────────────────────────────────────
+    operador_seguridad marca checkboxes de empleados que ingresan:
+    
+    ☑ CARLOS ANDRÉS LÓPEZ M.
+    ☑ JUAN DAVID GÓMEZ RUIZ
+    ☐ MARÍA FERNANDA TORRES D.  (No ingresa hoy)
+    
+    [Botón: Registrar Ingreso (2 empleados) →]
+
+PASO 4: FORMULARIO DE INGRESO
+──────────────────────────────
+    Para CADA empleado seleccionado:
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ INGRESO: CARLOS ANDRÉS LÓPEZ MARTÍNEZ (CC 1234567)      │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ Fecha: [18/03/2026] (hoy, automático)                    │
+    │ Hora:  [14:35]      (ahora, automático)                  │
+    │                                                            │
+    │ Área de Trabajo:                                          │
+    │ [▼ Mantenimiento Techos   ]                              │
+    │    (Lista: Obra Civil, Sistemas, Refrigeración, etc)    │
+    │                                                            │
+    │ Elementos/Herramientas Ingresadas:                        │
+    │ [____________________________________________]            │
+    │ Ej: "Taladro, Escalera, Arnés, Casco"                   │
+    │                                                            │
+    │ Supervisor de Obra:                                       │
+    │ [_______________________]  *                             │
+    │ Ej: "Ing. Pedro Ramírez"                                 │
+    │                                                            │
+    │ Observaciones:                                            │
+    │ [____________________________________________]            │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+    
+    [Botón: ✅ Confirmar Ingreso]
+    
+    Backend ejecuta:
+    INSERT INTO log_ingresos_contratistas (
+        autorizacion_sst_id,
+        empleado_id,
+        empresa_id,
+        fecha_ingreso,
+        hora_ingreso,
+        estado_ingreso,
+        sede_id,
+        area_trabajo,
+        elementos_ingresados,
+        supervisor_obra,
+        observaciones_ingreso,
+        operador_ingreso_id
+    ) VALUES (
+        {autorizacion_id},
+        {empleado_id},
+        {empresa_id},
+        CURRENT_DATE,
+        CURRENT_TIME,
+        'EN_INSTALACIONES',
+        {sede_id},
+        '{area}',
+        '{elementos}',
+        '{supervisor}',
+        '{observaciones}',
+        {operador_id}
+    )
+    
+    INSERT INTO log_eventos (
+        tipo_evento,
+        descripcion,
+        usuario_id,
+        tabla_afectada,
+        registro_id
+    ) VALUES (
+        'INGRESO_CONTRATISTA',
+        'Ingreso de {nombre} ({cedula}) - Empresa: {empresa}',
+        {operador_id},
+        'log_ingresos_contratistas',
+        {id_insertado}
+    )
+
+PASO 5: CONFIRMACIÓN
+────────────────────
+    Pantalla muestra:
+    ┌──────────────────────────────────────────────────────────┐
+    │ ✅ INGRESOS REGISTRADOS EXITOSAMENTE                     │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ ✔ CARLOS ANDRÉS LÓPEZ MARTÍNEZ                           │
+    │   Hora ingreso: 14:35                                     │
+    │   Área: Mantenimiento Techos                              │
+    │                                                            │
+    │ ✔ JUAN DAVID GÓMEZ RUIZ                                  │
+    │   Hora ingreso: 14:36                                     │
+    │   Área: Mantenimiento Techos                              │
+    │                                                            │
+    │ [🖨️ Imprimir Etiquetas]  [🏠 Volver al Inicio]          │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│             FLUJO 3: REGISTRO DE SALIDA DE CONTRATISTAS                    │
+│             Actor: operador_seguridad (en portería)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PASO 1: CONSULTAR PERSONAL EN INSTALACIONES
+────────────────────────────────────────────
+    Pantalla: "Vehículos/Personal en Instalaciones"
+    
+    Tab: [Contratistas]  (nuevo tab adicional a "Visitantes")
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ CONTRATISTAS EN INSTALACIONES HOY                         │
+    ├──────────────────────────────────────────────────────────┤
+    │                                                            │
+    │ Filtros:                                                  │
+    │ Empresa: [Todas ▼]                                       │
+    │ Área: [Todas ▼]                                          │
+    │                                                            │
+    │ ┌────┬────────────────────┬──────────┬───────┬─────────┐│
+    │ │Sel │ Nombre             │ Empresa  │ Hora  │ Área    ││
+    │ ├────┼────────────────────┼──────────┼───────┼─────────┤│
+    │ │ ☐  │ CARLOS LÓPEZ M.    │ CONSTR..│ 14:35 │ Techos  ││
+    │ │ ☐  │ JUAN GÓMEZ R.      │ CONSTR..│ 14:36 │ Techos  ││
+    │ │ ☐  │ ANA RUIZ P.        │ SEGUR.. │ 08:00 │ Portería││
+    │ └────┴────────────────────┴──────────┴───────┴─────────┘│
+    │                                                            │
+    │ [✅ Registrar Salida de Seleccionados]                   │
+    │                                                            │
+    └────────────────────────────────────────────────────────────┘
+    
+    Backend:
+    SELECT l.*, e.primer_nombre, e.primer_apellido, e.num_identificacion,
+           emp.razon_social, l.hora_ingreso, l.area_trabajo
+    FROM log_ingresos_contratistas l
+    JOIN empleados_contratistas e ON l.empleado_id = e.id
+    JOIN empresas_contratistas emp ON l.empresa_id = emp.id
+    WHERE l.fecha_ingreso = CURRENT_DATE
+      AND l.estado_ingreso = 'EN_INSTALACIONES'
+      AND l.sede_id = {sede_operador}
+    ORDER BY l.hora_ingreso DESC
+
+PASO 2: REGISTRAR SALIDA
+─────────────────────────
+    operador_seguridad marca los empleados que salen:
+    
+    ☑ CARLOS LÓPEZ M.
+    ☑ JUAN GÓMEZ R.
+    
+    [✅ Registrar Salida]
+    
+    Backend:
+    UPDATE log_ingresos_contratistas
+    SET estado_ingreso = 'SALIO',
+        fecha_salida = CURRENT_DATE,
+        hora_salida = CURRENT_TIME,
+        operador_salida_id = {operador_id}
+    WHERE id IN ({ids_seleccionados})
+    
+    INSERT INTO log_eventos ...
+
+PASO 3: OBSERVACIONES DE SALIDA (Opcional)
+───────────────────────────────────────────
+    Si hay algo que reportar:
+    
+    ┌──────────────────────────────────────────────────────────┐
+    │ Observaciones de Salida:                                  │
+    │ [________________________________________________]        │
+    │ Ej: "Dejaron herramientas en custodia"                   │
+    │                                                            │
+    │ [Guardar]  [Omitir]                                      │
+    └────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                FLUJO 4: CONSULTA Y REPORTES SST                            │
+│                Actor: admin_sst, usuario_master                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PANTALLAS DE CONSULTA:
+──────────────────────
+
+1. AUTORIZACIONES VIGENTES
+   └─ Listado de autorizaciones con estado='APROBADA' y vigentes
+   └─ Filtros: Empresa, Fecha, Estado, Sede
+   └─ Acciones: Ver PDF, Ver Empleados, Anular (solo master)
+
+2. AUTORIZACIONES PRÓXIMAS A VENCER
+   └─ WHERE vigencia_fin BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+   └─ Alerta: "⚠️ Vence en {días} días"
+   └─ Opción: Enviar correo de recordatorio
+
+3. HISTÓRICO DE INGRESOS POR EMPRESA
+   └─ Reportes por empresa contratista
+   └─ Gráficos: Ingresos por mes, Tiempo promedio en instalaciones
+   └─ Export: Excel, PDF
+
+4. CERTIFICADOS PRÓXIMOS A VENCER
+   └─ Certificados de alturas, eléctrico, etc. con vencimiento < 30 días
+   └─ Alerta al admin_sst
+   └─ Opción: Solicitar renovación
+
+5. PLANILLAS VENCIDAS
+   └─ Empresas con planillas vencidas (vigencia_hasta < hoy)
+   └─ Estado automático: BLOQUEADO (no puede autorizar ingresos)
+
+
+================================================================================
+29.7. NUEVOS ENDPOINTS DE API (Backend - Flask)
+================================================================================
+
+═══════════════════════════════════════════════════════════════════════════════
+BLUEPRINT: /api/sst/  (Nuevo)
+═══════════════════════════════════════════════════════════════════════════════
+
+Archivo: backend/app/routes/sst.py
+
+# ────────────────────────────────────────────────────────────────────────────
+# EMPRESAS CONTRATISTAS
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/empresas
+    Descripción: Listar empresas contratistas
+    Permisos: @login_required, @admin_sst_or_master_required
+    Query Params:
+        - tipo_persona: 'JURIDICA' | 'NATURAL' | null
+        - estado: 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO'
+        - search: búsqueda en razon_social o nombres
+    Respuesta:
+        {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "tipo_persona": "JURIDICA",
+              "nit": "900000000",
+              "razon_social": "CONSTRUCTORA XYZ S.A.S.",
+              "telefono": "3001234567",
+              "estado": "ACTIVO"
+            },
+            ...
+          ]
+        }
+
+GET /api/sst/empresas/<id>
+    Descripción: Detalle de empresa contratista
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "data": {
+            "id": 1,
+            "tipo_persona": "JURIDICA",
+            "nit": "900000000",
+            "razon_social": "CONSTRUCTORA XYZ S.A.S.",
+            "telefono": "3001234567",
+            "correo": "info@constructora.com",
+            "direccion": "Calle 50 #25-30",
+            "estado": "ACTIVO",
+            "fecha_creacion": "2026-03-15T10:30:00",
+            "total_autorizaciones": 5,
+            "autorizaciones_vigentes": 2
+          }
+        }
+
+GET /api/sst/empresas/buscar/<tipo_doc>/<num_doc>
+    Descripción: Buscar empresa por documento (auto-completado)
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "existe": true,
+          "data": { ...empresa... }
+        }
+
+POST /api/sst/empresas
+    Descripción: Crear nueva empresa contratista
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "tipo_persona": "JURIDICA",
+          "nit": "900000000",
+          "razon_social": "CONSTRUCTORA XYZ S.A.S.",
+          "telefono": "3001234567",
+          "correo": "info@constructora.com",
+          "direccion": "Calle 50 #25-30"
+        }
+    Respuesta:
+        {
+          "success": true,
+          "message": "Empresa registrada exitosamente",
+          "data": { "id": 1, ... }
+        }
+
+PUT /api/sst/empresas/<id>
+    Descripción: Actualizar empresa contratista
+    Permisos: @login_required, @admin_sst_or_master_required
+
+PUT /api/sst/empresas/<id>/estado
+    Descripción: Cambiar estado de empresa (ACTIVO/INACTIVO/BLOQUEADO)
+    Permisos: @login_required, @master_required
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# OPERADORES DE APORTES
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/operadores
+    Descripción: Listar operadores de seguridad social
+    Query Params:
+        - tipo: 'EPS' | 'AFP' | 'ARL' | null
+    Respuesta:
+        {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "tipo_operador": "EPS",
+              "nit": "800251440",
+              "razon_social": "NUEVA EPS S.A.",
+              "codigo_operador": "EPS037"
+            },
+            ...
+          ]
+        }
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# PLANILLAS DE SEGURIDAD SOCIAL
+# ────────────────────────────────────────────────────────────────────────────
+
+POST /api/sst/planillas
+    Descripción: Registrar planilla de seguridad social
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "empresa_id": 1,
+          "operador_aportes_id": 5,
+          "numero_planilla": "2026030001",
+          "tipo_planilla": "E",
+          "periodo_salud_inicio": "2026-03-01",
+          "periodo_salud_fin": "2026-03-31",
+          "periodo_pension_inicio": "2026-03-01",
+          "periodo_pension_fin": "2026-03-31",
+          "periodo_arl_inicio": "2026-03-01",
+          "periodo_arl_fin": "2026-03-31",
+          "fecha_pago": "2026-03-13",
+          "aporta_salud": true,
+          "aporta_pension": true,
+          "aporta_arl": true
+        }
+    Backend Calcula:
+        vigencia_hasta = fecha_pago + timedelta(days=30)
+    Respuesta:
+        {
+          "success": true,
+          "message": "Planilla registrada",
+          "data": {
+            "id": 10,
+            "vigencia_hasta": "2026-04-12"
+          }
+        }
+
+POST /api/sst/planillas/<id>/upload
+    Descripción: Subir archivo PDF de planilla
+    Content-Type: multipart/form-data
+    Permisos: @login_required, @admin_sst_or_master_required
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# CERTIFICADOS DE TRABAJO
+# ────────────────────────────────────────────────────────────────────────────
+
+POST /api/sst/certificados
+    Descripción: Registrar certificado de trabajo
+    Content-Type: multipart/form-data
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body (FormData):
+        - tipo_certificado: 'ALTURAS' | 'ELECTRICO' | 'ESPACIOS_CONFINADOS' | 'OTRO'
+        - numero_certificado
+        - fecha_expedicion
+        - fecha_vencimiento
+        - entidad_emisora
+        - archivo: (file)
+    Respuesta:
+        {
+          "success": true,
+          "data": {
+            "id": 15,
+            "ruta_archivo": "uploads/certificados/alturas/2026/cert_15.pdf",
+            "vigente": true
+          }
+        }
+
+GET /api/sst/certificados/proximos-vencer
+    Descripción: Certificados próximos a vencer (< 30 días)
+    Permisos: @login_required, @admin_sst_or_master_required
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# EMPLEADOS DE CONTRATISTAS
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/empleados
+    Descripción: Listar empleados de contratistas
+    Query Params:
+        - empresa_id
+        - estado: 'ACTIVO' | 'INACTIVO' | 'RETIRADO'
+    Permisos: @login_required, @admin_sst_or_master_required
+
+GET /api/sst/empleados/buscar/<tipo_doc>/<num_doc>
+    Descripción: Buscar empleado por documento (auto-completado)
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "existe": true,
+          "data": {
+            "id": 5,
+            "tipo_identificacion": "CC",
+            "num_identificacion": "1234567",
+            "primer_nombre": "CARLOS",
+            "segundo_nombre": "ANDRÉS",
+            "primer_apellido": "LÓPEZ",
+            "segundo_apellido": "MARTÍNEZ",
+            "nombre_completo": "CARLOS ANDRÉS LÓPEZ MARTÍNEZ"
+          }
+        }
+
+POST /api/sst/empleados
+    Descripción: Registrar empleado de contratista
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "empresa_id": 1,
+          "tipo_identificacion": "CC",
+          "num_identificacion": "1234567",
+          "primer_nombre": "CARLOS",
+          "segundo_nombre": "ANDRÉS",
+          "primer_apellido": "LÓPEZ",
+          "segundo_apellido": "MARTÍNEZ",
+          "telefono": "3001111111",
+          "correo": "carlos@empresa.com"
+        }
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# AUTORIZACIONES SST
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/autorizaciones
+    Descripción: Listar autorizaciones SST
+    Query Params:
+        - estado: 'BORRADOR' | 'REVISION' | 'APROBADA' | 'RECHAZADA' | 'VENCIDA'
+        - empresa_id
+        - sede_id
+        - vigente: true | false
+        - fecha_desde, fecha_hasta
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "data": [
+            {
+              "id": 1,
+              "numero_autorizacion": "SST-2026-0002",
+              "empresa": {
+                "id": 1,
+                "razon_social": "CONSTRUCTORA XYZ S.A.S.",
+                "nit": "900000000"
+              },
+              "fecha_autorizacion": "2026-03-18",
+              "vigencia_inicio": "2026-03-13",
+              "vigencia_fin": "2026-04-12",
+              "estado": "APROBADA",
+              "total_empleados": 3,
+              "sede": {
+                "id": 1,
+                "nombre": "SEDE CAÑAVERAL"
+              }
+            },
+            ...
+          ]
+        }
+
+GET /api/sst/autorizaciones/<id>
+    Descripción: Detalle de autorización SST
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "data": {
+            "id": 1,
+            "numero_autorizacion": "SST-2026-0002",
+            "empresa": { ... },
+            "planilla_ss": {
+              "numero_planilla": "2026030001",
+              "operador": "NUEVA EPS S.A.",
+              "vigencia_hasta": "2026-04-12"
+            },
+            "empleados": [
+              {
+                "empleado_id": 5,
+                "nombre_completo": "CARLOS ANDRÉS LÓPEZ MARTÍNEZ",
+                "num_identificacion": "1234567",
+                "autorizado_alturas": true,
+                "cert_alturas": {
+                  "numero": "ALT-2025-001",
+                  "vigencia": "2027-06-30"
+                },
+                "aporta_salud": true,
+                "aporta_pension": true,
+                "aporta_arl": true
+              },
+              ...
+            ],
+            "responsable_sst": {
+              "nombre": "MARÍA MIRLADYS TEJADA MINA",
+              "cargo": "Seguridad y Salud en el Trabajo"
+            },
+            "ruta_pdf": "uploads/autorizaciones_sst/2026/SST-2026-0002.pdf",
+            "estado": "APROBADA"
+          }
+        }
+
+POST /api/sst/autorizaciones
+    Descripción: Crear nueva autorización SST (estado BORRADOR)
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "empresa_id": 1,
+          "planilla_ss_id": 10,
+          "vigencia_inicio": "2026-03-13",
+          "vigencia_fin": "2026-04-12",
+          "sede_id": 1,
+          "empleados": [
+            {
+              "empleado_id": 5,
+              "planilla_ss_id": 10,
+              "cert_alturas_id": 15,
+              "autorizado_alturas": true,
+              "aporta_salud": true,
+              "aporta_pension": true,
+              "aporta_arl": true
+            },
+            ...
+          ]
+        }
+    Respuesta:
+        {
+          "success": true,
+          "message": "Autorización creada en estado BORRADOR",
+          "data": { "id": 1, "estado": "BORRADOR" }
+        }
+
+PUT /api/sst/autorizaciones/<id>
+    Descripción: Actualizar autorización SST (solo si estado=BORRADOR)
+    Permisos: @login_required, @admin_sst_or_master_required
+
+POST /api/sst/autorizaciones/<id>/aprobar
+    Descripción: Aprobar autorización SST y generar PDF
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "nombre_responsable": "MARÍA MIRLADYS TEJADA MINA",
+          "cargo_responsable": "Seguridad y Salud en el Trabajo"
+        }
+    Backend Ejecuta:
+        1. Validar certificados vigentes
+        2. UPDATE estado='APROBADA', generar numero_autorizacion (SST-{AÑO}-{CONSEC})
+        3. Generar PDF con ReportLab o WeasyPrint
+        4. INSERT log_eventos
+        5. Enviar correo con PDF adjunto
+    Respuesta:
+        {
+          "success": true,
+          "message": "Autorización aprobada y PDF generado",
+          "data": {
+            "numero_autorizacion": "SST-2026-0002",
+            "ruta_pdf": "uploads/autorizaciones_sst/2026/SST-2026-0002.pdf"
+          }
+        }
+
+POST /api/sst/autorizaciones/<id>/rechazar
+    Descripción: Rechazar autorización SST
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        { "motivo_rechazo": "Planilla vencida" }
+
+POST /api/sst/autorizaciones/<id>/anular
+    Descripción: Anular autorización SST aprobada
+    Permisos: @login_required, @master_required
+    Body:
+        { "motivo_anulacion": "Finalización anticipada de contrato" }
+
+GET /api/sst/autorizaciones/<id>/pdf
+    Descripción: Descargar PDF de autorización
+    Permisos: @login_required, @admin_sst_or_master_required
+    Respuesta: Archivo PDF (Content-Type: application/pdf)
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# INGRESOS Y SALIDAS DE CONTRATISTAS
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/ingresos
+    Descripción: Listar ingresos de contratistas
+    Query Params:
+        - fecha: YYYY-MM-DD (default: hoy)
+        - estado: 'EN_INSTALACIONES' | 'SALIO'
+        - empresa_id
+        - sede_id
+    Permisos: @login_required, @operador_seguridad_or_admin_sst_or_master_required
+    Respuesta:
+        {
+          "success": true,
+          "data": [
+            {
+              "id": 100,
+              "empleado": {
+                "nombre_completo": "CARLOS ANDRÉS LÓPEZ MARTÍNEZ",
+                "num_identificacion": "1234567"
+              },
+              "empresa": {
+                "razon_social": "CONSTRUCTORA XYZ S.A.S."
+              },
+              "fecha_ingreso": "2026-03-18",
+              "hora_ingreso": "14:35:00",
+              "estado_ingreso": "EN_INSTALACIONES",
+              "area_trabajo": "Mantenimiento Techos",
+              "operador_ingreso": "JUAN OPERADOR"
+            },
+            ...
+          ]
+        }
+
+POST /api/sst/ingresos
+    Descripción: Registrar ingreso de empleados de contratista
+    Permisos: @login_required, @operador_seguridad_or_admin_sst_or_master_required
+    Body:
+        {
+          "autorizacion_sst_id": 1,
+          "ingresos": [
+            {
+              "empleado_id": 5,
+              "area_trabajo": "Mantenimiento Techos",
+              "elementos_ingresados": "Taladro, Escalera, Arnés",
+              "supervisor_obra": "Ing. Pedro Ramírez",
+              "observaciones_ingreso": ""
+            },
+            ...
+          ]
+        }
+    Validaciones Backend:
+        ✅ Autorización debe estar en estado='APROBADA'
+        ✅ Autorización debe estar vigente (vigencia_fin >= hoy)
+        ✅ Sede de autorización = sede del operador
+        ✅ No registrar si empleado ya tiene ingreso EN_INSTALACIONES hoy
+    Respuesta:
+        {
+          "success": true,
+          "message": "2 ingresos registrados exitosamente",
+          "data": [
+            { "id": 100, "empleado": "CARLOS LÓPEZ", "hora": "14:35" },
+            { "id": 101, "empleado": "JUAN GÓMEZ", "hora": "14:36" }
+          ]
+        }
+
+PUT /api/sst/ingresos/<id>/salida
+    Descripción: Registrar salida de empleado
+    Permisos: @login_required, @operador_seguridad_or_admin_sst_or_master_required
+    Body:
+        {
+          "observaciones_salida": "Sin novedades"
+        }
+    Respuesta:
+        {
+          "success": true,
+          "message": "Salida registrada",
+          "data": {
+            "id": 100,
+            "fecha_salida": "2026-03-18",
+            "hora_salida": "17:45:00"
+          }
+        }
+
+PUT /api/sst/ingresos/salida-multiple
+    Descripción: Registrar salida de múltiples empleados
+    Permisos: @login_required, @operador_seguridad_or_admin_sst_or_master_required
+    Body:
+        {
+          "ids": [100, 101, 102],
+          "observaciones_salida": ""
+        }
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# REPORTES SST
+# ────────────────────────────────────────────────────────────────────────────
+
+GET /api/sst/reportes/autorizaciones-proximas-vencer
+    Descripción: Autorizaciones que vencen en próximos 7 días
+    Permisos: @login_required, @admin_sst_or_master_required
+
+GET /api/sst/reportes/certificados-proximos-vencer
+    Descripción: Certificados que vencen en próximos 30 días
+    Permisos: @login_required, @admin_sst_or_master_required
+
+GET /api/sst/reportes/ingresos-por-empresa
+    Descripción: Consolidado de ingresos por empresa contratista
+    Query Params:
+        - fecha_desde, fecha_hasta
+        - empresa_id
+    Permisos: @login_required, @admin_sst_or_master_required
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# AUTO-GUARDADO TEMPORAL
+# ────────────────────────────────────────────────────────────────────────────
+
+POST /api/sst/autorizaciones/auto-guardado
+    Descripción: Guardar progreso temporal de autorización en BORRADOR
+    Permisos: @login_required, @admin_sst_or_master_required
+    Body:
+        {
+          "autorizacion_id": 1,  # null si es nueva
+          "empresa_id": 1,
+          "planilla_ss_id": 10,
+          "empleados": [...]
+        }
+    Respuesta:
+        {
+           "success": true,
+           "message": "Cambios guardados automáticamente",
+           "autorizacion_id": 1
+        }
+
+
+================================================================================
+29.8. ACTUALIZACIÓN DE MODELOS (Backend - SQLAlchemy)
+================================================================================
+
+NUEVO ARCHIVO: backend/app/models/empresa_contratista.py
+NUEVO ARCHIVO: backend/app/models/operador_aportes.py
+NUEVO ARCHIVO: backend/app/models/planilla_seguridad_social.py
+NUEVO ARCHIVO: backend/app/models/certificado_trabajo.py
+NUEVO ARCHIVO: backend/app/models/empleado_contratista.py
+NUEVO ARCHIVO: backend/app/models/autorizacion_sst.py
+NUEVO ARCHIVO: backend/app/models/empleado_por_autorizacion.py
+NUEVO ARCHIVO: backend/app/models/log_ingreso_contratista.py
+
+ACTUALIZAR: backend/app/models/usuario.py
+    # Agregar nuevos roles:
+    ROLES_VALIDOS = ['usuario_master', 'usuario_operador', 'usuario_funcionario',
+                     'admin_sst', 'operador_seguridad']  # <--- NUEVOS
+
+
+================================================================================
+29.9. NUEVAS VISTAS (Frontend)
+================================================================================
+
+NUEVO ARCHIVO: frontend/admin_sst.html
+    Descripción: Panel para administrador SST
+    Secciones:
+        - Dashboard: Autorizaciones vigentes, próximas a vencer
+        - Nueva autorización  [+ Crear]
+        - Mis autorizaciones (estado BORRADOR/REVISION)
+        - Historial de autorizaciones
+        - Empresas contratistas
+        - Certificados próximos a vencer
+        - Reportes
+
+NUEVO ARCHIVO: frontend/operador_seguridad.html
+    Descripción: Panel para operador de seguridad (portería)
+    Secciones:
+        - Registrar ingreso de contratistas
+        - Personal en instalaciones
+        - Registrar salida
+        - Buscar autorización SST
+        - Historial de ingresos del día
+
+ACTUALIZAR: frontend/admin.html
+    # Agregar opciones para usuario_master:
+    - Ver módulo SST completo
+    - Anular autorizaciones SST
+    - Gestionar usuarios admin_sst y operador_seguridad
+
+
+================================================================================
+29.10. ESTRATEGIA DE IMPLEMENTACIÓN (FASES)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PLAN DE IMPLEMENTACIÓN                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+FASE 0: PRE-REQUISITOS [COMPLETO ✅]
+────────────────────────────────────
+    ✅ Backup completo del código
+    ✅ Backup completo de la base de datos
+    ✅ Memoria de arquitectura guardada
+    ✅ Documentación de requerimientos
+
+FASE 1: INFRAESTRUCTURA DE BASE DE DATOS [3-5 días]
+────────────────────────────────────────────────────
+    ✅ Crear script de migración: migrate_modulo_sst.py
+    ✅ Crear tablas en orden de dependencias:
+       1. operadores_aportes
+       2. empresas_contratistas
+       3. empleados_contratistas
+       4. certificados_trabajo
+       5. planillas_seguridad_social
+       6. autorizaciones_sst
+       7. empleados_por_autorizacion
+       8. log_ingresos_contratistas
+    ✅ Cargar datos de operadores (EPS, AFP, ARL)
+    ✅ Agregar índices y constraints
+    ✅ Actualizar tabla usuarios (agregar nuevos roles)
+    ✅ Probar migración en entorno de desarrollo
+
+    Archivos:
+        - backend/migrate_modulo_sst.py
+        - backend/data/operadores_ss_colombia.json
+
+FASE 2: MODELOS BACKEND (SQLAlchemy) [2-3 días]
+────────────────────────────────────────────────
+    ✅ Crear modelos nuevos (8 archivos)
+    ✅ Relaciones entre modelos:
+       - EmpresaContratista → EmpleadoContratista (1:N)
+       - EmpresaContratista → AutorizacionSST (1:N)
+       - PlanillaSegSocial → AutorizacionSST (1:N)
+       - AutorizacionSST ↔ EmpleadoContratista (N:M via empleados_por_autorizacion)
+       - CertificadoTrabajo ↔ EmpleadoContratista (N:M)
+    ✅ Métodos to_dict() en cada modelo
+    ✅ Método generar_consecutivo() en AutorizacionSST
+    ✅ Property vigente() en CertificadoTrabajo
+    ✅ Actualizar Usuario.rol con nuevos roles
+
+    Archivos:
+        - backend/app/models/*.py (8 nuevos)
+        - backend/app/models/__init__.py (actualizar imports)
+
+FASE 3: DECORADORES Y PERMISOS [1 día]
+───────────────────────────────────────
+    ✅ Crear decoradores de permisos:
+       - @admin_sst_required
+       - @operador_seguridad_required
+       - @admin_sst_or_master_required
+       - @operador_seguridad_or_admin_sst_or_master_required
+    ✅ Actualizar decoradores existentes para incluir nuevos roles
+
+    Archivos:
+        - backend/app/utils/decorators.py (nuevo o ampliar auth.py)
+
+FASE 4: ENDPOINTS API - Empresas y Empleados [3-4 días]
+────────────────────────────────────────────────────────
+    ✅ Implementar CRUD empresas contratistas
+    ✅ Implementar búsqueda por NIT/Cédula (auto-completado)
+    ✅ Implementar CRUD empleados contratistas
+    ✅ Implementar búsqueda por documento empleado
+    ✅ Implementar listado de operadores (lectura)
+    ✅ Testing de endpoints con Postman/pytest
+
+    Archivos:
+        - backend/app/routes/sst.py (nueva blueprint)
+
+FASE 5: ENDPOINTS API - Planillas y Certificados [3-4 días]
+────────────────────────────────────────────────────────────
+    ✅ Implementar registro de planillas SS
+    ✅ Cálculo automático de vigencia_hasta (fecha_pago + 30 días)
+    ✅ Upload de archivo PDF de planilla
+    ✅ Implementar registro de certificados
+    ✅ Upload de archivos de certificados
+    ✅ Validación de vigencias
+    ✅ Testing
+
+    Archivos:
+        - backend/app/routes/sst.py (continuar)
+        - backend/app/utils/file_handler.py (helper para uploads)
+
+FASE 6: ENDPOINTS API - Autorizaciones SST [5-7 días]
+──────────────────────────────────────────────────────
+    ✅ Implementar CRUD autorizaciones SST
+    ✅ Implementar flujo de estados (BORRADOR → REVISION → APROBADA)
+    ✅ Implementar auto-guardado
+    ✅ Implementar validaciones:
+       - Certificados vigentes
+       - Planilla vigente
+       - Permisos por sede
+    ✅ Implementar generación de consecutivo
+    ✅ Implementar aprobación y rechazo
+    ✅ Testing completo
+
+    Archivos:
+        - backend/app/routes/sst.py (continuar)
+
+FASE 7: GENERACIÓN DE PDF [4-5 días]
+─────────────────────────────────────
+    ✅ Elegir librería: WeasyPrint o ReportLab
+    ✅ Crear plantilla HTML para PDF (si WeasyPrint)
+    ✅ Implementar función generar_pdf_autorizacion()
+    ✅ Diseño con logo, encabezado, tabla de empleados
+    ✅ Guardar PDF en uploads/autorizaciones_sst/{año}/
+    ✅ Endpoint para descargar PDF
+    ✅ Testing de generación
+
+    Archivos:
+        - backend/app/services/pdf_service.py (nuevo)
+        - backend/app/templates/pdf_autorizacion_sst.html (plantilla)
+
+FASE 8: ENVÍO DE CORREOS [2 días]
+──────────────────────────────────
+    ✅ Extender email_service.py
+    ✅ Implementar enviar_autorizacion_sst(empresa, pdf_path)
+    ✅ Plantilla de correo HTML
+    ✅ Adjuntar PDF generado
+    ✅ Testing
+
+    Archivos:
+        - backend/app/services/email_service.py (extender)
+        - backend/app/templates/email_autorizacion_sst.html (nuevo)
+
+FASE 9: ENDPOINTS API - Ingresos/Salidas [3-4 días]
+────────────────────────────────────────────────────
+    ✅ Implementar registro de ingreso de contratistas
+    ✅ Implementar registro de salida
+    ✅ Implementar consulta de personal en instalaciones
+    ✅ Validaciones de autorización vigente
+    ✅ Exportación de reportes
+    ✅ Testing
+
+    Archivos:
+        - backend/app/routes/sst.py (continuar)
+
+FASE 10: ENDPOINTS API - Reportes [2-3 días]
+─────────────────────────────────────────────
+    ✅ Autorizaciones próximas a vencer
+    ✅ Certificados próximos a vencer
+    ✅ Ingresos por empresa contratista
+    ✅ Histórico de ingresos
+    ✅ Exportación a Excel/PDF
+
+    Archivos:
+        - backend/app/routes/sst.py (continuar)
+        - backend/app/services/reporte_service.py (nuevo helper)
+
+FASE 11: FRONTEND - Panel admin_sst.html [5-7 días]
+────────────────────────────────────────────────────
+    ✅ Crear estructura HTML
+    ✅ Implementar formulario de empresa contratista
+    ✅ Auto-completado de NIT/Cédula
+    ✅ Implementar formulario de planilla SS
+    ✅ Implementar formulario de empleados (dinámico, [+ Agregar])
+    ✅ Implementar carga de certificados
+    ✅ Implementar auto-guardado cada 2 minutos
+    ✅ Implementar pantalla de revisión
+    ✅ Implementar aprobación y generación de PDF
+    ✅ Dashboard con autorizaciones vigentes
+    ✅ Testing de UX
+
+    Archivos:
+        - frontend/admin_sst.html (nuevo)
+        - frontend/assets/js/sst_admin.js (nuevo)
+        - frontend/assets/css/sst.css (nuevo, opcional)
+
+FASE 12: FRONTEND - Panel operador_seguridad.html [3-5 días]
+─────────────────────────────────────────────────────────────
+    ✅ Crear estructura HTML
+    ✅ Implementar búsqueda de autorización SST
+    ✅ Implementar formulario de ingreso
+    ✅ Implementar listado de personal en instalaciones
+    ✅ Implementar registro de salida (checkboxes múltiples)
+    ✅ Testing de UX
+
+    Archivos:
+        - frontend/operador_seguridad.html (nuevo)
+        - frontend/assets/js/sst_operador.js (nuevo)
+
+FASE 13: ACTUALIZACIÓN DE PANEL admin.html [2 días]
+────────────────────────────────────────────────────
+    ✅ Agregar sección "Módulo SST" para usuario_master
+    ✅ Ver todas las autorizaciones SST
+    ✅ Anular autorizaciones
+    ✅ Gestionar usuarios admin_sst y operador_seguridad
+    ✅ Reportes consolidados
+
+    Archivos:
+        - frontend/admin.html (actualizar)
+        - frontend/assets/js/app.js (actualizar)
+
+FASE 14: TAREAS AUTOMÁTICAS (Cron Jobs) [2 días]
+──────────────────────────────────────────────────
+    ✅ Crear script: marcar_autorizaciones_vencidas.py
+       - Corre diariamente a las 00:00
+       - UPDATE autorizaciones_sst SET estado='VENCIDA'
+         WHERE vigencia_fin < CURRENT_DATE AND estado='APROBADA'
+    ✅ Crear script: notificar_vencimientos_proximos.py
+       - Corre diariamente a las 08:00
+       - Envía correo a admin_sst con autorizaciones que vencen en 7 días
+    ✅ Configurar Windows Task Scheduler o Celery (Linux)
+
+    Archivos:
+        - backend/cron/marcar_vencimientos_sst.py
+        - backend/cron/notificar_vencimientos_sst.py
+
+FASE 15: TESTING COMPLETO [5-7 días]
+─────────────────────────────────────
+    ✅ Testing unitario de modelos
+    ✅ Testing de endpoints API (pytest)
+    ✅ Testing de permisos (admin_sst, operador_seguridad)
+    ✅ Testing de generación de PDF
+    ✅ Testing de envío de correos
+    ✅ Testing de auto-guardado
+    ✅ Testing de flujo completo:
+       1. admin_sst registra empresa
+       2. admin_sst registra planilla
+       3. admin_sst registra empleados
+       4. admin_sst aprueba autorización
+       5. operador_seguridad registra ingreso
+       6. operador_seguridad registra salida
+       7. Verificar auditoría en log_eventos
+    ✅ Testing de casos límite:
+       - Autorización vencida
+       - Certificado vencido
+       - Planilla sin vigencia
+       - Empleado duplicado
+    ✅ Testing de seguridad:
+       - Intentar aprobar sin permisos
+       - Intentar acceder a sede no asignada
+       - SQL injection
+       - XSS
+
+    Archivos:
+        - backend/tests/test_sst.py (nuevo)
+
+FASE 16: DOCUMENTACIÓN [2-3 días]
+──────────────────────────────────
+    ✅ Actualizar README.md con módulo SST
+    ✅ Crear MANUAL_SST.md con guía de uso
+    ✅ Documentar endpoints en Postman collection
+    ✅ Crear diagramas de flujo (Mermaid)
+    ✅ Actualizar RESUMEN_COMPLETO.md
+
+    Archivos:
+        - MANUAL_SST.md (nuevo)
+        - DIAGRAMAS_SST.md (nuevo, con diagramas Mermaid)
+        - README.md (actualizar)
+
+FASE 17: DESPLIEGUE EN PRODUCCIÓN [2-3 días]
+─────────────────────────────────────────────
+    ✅ Crear backup de producción
+    ✅ Ejecutar migrate_modulo_sst.py en producción
+    ✅ Desplegar código actualizado
+    ✅ Crear usuarios admin_sst y operador_seguridad iniciales
+    ✅ Cargar datos de operadores de seguridad social
+    ✅ Verificar funcionamiento en producción
+    ✅ Capacitar a usuarios admin_sst y operador_seguridad
+    ✅ Monitorear primeros días
+
+
+TOTAL ESTIMADO: 48-68 días hábiles (10-14 semanas)
+
+
+================================================================================
+29.11. DEPENDENCIAS ADICIONALES (requirements.txt)
+================================================================================
+
+# ────────────────────────────────────────────────────────────────────────────
+# Para generación de PDF
+# ────────────────────────────────────────────────────────────────────────────
+
+# OPCIÓN 1: WeasyPrint (recomendado para HTML to PDF)
+WeasyPrint==60.2
+cairocffi==1.6.1
+CairoSVG==2.7.1
+
+# OPCIÓN 2: ReportLab (más bajo nivel, mayor control)
+reportlab==4.1.0
+PyPDF2==3.0.1
+
+# ────────────────────────────────────────────────────────────────────────────
+# Para manejo de archivos mejorado
+# ────────────────────────────────────────────────────────────────────────────
+python-magic==0.4.27          # Detectar tipo MIME real de archivos
+Pillow==10.2.0                # Manipulación de imágenes (si se requiere)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Para exportación de reportes
+# ────────────────────────────────────────────────────────────────────────────
+openpyxl==3.1.2               # Exportar a Excel
+xlsxwriter==3.2.0             # Alternativa para Excel
+
+# ────────────────────────────────────────────────────────────────────────────
+# Para tareas automáticas (opcional)
+# ────────────────────────────────────────────────────────────────────────────
+# Celery==5.3.6               # Si se usa en Linux (tareas asíncronas)
+# redis==5.0.1                # Backend para Celery
+# APScheduler==3.10.4         # Scheduler más simple (alternativa a Celery)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Ya incluidas en el proyecto actual (mantener)
+# ────────────────────────────────────────────────────────────────────────────
+# Flask==3.0.0
+# Flask-SQLAlchemy==3.1.1
+# Flask-Mail==0.9.1
+# psycopg2-binary==2.9.9
+# bcrypt==4.1.2
+# python-dotenv==1.0.0
+
+
+================================================================================
+29.12. CONSIDERACIONES IMPORTANTES
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   INTEGRACIÓN CON SISTEMA EXISTENTE                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ NO ROMPE FUNCIONALIDAD ACTUAL:
+    - Módulo de visitantes permanece 100% intacto
+    - Tablas visitantes, log_visitantes, autorizaciones_ingreso NO se modifican
+    - Roles usuario_operador, usuario_funcionario NO se afectan
+    - Frontend index.html, operador.html, funcionario.html siguen igual
+
+✅ COMPARTIDO ENTRE AMBOS MÓDULOS:
+    - Tabla: usuarios (se agregan 2 roles nuevos)
+    - Tabla: sedes
+    - Tabla: dependencias
+    - Tabla: log_eventos (auditoría completa)
+    - Tabla: configuracion_sistema
+    - Sistema de autenticación (sesiones, bcrypt)
+
+✅ SEPARACIÓN CLARA:
+    ┌──────────────────────────────────────────────────────┐
+    │ VISITANTES ESTÁNDAR      │  CONTRATISTAS SST         │
+    ├──────────────────────────┼───────────────────────────┤
+    │ - funcionario            │  - admin_sst              │
+    │ - operador               │  - operador_seguridad     │
+    │                          │                            │
+    │ Routes: /api/visitantes  │  Routes: /api/sst         │
+    │ Frontend: operador.html  │  Frontend: admin_sst.html │
+    │          funcionario.html│           operador_seg... │
+    │                          │                            │
+    │ Flujo: Simple            │  Flujo: Complejo          │
+    │ Registro rápido          │  Validación documentos    │
+    │ No validaciones legales  │  Certificados, planillas  │
+    └──────────────────────────┴───────────────────────────┘
+
+✅ MASTER CONTROLA TODO:
+    - usuario_master tiene permisos en AMBOS módulos
+    - Puede gestionar visitantes Y contratistas
+    - Puede crear usuarios de cualquier rol
+    - Panel admin.html tendrá acceso a todo
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        VALIDACIONES CRÍTICAS                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1. VIGENCIA DE PLANILLA:
+   ✅ vigencia_hasta = fecha_pago + 30 días
+   ✅ Calculado automáticamente por el backend
+   ✅ NO permitir ingreso si vigencia_hasta < hoy
+
+2. VIGENCIA DE CERTIFICADOS:
+   ✅ Certificado vigente = fecha_vencimiento >= vigencia_fin de la autorización
+   ✅ Ejemplo: Si autorización vigente hasta 12/04/2026
+      → Certificado de alturas debe vencer MÍNIMO el 12/04/2026 o después
+
+3. CONSECUTIVOS DE AUTORIZACIÓN:
+   ✅ Formato: SST-{AÑO}-{CONSECUTIVO:04d}
+   ✅ Ejemplo: SST-2026-0001, SST-2026-0002, ...
+   ✅ Se genera AL APROBAR (no al crear en BORRADOR)
+   ✅ Reinicia cada año
+
+4. ESTADOS DE AUTORIZACIÓN:
+   ✅ BORRADOR → REVISION → APROBADA
+   ✅ APROBADA → VENCIDA (automático)
+   ✅ APROBADA → ANULADA (manual, solo master)
+   ✅ Transiciones bloqueadas:
+      ❌ No se puede aprobar si hay certificados vencidos
+      ❌ No se puede aprobar si planilla está vencida
+      ❌ No se puede editar si estado != BORRADOR
+
+5. PERMISOS POR SEDE:
+   ✅ admin_sst solo ve autorizaciones de su sede
+   ✅ operador_seguridad solo registra ingresos de su sede
+   ✅ usuario_master ve TODAS las sedes
+
+6. REGISTROS DE INGRESO/SALIDA:
+   ✅ No se puede registrar ingreso si autorización NO está en estado APROBADA
+   ✅ No se puede registrar ingreso si autorización está VENCIDA
+   ✅ No se puede registrar ingreso duplicado (empleado ya EN_INSTALACIONES)
+   ✅ No se puede registrar salida si no hay ingreso previo
+
+7. APORTES DE SEGURIDAD SOCIAL:
+   ✅ Persona jurídica: DEBE aportar salud, pensión, ARL
+   ✅ Persona natural: Puede NO aportar pensión (si es pensionado)
+   ✅ Si NO aporta, observación es obligatoria
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SEGURIDAD Y AUDITORÍA                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ AUDITORÍA COMPLETA:
+    Todos los eventos se registran en log_eventos:
+    - Creación de empresa contratista
+    - Registro de planilla SS
+    - Registro de certificado
+    - Creación de autorización SST
+    - Aprobación de autorización
+    - Rechazo de autorización
+    - Anulación de autorización
+    - Ingreso de empleado contratista
+    - Salida de empleado contratista
+    
+    Campos: tipo_evento, descripcion, usuario_id, tabla_afectada, registro_id, fecha
+
+✅ VALIDACIÓN DE ARCHIVOS (uploads):
+    - Tipo MIME: Solo PDF para planillas, certificados, autorizaciones
+    - Tamaño máximo: 5 MB por archivo
+    - Nombres normalizados: {tipo}_{id}_{timestamp}.pdf
+    - Carpetas segregadas:
+      * uploads/planillas/{empresa_id}/{año}/
+      * uploads/certificados/{tipo}/{año}/
+      * uploads/autorizaciones_sst/{año}/
+
+✅ PROTECCIÓN CSRF:
+    - Todos los formularios incluyen token CSRF
+    - Validación en backend
+
+✅ SANITIZACIÓN DE INPUTS:
+    - SQLAlchemy ORM previene SQL injection
+    - Escape de HTML en frontend (Alpine.js x-text)
+    - Validación de tipos de datos (Pydantic si se implementa)
+
+✅ CONTROL DE ACCESO:
+    - Decoradores @login_required
+    - Decoradores específicos por rol
+    - Verificación de sede asignada
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      AUTO-GUARDADO (FUNCIONALIDAD CLAVE)                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PROBLEMA:
+    Formulario de autorización SST es extenso:
+    - Datos de empresa
+    - Datos de planilla
+    - Datos de empleados (puede ser 1, 5, 10, 20 empleados)
+    - Certificados de cada empleado
+    - Observaciones
+    
+    Riesgo: Usuario pierde conexión o cierra navegador → pierde TODO el trabajo
+
+SOLUCIÓN: AUTO-GUARDADO PROGRESIVO
+    
+    Frontend (Alpine.js + JavaScript):
+    ┌────────────────────────────────────────────────────────┐
+    │ data() {                                                │
+    │   return {                                              │
+    │     autorizacion_id: null,                             │
+    │     empresa_id: null,                                  │
+    │     planilla_ss_id: null,                              │
+    │     empleados: [],                                     │
+    │     auto_guardado_activo: true,                        │
+    │     ultimo_guardado: null                              │
+    │   }                                                     │
+    │ },                                                      │
+    │                                                         │
+    │ mounted() {                                             │
+    │   // Cargar borrador desde localStorage (si existe)   │
+    │   this.cargarBorradorLocal();                          │
+    │                                                         │
+    │   // Auto-guardar cada 2 minutos                       │
+    │   setInterval(() => {                                  │
+    │     if (this.auto_guardado_activo) {                   │
+    │       this.autoGuardar();                              │
+    │     }                                                   │
+    │   }, 120000); // 120000ms = 2 minutos                 │
+    │ },                                                      │
+    │                                                         │
+    │ methods: {                                              │
+    │   async autoGuardar() {                                │
+    │     const datos = {                                    │
+    │       autorizacion_id: this.autorizacion_id,          │
+    │       empresa_id: this.empresa_id,                    │
+    │       planilla_ss_id: this.planilla_ss_id,            │
+    │       empleados: this.empleados,                      │
+    │       sede_id: this.sede_id                           │
+    │     };                                                  │
+    │                                                         │
+    │     // Guardar en localStorage (backup frontend)       │
+    │     localStorage.setItem('borrador_sst',              │
+    │                           JSON.stringify(datos));      │
+    │                                                         │
+    │     // Enviar a backend (persistencia)                 │
+    │     const response = await apiClient.request(          │
+    │       '/sst/autorizaciones/auto-guardado',            │
+    │       'POST',                                           │
+    │       datos                                            │
+    │     );                                                  │
+    │                                                         │
+    │     if (response.success) {                            │
+    │       this.autorizacion_id = response.autorizacion_id;│
+    │       this.ultimo_guardado = new Date();              │
+    │       this.mostrarToast('💾 Guardado automático');    │
+    │     }                                                   │
+    │   },                                                    │
+    │                                                         │
+    │   cargarBorradorLocal() {                              │
+    │     const borrador = localStorage.getItem('borrador...');│
+    │     if (borrador) {                                    │
+    │       const datos = JSON.parse(borrador);              │
+    │       // Restaurar estado                              │
+    │       this.empresa_id = datos.empresa_id;             │
+    │       this.planilla_ss_id = datos.planilla_ss_id;     │
+    │       this.empleados = datos.empleados;               │
+    │                                                         │
+    │       this.mostrarToast('✅ Borrador recuperado');    │
+    │     }                                                   │
+    │   }                                                     │
+    │ }                                                       │
+    └────────────────────────────────────────────────────────┘
+    
+    Backend (Flask):
+    POST /api/sst/autorizaciones/auto-guardado
+    {
+       "autorizacion_id": 1,  # null si es nueva
+       "empresa_id": 1,
+       "planilla_ss_id": 10,
+       "empleados": [...]
+    }
+    
+    Si autorizacion_id == null:
+        → INSERT INTO autorizaciones_sst (estado='BORRADOR', ...)
+    Si autorizacion_id existe:
+        → UPDATE autorizaciones_sst SET ... WHERE id = {id}
+        → DELETE FROM empleados_por_autorizacion WHERE autorizacion_sst_id = {id}
+        → INSERT INTO empleados_por_autorizacion (bulk)
+    
+    Return: { "success": true, "autorizacion_id": 1 }
+
+RESULTADO:
+    ✅ Usuario puede cerrar navegador sin perder datos
+    ✅ Al volver, se recupera automáticamente el borrador
+    ✅ Dos capas de respaldo:
+       - localStorage (frontend, instantáneo)
+       - Base de datos (backend, cada 2 minutos)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     GENERACIÓN DE PDF (DETALLES TÉCNICOS)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+LIBRERÍA RECOMENDADA: WeasyPrint
+    Ventajas:
+    ✅ Genera PDF desde HTML/CSS (fácil diseñar)
+    ✅ Soporte completo de estilos CSS3
+    ✅ Puede agregar encabezado/pie de página
+    ✅ Manejo de fuentes personalizadas
+    ✅ Open source, bien mantenido
+    
+    Desventajas:
+    ⚠️ Requiere Cairo (dependencia nativa)
+    ⚠️ En Windows puede ser complejo de instalar
+
+INSTALACIÓN (Windows):
+    1. Descargar GTK3 Runtime:
+       https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer
+    2. pip install WeasyPrint
+
+PLANTILLA HTML (backend/app/templates/pdf_autorizacion_sst.html):
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: Letter;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+        }
+        .header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .tabla-empleados {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .tabla-empleados th, .tabla-empleados td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: left;
+        }
+        .firma {
+            margin-top: 40px;
+            border-top: 1px solid #000;
+            width: 200px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>SUPERTIENDAS CAÑAVERAL SAS</h2>
+        <h3>AUTORIZACIÓN DE INGRESO - CONTRATISTAS</h3>
+        <p>Formato: SC-SST-FOR-015</p>
+    </div>
+    
+    <p><strong>No. Autorización:</strong> {{ num_autorizacion }}</p>
+    <p><strong>Fecha:</strong> {{ fecha }} <strong>Hora:</strong> {{ hora }}</p>
+    
+    <h4>EMPRESA CONTRATISTA:</h4>
+    <p><strong>NIT:</strong> {{ empresa_nit }}</p>
+    <p><strong>Razón Social:</strong> {{ empresa_razon_social }}</p>
+    
+    <h4>PLANILLA DE SEGURIDAD SOCIAL:</h4>
+    <p><strong>Número:</strong> {{ planilla_numero }}</p>
+    <p><strong>Operador:</strong> {{ planilla_operador }}</p>
+    <p><strong>Vigencia:</strong> {{ vigencia_inicio }} al {{ vigencia_fin }}</p>
+    
+    <h4>EMPLEADOS AUTORIZADOS:</h4>
+    <table class="tabla-empleados">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Nombre Completo</th>
+                <th>Cédula</th>
+                <th>Certificaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in empleados %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ emp.nombre }}</td>
+                <td>{{ emp.cedula }}</td>
+                <td>{{ emp.certificaciones }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if restricciones %}
+    <h4>RESTRICCIONES:</h4>
+    <ul>
+        {% for rest in restricciones %}
+        <li>{{ rest }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    
+    <p><strong>SEDE AUTORIZADA:</strong> {{ sede_nombre }}</p>
+    
+    <div style="margin-top: 40px;">
+        <p><strong>Aprobado por:</strong></p>
+        <p>{{ responsable_nombre }}</p>
+        <p>{{ responsable_cargo }}</p>
+        <div class="firma">Firma: _____________________</div>
+    </div>
+</body>
+</html>
+
+FUNCIÓN GENERADORA (backend/app/services/pdf_service.py):
+from weasyprint import HTML
+from flask import render_template
+import os
+
+def generar_pdf_autorizacion_sst(autorizacion_id):
+    """
+    Genera PDF de autorización SST
+    """
+    # Obtener datos
+    autorizacion = AutorizacionSST.query.get(autorizacion_id)
+    empresa = autorizacion.empresa
+    planilla = autorizacion.planilla_ss
+    empleados_data = []
+    
+    for ea in autorizacion.empleados_autorizacion:
+        emp = ea.empleado
+        certs = []
+        if ea.autorizado_alturas:
+            certs.append("Alturas")
+        if ea.autorizado_electrico:
+            certs.append("Eléctrico")
+        
+        empleados_data.append({
+            "nombre": emp.nombre_completo(),
+            "cedula": emp.num_identificacion,
+            "certificaciones": ", ".join(certs) if certs else "N/A"
+        })
+    
+    # Renderizar plantilla
+    html_content = render_template(
+        'pdf_autorizacion_sst.html',
+        num_autorizacion=autorizacion.numero_autorizacion,
+        fecha=autorizacion.fecha_autorizacion.strftime('%d/%m/%Y'),
+        hora=autorizacion.hora_autorizacion.strftime('%H:%M'),
+        empresa_nit=empresa.nit,
+        empresa_razon_social=empresa.razon_social,
+        planilla_numero=planilla.numero_planilla,
+        planilla_operador=planilla.operador_aportes.razon_social,
+        vigencia_inicio=autorizacion.vigencia_inicio.strftime('%d/%m/%Y'),
+        vigencia_fin=autorizacion.vigencia_fin.strftime('%d/%m/%Y'),
+        empleados=empleados_data,
+        restricciones=[],  # Extraer de empleados
+        sede_nombre=autorizacion.sede.nombre,
+        responsable_nombre=autorizacion.nombre_responsable,
+        responsable_cargo=autorizacion.cargo_responsable
+    )
+    
+    # Generar PDF
+    año = autorizacion.fecha_autorizacion.year
+    carpeta = f"uploads/autorizaciones_sst/{año}"
+    os.makedirs(carpeta, exist_ok=True)
+    
+    nombre_pdf = f"{autorizacion.numero_autorizacion}.pdf"
+    ruta_completa = os.path.join(carpeta, nombre_pdf)
+    
+    HTML(string=html_content).write_pdf(ruta_completa)
+    
+    # Actualizar registro
+    autorizacion.ruta_pdf_generado = ruta_completa
+    db.session.commit()
+    
+    return ruta_completa
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          BATCH REGISTRATION                                 │
+│                   (Registro de Múltiples Empleados)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PROBLEMA:
+    Una empresa contratista puede tener 10, 20, 50 empleados
+    Registrar uno por uno es tedioso
+
+SOLUCIÓN 1: FORMULARIO DINÁMICO (Ya incluido en diseño)
+    [+ Agregar Empleado] → Agrega nuevo bloque de formulario
+    Al guardar → Backend inserta todos los empleados en una transacción
+
+SOLUCIÓN 2 (FUTURO): IMPORTACIÓN DESDE EXCEL
+    Archivo Excel con columnas:
+    | Tipo Doc | Núm Doc | Primer Nombre | Segundo Nombre | Apellido1 | Apellido2 | Cert Alturas | Cert Eléctrico |
+    
+    Frontend: Upload de archivo .xlsx
+    Backend: Parsear con openpyxl
+    Validar y registrar empleados en bloque
+
+
+================================================================================
+29.13. INTEGRACIÓN CON SISTEMA ACTUAL (PASO A PASO)
+================================================================================
+
+PASO 1: ACTUALIZAR TABLA usuarios
+──────────────────────────────────
+    ALTER TABLE usuarios ALTER COLUMN rol TYPE VARCHAR(50);
+    
+    # Agregar constraint check:
+    ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS check_rol_valido;
+    ALTER TABLE usuarios ADD CONSTRAINT check_rol_valido 
+        CHECK (rol IN ('usuario_master', 'usuario_operador', 'usuario_funcionario', 
+                       'admin_sst', 'operador_seguridad'));
+
+PASO 2: CREAR TABLAS NUEVAS
+────────────────────────────
+    Ejecutar: python backend/migrate_modulo_sst.py
+    
+    Orden de creación (por dependencias):
+    1. operadores_aportes
+    2. empresas_contratistas
+    3. empleados_contratistas
+    4. certificados_trabajo
+    5. planillas_seguridad_social
+    6. autorizaciones_sst
+    7. empleados_por_autorizacion
+    8. log_ingresos_contratistas
+
+PASO 3: CREAR USUARIOS INICIALES
+─────────────────────────────────
+    # Usuario admin_sst
+    INSERT INTO usuarios (username, password_hash, rol, primer_nombre, primer_apellido, 
+                          correo, sede_id, estado)
+    VALUES ('admin.sst', '{bcrypt_hash}', 'admin_sst', 'MARÍA MIRLADYS', 'TEJADA', 
+            'sst@supertiendas.com', 1, 'activo');
+    
+    # Usuario operador_seguridad
+    INSERT INTO usuarios (username, password_hash, rol, primer_nombre, primer_apellido, 
+                          correo, sede_id, estado)
+    VALUES ('operador.seguridad', '{bcrypt_hash}', 'operador_seguridad', 'JUAN', 'OPERADOR', 
+            'seguridad@supertiendas.com', 1, 'activo');
+
+PASO 4: CARGAR DATOS DE OPERADORES
+───────────────────────────────────
+    Ejecutar script: backend/init_operadores_ss.py
+    Carga EPS, AFP, ARL de Colombia
+
+PASO 5: AGREGAR RUTAS AL BACKEND
+─────────────────────────────────
+    # backend/app/__init__.py
+    from app.routes.sst import sst_bp
+    app.register_blueprint(sst_bp, url_prefix='/api/sst')
+
+PASO 6: AGREGAR LINKS EN MENU PRINCIPAL
+────────────────────────────────────────
+    # Actualizar index.html (login)
+    # Después del login, redirigir según rol:
+    if (userData.rol === 'admin_sst') {
+        window.location.href = 'admin_sst.html';
+    }
+    if (userData.rol === 'operador_seguridad') {
+        window.location.href = 'operador_seguridad.html';
+    }
+
+PASO 7: VERIFICAR FUNCIONAMIENTO
+─────────────────────────────────
+    ✅ Login con admin_sst → Accede a admin_sst.html
+    ✅ Login con operador_seguridad → Accede a operador_seguridad.html
+    ✅ Login con usuario_master → Accede a admin.html (con módulo SST)
+    ✅ Login con usuario_operador → Accede a operador.html (solo visitantes)
+
+
+================================================================================
+29.14. RESUMEN FINAL Y PRÓXIMOS PASOS
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              RESUMEN EJECUTIVO                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+OBJETIVO:
+    Extender el Sistema de Control de Visitantes con un módulo paralelo para
+    gestión de CONTRATISTAS con validaciones de seguridad social, certificados
+    de trabajo, y generación de autorizaciones oficiales.
+
+ALCANCE:
+    ✅ Gestión de empresas contratistas (persona natural o jurídica)
+    ✅ Registro y validación de planillas de seguridad social
+    ✅ Gestión de certificados de trabajo (alturas, eléctrico, etc.)
+    ✅ Registro multi-empleado por contratista
+    ✅ Flujo de aprobación de autorizaciones SST
+    ✅ Generación automática de PDF (formato SC-SST-FOR-015)
+    ✅ Registro de ingresos/salidas de contratistas
+    ✅ Auto-guardado de formularios extensos
+    ✅ Reportes y consultas
+    ✅ Alertas de vencimientos
+    ✅ Auditoría completa
+
+ARQUITECTURA:
+    ✅ Módulo PARALELO al sistema de visitantes
+    ✅ 8 tablas nuevas
+    ✅ 2 roles nuevos (admin_sst, operador_seguridad)
+    ✅ 2 vistas nuevas (admin_sst.html, operador_seguridad.html)
+    ✅ Blueprint nuevo (/api/sst/)
+    ✅ Compartición de infraestructura (usuarios, sedes, log_eventos)
+
+IMPACTO:
+    ✅ CERO impacto en funcionalidad actual de visitantes
+    ✅ Sistema actual continúa operando normalmente
+    ✅ Nuevo módulo es 100% adicional
+
+TIEMPO ESTIMADO:
+    48-68 días hábiles (10-14 semanas)
+    
+    Desglose:
+    - Base de datos y modelos: 5-8 días
+    - Endpoints API: 15-20 días
+    - Frontend: 10-15 días
+    - Generación PDF y correos: 6-7 días
+    - Testing completo: 5-7 días
+    - Documentación: 2-3 días
+    - Despliegue: 2-3 días
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PRÓXIMOS PASOS INMEDIATOS                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ PASO 1: REVISIÓN Y APROBACIÓN DE ESTA HOJA DE RUTA
+    - Revisar este documento completo
+    - Validar flujos de trabajo propuestos
+    - Aprobar arquitectura de base de datos
+    - Confirmar roles y permisos
+
+✅ PASO 2: DECISIONES TÉCNICAS
+    - Confirmar librería de PDF (WeasyPrint vs ReportLab)
+    - Confirmar diseño de plantilla PDF
+    - Confirmar operadores de seguridad social a precargar
+
+✅ PASO 3: INICIAR FASE 1 (Base de Datos)
+    - Crear script migrate_modulo_sst.py
+    - Probar en ambiente de desarrollo
+    - Verificar integridad referencial
+
+✅ PASO 4: DESARROLLO ITERATIVO
+    - Implementar por fases (1 a 17)
+    - Testing continuo después de cada fase
+    - Demos al cliente después de fases clave
+
+✅ PASO 5: CAPACITACIÓN
+    - Preparar manual de usuario para admin_sst
+    - Preparar manual de usuario para operador_seguridad
+    - Sesiones de capacitación en vivo
+
+
+================================================================================
+CONCLUSIÓN
+================================================================================
+
+Esta hoja de ruta proporciona un plan COMPLETO y DETALLADO para implementar
+el módulo de gestión de contratistas SST sin afectar el sistema actual.
+
+La arquitectura modular garantiza:
+✅ Separación de responsabilidades
+✅ Escalabilidad futura
+✅ Mantenibilidad
+✅ Seguridad y auditoría completa
+✅ Cumplimiento normativo (Ley 100, Resolución 4272)
+
+El sistema resultante será una solución integral que maneja TANTO visitantes
+estándar COMO contratistas con validaciones legales, todo en una misma
+plataforma unificada.
+
+────────────────────────────────────────────────────────────────────────────────
+FIN DEL DOCUMENTO
+FECHA: 18/03/2026
+ELABORADO POR: GitHub Copilot
+APROBADO POR: [Pendiente]
+────────────────────────────────────────────────────────────────────────────────
