@@ -325,15 +325,172 @@
             </div>
             
             <!-- Sección PLANILLAS -->
-            <div x-show="seccion === 'planillas'" x-cloak>
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Planillas de Seguridad Social</h2>
-                <p class="text-gray-600">Implementar en CHECKPOINT 3.3.4</p>
+            <div x-show="seccion === 'planillas'" x-cloak x-init="$watch('seccion', val => { if(val === 'planillas') cargarPlanillas(); })">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Planillas de Seguridad Social</h2>
+                    <button @click="abrirModalPlanilla()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Planilla</span>
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <select x-model="filtroPlanillas.empresa_id" @change="cargarPlanillas()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todas las empresas</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                        <div class="flex items-center">
+                            <input type="checkbox" x-model="filtroPlanillas.vigente" @change="cargarPlanillas()" id="vigente-check" class="mr-2">
+                            <label for="vigente-check" class="text-sm">Solo mostrar planillas vigentes</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabla Planillas -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Periodo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Pago</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vigencia Hasta</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="planilla in planillas" :key="planilla.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 text-sm" x-text="planilla.empresa_nombre || 'N/A'"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="planilla.periodo"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="planilla.fecha_pago"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="planilla.vigencia_fin"></td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <span :class="planilla.vigente ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 rounded-full text-xs" x-text="planilla.vigente ? 'Vigente' : 'Vencida'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="planillas.length === 0">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay planillas registradas</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <!-- Sección AUTORIZACIONES -->
-            <div x-show="seccion === 'autorizaciones'" x-cloak>
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Autorizaciones SST</h2>
-                <p class="text-gray-600">Implementar en CHECKPOINT 3.3.4</p>
+            <div x-show="seccion === 'autorizaciones'" x-cloak x-init="$watch('seccion', val => { if(val === 'autorizaciones') cargarAutorizaciones(); })">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Autorizaciones SST</h2>
+                    <button @click="abrirModalAutorizacion()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Autorización</span>
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select x-model="filtroAutorizaciones.estado" @change="cargarAutorizaciones()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todos los estados</option>
+                            <option value="borrador">Borrador</option>
+                            <option value="revision">En Revisión</option>
+                            <option value="aprobada">Aprobada</option>
+                            <option value="rechazada">Rechazada</option>
+                            <option value="vencida">Vencida</option>
+                            <option value="anulada">Anulada</option>
+                        </select>
+                        <select x-model="filtroAutorizaciones.empresa_id" @change="cargarAutorizaciones()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todas las empresas</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                        <select x-model="filtroAutorizaciones.sede_id" @change="cargarAutorizaciones()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todas las sedes</option>
+                            <template x-for="sede in sedes" :key="sede.id">
+                                <option :value="sede.id" x-text="sede.nombre"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Tabla Autorizaciones -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Labor</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inicio</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fin</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="aut in autorizaciones" :key="aut.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 text-sm" x-text="aut.id"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="aut.empresa_nombre || 'N/A'"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="(aut.labor || '').substring(0, 50) + (aut.labor?.length > 50 ? '...' : '')"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="aut.fecha_inicio"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="aut.fecha_fin"></td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span 
+                                            :class="{
+                                                'bg-gray-100 text-gray-800': aut.estado === 'borrador',
+                                                'bg-yellow-100 text-yellow-800': aut.estado === 'revision',
+                                                'bg-green-100 text-green-800': aut.estado === 'aprobada',
+                                                'bg-red-100 text-red-800': aut.estado === 'rechazada',
+                                                'bg-orange-100 text-orange-800': aut.estado === 'vencida',
+                                                'bg-red-900 text-white': aut.estado === 'anulada'
+                                            }" 
+                                            class="px-2 py-1 rounded-full text-xs uppercase" 
+                                            x-text="aut.estado">
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <!-- Botones según estado -->
+                                        <template x-if="aut.estado === 'borrador'">
+                                            <div class="flex space-x-2">
+                                                <button @click="abrirModalAutorizacion(aut)" class="text-blue-600 hover:text-blue-800" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button @click="enviarARevision(aut.id)" class="text-yellow-600 hover:text-yellow-800" title="Enviar a Revisión">
+                                                    <i class="fas fa-paper-plane"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template x-if="aut.estado === 'revision'">
+                                            <div class="flex space-x-2">
+                                                <button @click="aprobar(aut.id)" class="text-green-600 hover:text-green-800" title="Aprobar">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button @click="rechazar(aut.id)" class="text-red-600 hover:text-red-800" title="Rechazar">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template x-if="aut.estado === 'aprobada' && usuario.rol === 'usuario_master'">
+                                            <button @click="anular(aut.id)" class="text-red-800 hover:text-red-900" title="Anular">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="autorizaciones.length === 0">
+                                <td colspan="7" class="px-4 py-3 text-center text-gray-500">No hay autorizaciones registradas</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
         </main>
@@ -622,6 +779,125 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Modal Planilla -->
+        <div x-show="mostrarModalPlanilla" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div @click.away="mostrarModalPlanilla = false" class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+                <div class="bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold">Nueva Planilla de Seguridad Social</h3>
+                    <button @click="mostrarModalPlanilla = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <!-- Select Empresa -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
+                        <select x-model="formPlanilla.empresa_id" class="w-full px-4 py-2 border rounded-lg" required>
+                            <option value="">Seleccione empresa...</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Periodo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Periodo *</label>
+                        <input type="text" x-model="formPlanilla.periodo" maxlength="7" class="w-full px-4 py-2 border rounded-lg" placeholder="YYYY-MM (ej: 2026-03)" required>
+                        <p class="text-xs text-gray-500 mt-1">Formato: YYYY-MM</p>
+                    </div>
+                    
+                    <!-- Fecha Pago -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Pago *</label>
+                        <input type="date" x-model="formPlanilla.fecha_pago" class="w-full px-4 py-2 border rounded-lg" required>
+                        <p class="text-xs text-gray-500 mt-1">La vigencia se calculará automáticamente (fecha_pago + 30 días)</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+                    <button @click="mostrarModalPlanilla = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button @click="guardarPlanilla()" class="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg">
+                        <i class="fas fa-save mr-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Autorización -->
+        <div x-show="mostrarModalAutorizacion" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div @click.away="mostrarModalAutorizacion = false" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold" x-text="autorizacionSeleccionada ? 'Editar Autorización SST' : 'Nueva Autorización SST'"></h3>
+                    <button @click="mostrarModalAutorizacion = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <!-- Select Empresa -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
+                        <select x-model="formAutorizacion.empresa_id" class="w-full px-4 py-2 border rounded-lg" required :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'">
+                            <option value="">Seleccione empresa...</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Select Sede -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sede *</label>
+                        <select x-model="formAutorizacion.sede_id" class="w-full px-4 py-2 border rounded-lg" required :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'">
+                            <option value="">Seleccione sede...</option>
+                            <template x-for="sede in sedes" :key="sede.id">
+                                <option :value="sede.id" x-text="sede.nombre"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Labor -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descripción de la Labor *</label>
+                        <textarea x-model="formAutorizacion.labor" rows="4" maxlength="300" class="w-full px-4 py-2 border rounded-lg" placeholder="Describa la labor a realizar..." :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Máximo 300 caracteres</p>
+                    </div>
+                    
+                    <!-- Fechas -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio *</label>
+                            <input type="date" x-model="formAutorizacion.fecha_inicio" class="w-full px-4 py-2 border rounded-lg" :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin *</label>
+                            <input type="date" x-model="formAutorizacion.fecha_fin" class="w-full px-4 py-2 border rounded-lg" :disabled="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" required>
+                        </div>
+                    </div>
+                    
+                    <div x-show="autorizacionSeleccionada && autorizacionSeleccionada.estado !== 'borrador'" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Solo se pueden editar autorizaciones en estado BORRADOR
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+                    <button @click="mostrarModalAutorizacion = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button @click="guardarAutorizacion()" x-show="!autorizacionSeleccionada || autorizacionSeleccionada.estado === 'borrador'" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
+                        <i class="fas fa-save mr-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -661,12 +937,31 @@
             filtroEmpleados: { empresa_id: '', estado: '', busqueda: '' },
             operadoresAportes: { EPS: [], AFP: [], ARL: [] },
             certificadosEmpleado: [],
+            
+            // Planillas
+            planillas: [],
+            mostrarModalPlanilla: false,
+            formPlanilla: {
+                empresa_id: '', periodo: '', fecha_pago: ''
+            },
+            filtroPlanillas: { empresa_id: '', vigente: '' },
+            
+            // Autorizaciones
+            autorizaciones: [],
+            mostrarModalAutorizacion: false,
+            autorizacionSeleccionada: null,
+            formAutorizacion: {
+                empresa_id: '', sede_id: '', labor: '', fecha_inicio: '', fecha_fin: ''
+            },
+            filtroAutorizaciones: { estado: '', empresa_id: '', sede_id: '' },
+            sedes: [],
 
             async init() {
                 sessionManager.init();
                 await this.verificarAuth();
                 await this.cargarStats();
                 await this.cargarOperadores();
+                await this.cargarSedes();
             },
 
             async verificarAuth() {
@@ -871,6 +1166,130 @@
                     alert('Certificado guardado exitosamente');
                 } catch(e) {
                     alert('Error al guardar certificado: ' + e.message);
+                }
+            },
+            
+            // Métodos Sedes
+            async cargarSedes() {
+                try {
+                    const resp = await apiClient.sedes.listar();
+                    this.sedes = resp.data || [];
+                } catch(e) {
+                    console.error('Error cargando sedes:', e);
+                }
+            },
+            
+            // Métodos Planillas
+            async cargarPlanillas() {
+                this.cargando = true;
+                try {
+                    const resp = await apiClient.sst.listarPlanillas(this.filtroPlanillas);
+                    this.planillas = resp.data || [];
+                } catch(e) {
+                    alert('Error al cargar planillas: ' + e.message);
+                } finally {
+                    this.cargando = false;
+                }
+            },
+            
+            abrirModalPlanilla() {
+                this.formPlanilla = { empresa_id: '', periodo: '', fecha_pago: '' };
+                this.mostrarModalPlanilla = true;
+            },
+            
+            async guardarPlanilla() {
+                try {
+                    await apiClient.sst.crearPlanilla(this.formPlanilla);
+                    this.mostrarModalPlanilla = false;
+                    await this.cargarPlanillas();
+                    alert('Planilla guardada exitosamente');
+                } catch(e) {
+                    alert('Error al guardar planilla: ' + e.message);
+                }
+            },
+            
+            // Métodos Autorizaciones
+            async cargarAutorizaciones() {
+                this.cargando = true;
+                try {
+                    const resp = await apiClient.sst.listarAutorizaciones(this.filtroAutorizaciones);
+                    this.autorizaciones = resp.data || [];
+                } catch(e) {
+                    alert('Error al cargar autorizaciones: ' + e.message);
+                } finally {
+                    this.cargando = false;
+                }
+            },
+            
+            abrirModalAutorizacion(autorizacion = null) {
+                if (autorizacion) {
+                    this.formAutorizacion = { ...autorizacion };
+                    this.autorizacionSeleccionada = autorizacion;
+                } else {
+                    this.formAutorizacion = {
+                        empresa_id: '', sede_id: '', labor: '', fecha_inicio: '', fecha_fin: ''
+                    };
+                    this.autorizacionSeleccionada = null;
+                }
+                this.mostrarModalAutorizacion = true;
+            },
+            
+            async guardarAutorizacion() {
+                try {
+                    if (this.autorizacionSeleccionada) {
+                        await apiClient.sst.actualizarAutorizacion(this.autorizacionSeleccionada.id, this.formAutorizacion);
+                    } else {
+                        await apiClient.sst.crearAutorizacion(this.formAutorizacion);
+                    }
+                    this.mostrarModalAutorizacion = false;
+                    await this.cargarAutorizaciones();
+                    alert('Autorización guardada exitosamente');
+                } catch(e) {
+                    alert('Error al guardar autorización: ' + e.message);
+                }
+            },
+            
+            async enviarARevision(id) {
+                if (!confirm('¿Enviar autorización a revisión?')) return;
+                try {
+                    await apiClient.sst.enviarRevision(id);
+                    await this.cargarAutorizaciones();
+                    alert('Autorización enviada a revisión');
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+            
+            async aprobar(id) {
+                if (!confirm('¿Aprobar esta autorización SST?')) return;
+                try {
+                    await apiClient.sst.aprobarAutorizacion(id);
+                    await this.cargarAutorizaciones();
+                    alert('Autorización aprobada');
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+            
+            async rechazar(id) {
+                if (!confirm('¿Rechazar esta autorización SST?')) return;
+                try {
+                    await apiClient.sst.rechazarAutorizacion(id);
+                    await this.cargarAutorizaciones();
+                    alert('Autorización rechazada');
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                }
+            },
+            
+            async anular(id) {
+                if (!confirm('⚠️ ¿ANULAR esta autorización? Esta acción no se puede deshacer.')) return;
+                try {
+                    await apiClient.sst.anularAutorizacion(id);
+                    await this.cargarAutorizaciones();
+                    alert('Autorización anulada');
+                } catch(e) {
+                    alert('Error: ' + e.message);
                 }
             },
 
