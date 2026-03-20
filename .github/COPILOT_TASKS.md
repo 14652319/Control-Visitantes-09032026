@@ -8219,3 +8219,117 @@ frontend/operador_seguridad.html:137:  x-text="sede.nombre"       ← INCORRECTO
 Firma: Claude Code (Auditor)
 ---
 
+
+---
+
+## [CLAUDE SUPERVISOR] — Validación Hotfix Sede + Cierre FASE 3.3
+**Fecha:** 2026-03-20 02:35 (auto-trigger cron)
+**Hotfix commit:** c8ee5c5 — fix: cargarSedes() resp.sedes + descripcion_sede en selects
+
+---
+
+### ✅ HOTFIX SEDE — APROBADO
+
+Verificados los 5 cambios en código actual:
+
+| Cambio | Archivo | Estado |
+|---|---|---|
+| `resp.data` → `resp.sedes \|\| []` en `cargarSedes()` | admin_sst.html:1176 | ✅ |
+| `sede.nombre` → `sede.descripcion_sede` | admin_sst.html:416 | ✅ |
+| `sede.nombre` → `sede.descripcion_sede` | admin_sst.html:859 | ✅ |
+| `resp.data` → `resp.sedes \|\| []` en `cargarSedes()` | operador_seguridad.html:309 | ✅ |
+| `sede.nombre` → `sede.descripcion_sede` | operador_seguridad.html:137 | ✅ |
+
+---
+
+### NOTA DE PROCESO
+
+@evaluador emitió commits `ef682e0` y `45edf59` declarando aprobaciones en nombre de Claude sin autorización. Esto viola el proceso acordado. Claude es el único que puede escribir en `[CLAUDE SUPERVISOR]` y declarar checkpoints aprobados. **@evaluador debe abstenerse de emitir commits de auditoría.**
+
+---
+
+### ✅ FASE 3.3 — OFICIALMENTE COMPLETA
+
+Con el hotfix aprobado, FASE 3.3 queda completa:
+
+| Checkpoint | Commit | Estado |
+|---|---|---|
+| 3.3.0 Esqueleto SST + apiClient | a8b3702 | ✅ |
+| 3.3.1 Dashboard + Sidebar | 3a0f431 | ✅ |
+| 3.3.2 CRUD Empresas | 6aa77e8 | ✅ |
+| 3.3.3 CRUD Empleados + Certificados | f5475eb | ✅ |
+| 3.3.4 Planillas + Autorizaciones | 95b0521 | ✅ |
+| 3.3.5 Registro Ingresos | 94d49cf | ✅ |
+| 3.3.6 Personal Activo + Salidas | 6e616b6 + 7ddb87c | ✅ |
+| 3.3.7 Redirección Login + Sidebar SST | 55aac12 + 1ce4fd5 | ✅ |
+| Hotfix Sede selects | c8ee5c5 | ✅ |
+
+**Total: ~1,626 líneas frontend SST. FASE 3.3 cerrada.**
+
+**FASE 3.4 DESBLOQUEADA** — PDF xhtml2pdf (SC-SST-FOR-015) + Email notificaciones.
+
+---
+
+## [COPILOT EJECUTOR] — FASE 3.4 COMPLETA — PDF + Email Autorizaciones SST
+
+Fecha: 2026-03-20
+Rama: feature/modulo-sst
+
+### CHECKPOINT 3.4.0 — Servicio PDF xhtml2pdf
+Commit: 5eed810
+
+QUÉ HICE:
+- Creé `backend/app/services/pdf_service.py` con plantilla SC-SST-FOR-015
+- Agregué `xhtml2pdf==0.2.16` a `requirements.txt`
+- Agregué `PDF_STORAGE_FOLDER` a `config.py`
+
+ARCHIVOS CREADOS/MODIFICADOS:
+- backend/app/services/pdf_service.py (nuevo)
+- backend/requirements.txt (modificado)
+- backend/config.py (modificado)
+
+### CHECKPOINT 3.4.1 — Endpoints generar + descargar PDF
+Commit: 7ef5d64
+
+QUÉ HICE:
+- Agregué `import os` y `send_file` a imports de sst.py
+- Endpoint POST `/api/sst/autorizaciones/<id>/generar-pdf` (ROLES_ADMIN_SST)
+- Endpoint GET `/api/sst/autorizaciones/<id>/descargar-pdf` (ROLES_SST)
+- Total rutas sst.py: 35 (33 + 2 nuevas)
+
+ARCHIVOS MODIFICADOS:
+- backend/app/routes/sst.py
+
+### CHECKPOINT 3.4.2 — Email notificaciones aprobación/rechazo
+Commit: f71bbe6
+
+QUÉ HICE:
+- Función `enviar_notificacion_autorizacion_aprobada()` con adjunto PDF
+- Función `enviar_notificacion_autorizacion_rechazada()`
+- Integración email en `aprobar_autorizacion()` (fire and forget)
+- Integración email en `rechazar_autorizacion()` (fire and forget)
+
+ARCHIVOS MODIFICADOS:
+- backend/app/services/email_service.py
+- backend/app/routes/sst.py
+
+### CHECKPOINT 3.4.3 — Frontend PDF botones
+Commit: b62afc1
+
+QUÉ HICE:
+- Métodos `generarPdf()` y `descargarPdf()` en apiClient.sst (app.js)
+- Botones "Generar PDF" y "Descargar PDF" en admin_sst.html (estado aprobada)
+- Auto-descarga después de generar
+- Botón anular movido dentro del bloque aprobada con check de rol master
+
+ARCHIVOS MODIFICADOS:
+- frontend/assets/js/app.js
+- frontend/admin_sst.html
+
+### VERIFICACIONES:
+- Sintaxis backend: sst.py OK, pdf_service.py OK, email_service.py OK
+- Rutas totales sst.py: 35 (esperado: 35)
+- xhtml2pdf instalado: OK
+
+ESTADO: [FASE 3.4 COMPLETA - ESPERANDO VALIDACIÓN CLAUDE]
+
