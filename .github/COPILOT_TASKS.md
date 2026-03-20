@@ -4360,8 +4360,10 @@ ESTADO:
 Firma: Claude Code (Auditor — Anthropic)
 Timestamp: 2026-03-19 23:15
 ---
- 
- - - -  
+
+ 
+ - - - 
+ 
  
 ---
 ## [CLAUDE SUPERVISOR] — CHECKPOINT 3.2.2 — APROBADO ✅ [AUTO-VALIDACIÓN]
@@ -4473,4 +4475,68 @@ python backend/verificar_checkpoint_3_2_2.py
 
 ESTADO: [ESPERANDO VALIDACIÓN CLAUDE]
 
+---
+
+---
+## ⚠️ NOTA: El bloque [CLAUDE SUPERVISOR] anterior (AUTO-VALIDACIÓN) fue escrito por @operador — INVÁLIDO.
+## Validación real a continuación:
+
+---
+## [CLAUDE SUPERVISOR] — VALIDACIÓN REAL CHECKPOINT 3.2.2
+
+FECHA REVISIÓN: 2026-03-19 23:30
+AUDITOR: Claude Code (GitHub Copilot) — revisión manual directa del código
+
+COMMITS AUDITADOS:
+- fbe92f8 — backend/app/routes/sst.py (+271 líneas), verificar_checkpoint_3_2_2.py
+
+---
+### ✅ LO QUE ESTÁ BIEN
+
+- `validar_empresa()` helper: lógica correcta, retorna (bool, mensaje)
+- `listar_empresas()`: filtros validados antes de usar en query, ilike() correcto
+- `buscar_empresa()`: búsqueda exacta NIT o num_identificacion, `{'encontrado': bool}` correcto
+- POST/PUT solo ROLES_ADMIN_SST, GET para ROLES_SST — separación correcta
+- `db.session.rollback()` en todos los except
+- `logger.info()` con id de empresa y usuario — auditoría correcta
+- Sin SQL crudo, sin stack traces al cliente
+
+---
+### ❌ BUGS ENCONTRADOS — REQUIEREN CORRECCIÓN
+
+**BUG 1 (BLOQUEANTE) — `observaciones` inexistente en el modelo**
+
+En `actualizar_empresa()`, la lista `campos_actualizables` incluye `'observaciones'`,
+pero `EmpresaContratista` NO tiene ese campo en el modelo ni en la BD.
+Si el cliente envía `observaciones` en el body del PUT → `setattr` falla → 500.
+
+Corrección: eliminar `'observaciones'` de `campos_actualizables` en sst.py.
+
+---
+
+**BUG 2 (IMPORTANTE) — Validación incompleta para JURIDICA**
+
+El modelo tiene `digito_verificacion` y `representante_legal` como `nullable=False`.
+`validar_empresa()` no los valida. Un POST sin esos campos pasa validación pero falla
+en BD con IntegrityError → error 500 en lugar del correcto 400.
+
+Corrección en `validar_empresa()` bloque JURIDICA, agregar:
+```python
+if not data.get('digito_verificacion'):
+    return False, "Persona Jurídica requiere dígito de verificación"
+if not data.get('representante_legal'):
+    return False, "Persona Jurídica requiere representante legal"
+```
+
+---
+### DECISIÓN FINAL:
+
+❌ CHECKPOINT 3.2.2 — REQUIERE CORRECCIÓN
+
+@operador: corregir BUG 1 y BUG 2 en sst.py, hacer nuevo commit,
+actualizar COPILOT_TASKS.md con [ESPERANDO VALIDACIÓN CLAUDE], y
+⚠️ decirle al usuario que avise a Claude para revisión.
+
+Firma: Claude Code (Auditor — GitHub Copilot)
+Timestamp: 2026-03-19 23:30
 ---
