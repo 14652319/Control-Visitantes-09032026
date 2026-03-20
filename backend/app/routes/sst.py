@@ -1278,6 +1278,7 @@ def aprobar_autorizacion(id):
     """Cambia estado de revision a aprobada (solo admin_sst o master)"""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empresa_contratista import EmpresaContratista
         
         autorizacion = AutorizacionSST.query.get(id)
         if not autorizacion:
@@ -1294,6 +1295,20 @@ def aprobar_autorizacion(id):
         db.session.commit()
         
         logger.info(f"Autorización {id} aprobada por usuario {current_user.id}")
+        
+        # Enviar notificación email a la empresa
+        try:
+            from app.services.email_service import enviar_notificacion_autorizacion_aprobada
+            empresa = EmpresaContratista.query.get(autorizacion.empresa_id)
+            if empresa and empresa.email:
+                enviar_notificacion_autorizacion_aprobada(
+                    autorizacion.to_dict(),
+                    empresa.to_dict(),
+                    empresa.email,
+                    pdf_ruta=autorizacion.pdf_ruta
+                )
+        except Exception as email_error:
+            logger.error(f"Error enviando email aprobación: {email_error}")
         
         return jsonify({
             'success': True,
@@ -1314,6 +1329,7 @@ def rechazar_autorizacion(id):
     """Cambia estado de revision a rechazada (solo admin_sst o master)."""
     try:
         from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empresa_contratista import EmpresaContratista
         
         autorizacion = AutorizacionSST.query.get(id)
         if not autorizacion:
@@ -1329,6 +1345,19 @@ def rechazar_autorizacion(id):
         db.session.commit()
         
         logger.info(f"Autorización {id} rechazada por usuario {current_user.id}")
+        
+        # Enviar notificación email
+        try:
+            from app.services.email_service import enviar_notificacion_autorizacion_rechazada
+            empresa = EmpresaContratista.query.get(autorizacion.empresa_id)
+            if empresa and empresa.email:
+                enviar_notificacion_autorizacion_rechazada(
+                    autorizacion.to_dict(),
+                    empresa.to_dict(),
+                    empresa.email
+                )
+        except Exception as email_error:
+            logger.error(f"Error enviando email rechazo: {email_error}")
         
         return jsonify({
             'success': True,

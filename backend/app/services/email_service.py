@@ -323,13 +323,13 @@ def enviar_correo_cuenta_rechazada(usuario_data, motivo=""):
                 <h2>Hola, {usuario_data['primer_nombre']} {usuario_data['primer_apellido']}</h2>
                 
                 <div class="notice-box">
-                    <h3>ℹ️ Actualización de tu Solicitud</h3>
+                    <h3>Actualización de tu Solicitud</h3>
                     <p>Lamentablemente, tu solicitud de registro no ha sido aprobada en este momento.</p>
                     {motivo_html}
                 </div>
                 
                 <div class="info-box">
-                    <h3>📞 ¿Necesitas más información?</h3>
+                    <h3>¿Necesitas más información?</h3>
                     <p>Si tienes dudas o deseas recibir más información sobre esta decisión, 
                        por favor contacta al administrador del sistema.</p>
                 </div>
@@ -347,3 +347,160 @@ def enviar_correo_cuenta_rechazada(usuario_data, motivo=""):
     """
     
     return enviar_correo(usuario_data['dir_correo'], asunto, cuerpo)
+
+
+def enviar_notificacion_autorizacion_aprobada(autorizacion_data, empresa_data, destinatario_email, pdf_ruta=None):
+    """
+    Envía notificación email cuando una autorización SST es aprobada
+
+    Args:
+        autorizacion_data (dict): to_dict() de AutorizacionSST
+        empresa_data (dict): to_dict() de EmpresaContratista
+        destinatario_email (str): Email de la empresa contratista
+        pdf_ruta (str): Ruta al archivo PDF para adjuntar (opcional)
+    """
+    consecutivo = f"SST-{datetime.now().year}-{autorizacion_data['id']:04d}"
+    asunto = f"Autorización SST Aprobada — {consecutivo}"
+
+    nombre_empresa = empresa_data.get('razon_social') or empresa_data.get('nombre_completo_persona_natural', '')
+
+    cuerpo = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+                      color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border: 1px solid #ddd; }}
+            .info-box {{ background: white; padding: 15px; border-left: 4px solid #1565c0; margin: 15px 0; }}
+            .success {{ background: #e8f5e9; border: 2px solid #4caf50; padding: 15px; text-align: center;
+                       border-radius: 8px; margin: 15px 0; }}
+            .footer {{ background: #333; color: white; padding: 20px; text-align: center;
+                      border-radius: 0 0 10px 10px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Autorización SST Aprobada</h1>
+                <p>{consecutivo}</p>
+            </div>
+            <div class="content">
+                <div class="success">
+                    <h2 style="color: #2e7d32; margin: 0;">Autorización Aprobada</h2>
+                    <p>La autorización de ingreso para contratistas ha sido aprobada.</p>
+                </div>
+
+                <div class="info-box">
+                    <p><strong>Empresa:</strong> {nombre_empresa}</p>
+                    <p><strong>Labor:</strong> {autorizacion_data.get('labor', '-')}</p>
+                    <p><strong>Válida desde:</strong> {autorizacion_data.get('fecha_inicio', '-')}</p>
+                    <p><strong>Válida hasta:</strong> {autorizacion_data.get('fecha_fin', '-')}</p>
+                    <p><strong>Sede:</strong> {autorizacion_data.get('sede_id', 'Todas')}</p>
+                </div>
+
+                <p>Los empleados de su empresa pueden presentarse en portería con documento de identidad.
+                El operador de seguridad verificará la autorización vigente en el sistema.</p>
+
+                <p><em>Si tiene alguna duda, comuníquese con el área SST.</em></p>
+            </div>
+            <div class="footer">
+                <p>SUPERTIENDAS CAÑAVERAL SAS — Sistema de Gestión SST</p>
+                <p>&copy; {datetime.now().year}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    try:
+        msg = Message(
+            asunto,
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[destinatario_email]
+        )
+        msg.html = cuerpo
+
+        # Adjuntar PDF si existe
+        if pdf_ruta:
+            import os
+            pdf_full_path = os.path.join(
+                current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+                '..', pdf_ruta
+            )
+            pdf_full_path = os.path.normpath(pdf_full_path)
+            if os.path.exists(pdf_full_path):
+                with open(pdf_full_path, 'rb') as f:
+                    msg.attach(
+                        os.path.basename(pdf_ruta),
+                        'application/pdf',
+                        f.read()
+                    )
+
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error enviando notificación SST aprobada: {str(e)}")
+        return False
+
+
+def enviar_notificacion_autorizacion_rechazada(autorizacion_data, empresa_data, destinatario_email):
+    """
+    Envía notificación email cuando una autorización SST es rechazada
+    """
+    consecutivo = f"SST-{datetime.now().year}-{autorizacion_data['id']:04d}"
+    asunto = f"Autorización SST Rechazada — {consecutivo}"
+
+    nombre_empresa = empresa_data.get('razon_social') or empresa_data.get('nombre_completo_persona_natural', '')
+
+    cuerpo = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
+                      color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9f9f9; padding: 30px; border: 1px solid #ddd; }}
+            .info-box {{ background: white; padding: 15px; border-left: 4px solid #c62828; margin: 15px 0; }}
+            .alert {{ background: #ffebee; border: 2px solid #ef5350; padding: 15px; text-align: center;
+                     border-radius: 8px; margin: 15px 0; }}
+            .footer {{ background: #333; color: white; padding: 20px; text-align: center;
+                      border-radius: 0 0 10px 10px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Autorización SST Rechazada</h1>
+                <p>{consecutivo}</p>
+            </div>
+            <div class="content">
+                <div class="alert">
+                    <h2 style="color: #c62828; margin: 0;">Autorización Rechazada</h2>
+                    <p>La solicitud de autorización requiere correcciones.</p>
+                </div>
+
+                <div class="info-box">
+                    <p><strong>Empresa:</strong> {nombre_empresa}</p>
+                    <p><strong>Labor:</strong> {autorizacion_data.get('labor', '-')}</p>
+                </div>
+
+                <p>Por favor comuníquese con el área SST de Supertiendas Cañaveral
+                para conocer los motivos del rechazo y realizar las correcciones necesarias.</p>
+            </div>
+            <div class="footer">
+                <p>SUPERTIENDAS CAÑAVERAL SAS — Sistema de Gestión SST</p>
+                <p>&copy; {datetime.now().year}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    return enviar_correo(destinatario_email, asunto, cuerpo)
