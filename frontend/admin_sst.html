@@ -209,9 +209,119 @@
             </div>
             
             <!-- Sección EMPLEADOS -->
-            <div x-show="seccion === 'empleados'" x-cloak>
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Empleados Contratistas</h2>
-                <p class="text-gray-600">Implementar en CHECKPOINT 3.3.3</p>
+            <div x-show="seccion === 'empleados'" x-cloak x-init="$watch('seccion', val => { if(val === 'empleados') cargarEmpleados(); })">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Empleados Contratistas</h2>
+                    <button @click="abrirModalEmpleado()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Nuevo Empleado</span>
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" x-model="filtroEmpleados.busqueda" @input="cargarEmpleados()" placeholder="Buscar por documento, nombre..." class="px-4 py-2 border rounded-lg">
+                        <select x-model="filtroEmpleados.empresa_id" @change="cargarEmpleados()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todas las empresas</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                        <select x-model="filtroEmpleados.estado" @change="cargarEmpleados()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todos los estados</option>
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Tabla Empleados -->
+                <div class="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documento</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cargo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="empleado in empleados" :key="empleado.id">
+                                <tr class="hover:bg-gray-50" :class="empleadoSeleccionado?.id === empleado.id ? 'bg-blue-50' : ''">
+                                    <td class="px-6 py-4 text-sm" x-text="empleado.tipo_id + '-' + empleado.num_id"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="empleado.nombre_completo"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="empleado.cargo"></td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <span :class="empleado.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 rounded-full text-xs" x-text="empleado.estado === 'activo' ? 'Activo' : 'Inactivo'"></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <button @click="abrirModalEmpleado(empleado)" class="text-blue-600 hover:text-blue-800 mr-3">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="seleccionarEmpleado(empleado)" class="text-green-600 hover:text-green-800">
+                                            <i class="fas fa-certificate"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="empleados.length === 0">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay empleados registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Panel Certificados -->
+                <div x-show="empleadoSeleccionado" x-cloak class="bg-white rounded-xl shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            Certificados de: <span x-text="empleadoSeleccionado?.nombre_completo"></span>
+                        </h3>
+                        <button @click="abrirModalCertificado()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-plus"></i>
+                            <span>Certificado</span>
+                        </button>
+                    </div>
+                    
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expedición</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vencimiento</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="cert in certificadosEmpleado" :key="cert.id">
+                                <tr>
+                                    <td class="px-4 py-2 text-sm" x-text="cert.tipo_certificado"></td>
+                                    <td class="px-4 py-2 text-sm" x-text="cert.nombre_certificado"></td>
+                                    <td class="px-4 py-2 text-sm" x-text="cert.fecha_expedicion"></td>
+                                    <td class="px-4 py-2 text-sm" x-text="cert.fecha_vencimiento || 'N/A'"></td>
+                                    <td class="px-4 py-2 text-sm">
+                                        <span 
+                                            :class="{
+                                                'bg-green-100 text-green-800': cert.estado_vigencia === 'VIGENTE',
+                                                'bg-yellow-100 text-yellow-800': cert.estado_vigencia === 'PROXIMO_VENCER',
+                                                'bg-red-100 text-red-800': cert.estado_vigencia === 'VENCIDO'
+                                            }" 
+                                            class="px-2 py-1 rounded-full text-xs" 
+                                            x-text="cert.estado_vigencia === 'VIGENTE' ? 'Vigente' : (cert.estado_vigencia === 'PROXIMO_VENCER' ? 'Por Vencer' : 'Vencido')">
+                                        </span>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="certificadosEmpleado.length === 0">
+                                <td colspan="5" class="px-4 py-2 text-center text-gray-500">No hay certificados registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <!-- Sección PLANILLAS -->
@@ -353,6 +463,165 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Modal Empleado -->
+        <div x-show="mostrarModalEmpleado" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div @click.away="mostrarModalEmpleado = false" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold" x-text="empleadoSeleccionado ? 'Editar Empleado' : 'Nuevo Empleado'"></h3>
+                    <button @click="mostrarModalEmpleado = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <!-- Select Empresa -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Empresa *</label>
+                        <select x-model="formEmpleado.empresa_id" class="w-full px-4 py-2 border rounded-lg" required>
+                            <option value="">Seleccione empresa...</option>
+                            <template x-for="emp in empresas" :key="emp.id">
+                                <option :value="emp.id" x-text="emp.tipo_persona === 'JURIDICA' ? emp.razon_social : emp.nombre_completo_persona_natural"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <!-- Documento -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento *</label>
+                            <select x-model="formEmpleado.tipo_id" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="CC">Cédula de Ciudadanía</option>
+                                <option value="CE">Cédula de Extranjería</option>
+                                <option value="TI">Tarjeta de Identidad</option>
+                                <option value="PAS">Pasaporte</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento *</label>
+                            <div class="flex space-x-2">
+                                <input type="text" x-model="formEmpleado.num_id" class="flex-1 px-4 py-2 border rounded-lg" placeholder="12345678">
+                                <button @click="buscarEmpleadoExistente()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Nombres y Apellidos -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nombres *</label>
+                            <input type="text" x-model="formEmpleado.nombres" @input="formEmpleado.nombres = $event.target.value.toUpperCase()" class="w-full px-4 py-2 border rounded-lg" placeholder="JUAN CARLOS">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Apellidos *</label>
+                            <input type="text" x-model="formEmpleado.apellidos" @input="formEmpleado.apellidos = $event.target.value.toUpperCase()" class="w-full px-4 py-2 border rounded-lg" placeholder="PEREZ LOPEZ">
+                        </div>
+                    </div>
+                    
+                    <!-- Cargo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cargo *</label>
+                        <input type="text" x-model="formEmpleado.cargo" @input="formEmpleado.cargo = $event.target.value.toUpperCase()" class="w-full px-4 py-2 border rounded-lg" placeholder="OBRERO">
+                    </div>
+                    
+                    <!-- Operadores de Aportes -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">EPS *</label>
+                            <select x-model="formEmpleado.eps_id" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="">Seleccione...</option>
+                                <template x-for="eps in operadoresAportes.EPS" :key="eps.id">
+                                    <option :value="eps.id" x-text="eps.nombre"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">AFP *</label>
+                            <select x-model="formEmpleado.afp_id" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="">Seleccione...</option>
+                                <template x-for="afp in operadoresAportes.AFP" :key="afp.id">
+                                    <option :value="afp.id" x-text="afp.nombre"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ARL *</label>
+                            <select x-model="formEmpleado.arl_id" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="">Seleccione...</option>
+                                <template x-for="arl in operadoresAportes.ARL" :key="arl.id">
+                                    <option :value="arl.id" x-text="arl.nombre"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+                    <button @click="mostrarModalEmpleado = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button @click="guardarEmpleado()" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                        <i class="fas fa-save mr-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Certificado -->
+        <div x-show="mostrarModalCertificado" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div @click.away="mostrarModalCertificado = false" class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+                <div class="bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 class="text-xl font-bold">Nuevo Certificado</h3>
+                    <button @click="mostrarModalCertificado = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <!-- Tipo Certificado -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Certificado *</label>
+                        <select x-model="formCertificado.tipo_certificado" class="w-full px-4 py-2 border rounded-lg" required>
+                            <option value="">Seleccione...</option>
+                            <option value="ALTURAS">Trabajo en Alturas</option>
+                            <option value="ELECTRICO">Riesgo Eléctrico</option>
+                            <option value="ESPACIOS_CONFINADOS">Espacios Confinados</option>
+                            <option value="OTRO">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Nombre Certificado -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Certificado *</label>
+                        <input type="text" x-model="formCertificado.nombre_certificado" class="w-full px-4 py-2 border rounded-lg" placeholder="Certificado Trabajo en Alturas Nivel Avanzado">
+                    </div>
+                    
+                    <!-- Fechas -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Expedición *</label>
+                            <input type="date" x-model="formCertificado.fecha_expedicion" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Vencimiento</label>
+                            <input type="date" x-model="formCertificado.fecha_vencimiento" class="w-full px-4 py-2 border rounded-lg">
+                            <p class="text-xs text-gray-500 mt-1">Opcional - Dejar vacío si no vence</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+                    <button @click="mostrarModalCertificado = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button @click="guardarCertificado()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg">
+                        <i class="fas fa-save mr-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -375,11 +644,29 @@
                 telefono: '', email: '', direccion: '', ciudad: ''
             },
             filtroEmpresas: { busqueda: '', tipo_persona: '', estado: '' },
+            
+            // Empleados + Certificados
+            empleados: [],
+            empleadoSeleccionado: null,
+            mostrarModalEmpleado: false,
+            mostrarModalCertificado: false,
+            formEmpleado: {
+                empresa_id: '', tipo_id: 'CC', num_id: '', nombres: '', apellidos: '',
+                cargo: '', eps_id: '', afp_id: '', arl_id: ''
+            },
+            formCertificado: {
+                empleado_id: '', tipo_certificado: '', nombre_certificado: '',
+                fecha_expedicion: '', fecha_vencimiento: ''
+            },
+            filtroEmpleados: { empresa_id: '', estado: '', busqueda: '' },
+            operadoresAportes: { EPS: [], AFP: [], ARL: [] },
+            certificadosEmpleado: [],
 
             async init() {
                 sessionManager.init();
                 await this.verificarAuth();
                 await this.cargarStats();
+                await this.cargarOperadores();
             },
 
             async verificarAuth() {
@@ -470,6 +757,121 @@
                         alert('Empresa encontrada — datos cargados');
                     }
                 } catch(e) { /* no encontrada, OK */ }
+            },
+            
+            // Métodos Operadores
+            async cargarOperadores() {
+                try {
+                    const [eps, afp, arl] = await Promise.all([
+                        apiClient.sst.operadores('EPS'),
+                        apiClient.sst.operadores('AFP'),
+                        apiClient.sst.operadores('ARL')
+                    ]);
+                    this.operadoresAportes = {
+                        EPS: eps.data || [],
+                        AFP: afp.data || [],
+                        ARL: arl.data || []
+                    };
+                } catch(e) { 
+                    console.error('Error cargando operadores:', e); 
+                }
+            },
+            
+            // Métodos Empleados
+            async cargarEmpleados() {
+                this.cargando = true;
+                try {
+                    const resp = await apiClient.sst.listarEmpleados(this.filtroEmpleados);
+                    this.empleados = resp.data || [];
+                } catch(e) {
+                    alert('Error al cargar empleados: ' + e.message);
+                } finally {
+                    this.cargando = false;
+                }
+            },
+            
+            abrirModalEmpleado(empleado = null) {
+                if (empleado) {
+                    this.formEmpleado = { ...empleado };
+                    this.empleadoSeleccionado = empleado;
+                } else {
+                    this.formEmpleado = {
+                        empresa_id: '', tipo_id: 'CC', num_id: '', nombres: '', apellidos: '',
+                        cargo: '', eps_id: '', afp_id: '', arl_id: ''
+                    };
+                    this.empleadoSeleccionado = null;
+                }
+                this.mostrarModalEmpleado = true;
+            },
+            
+            async guardarEmpleado() {
+                try {
+                    if (this.empleadoSeleccionado) {
+                        await apiClient.sst.actualizarEmpleado(this.empleadoSeleccionado.id, this.formEmpleado);
+                    } else {
+                        await apiClient.sst.crearEmpleado(this.formEmpleado);
+                    }
+                    this.mostrarModalEmpleado = false;
+                    await this.cargarEmpleados();
+                    alert('Empleado guardado exitosamente');
+                } catch(e) {
+                    alert('Error al guardar empleado: ' + e.message);
+                }
+            },
+            
+            async buscarEmpleadoExistente() {
+                if (!this.formEmpleado.tipo_id || !this.formEmpleado.num_id || this.formEmpleado.num_id.length < 3) return;
+                try {
+                    const resp = await apiClient.sst.buscarEmpleado(
+                        `${this.formEmpleado.tipo_id}-${this.formEmpleado.num_id}`
+                    );
+                    if (resp.encontrado) {
+                        this.formEmpleado = { ...resp.data };
+                        this.empleadoSeleccionado = resp.data;
+                        alert('Empleado encontrado — datos cargados');
+                    }
+                } catch(e) { /* no encontrado, OK */ }
+            },
+            
+            async seleccionarEmpleado(empleado) {
+                this.empleadoSeleccionado = empleado;
+                await this.cargarCertificadosEmpleado(empleado.id);
+            },
+            
+            // Métodos Certificados
+            async cargarCertificadosEmpleado(empleadoId) {
+                try {
+                    const resp = await apiClient.sst.certificadosEmpleado(empleadoId);
+                    this.certificadosEmpleado = resp.data || [];
+                } catch(e) {
+                    alert('Error al cargar certificados: ' + e.message);
+                }
+            },
+            
+            abrirModalCertificado() {
+                if (!this.empleadoSeleccionado) {
+                    alert('Seleccione un empleado primero');
+                    return;
+                }
+                this.formCertificado = {
+                    empleado_id: this.empleadoSeleccionado.id,
+                    tipo_certificado: '',
+                    nombre_certificado: '',
+                    fecha_expedicion: '',
+                    fecha_vencimiento: ''
+                };
+                this.mostrarModalCertificado = true;
+            },
+            
+            async guardarCertificado() {
+                try {
+                    await apiClient.sst.crearCertificado(this.formCertificado);
+                    this.mostrarModalCertificado = false;
+                    await this.cargarCertificadosEmpleado(this.empleadoSeleccionado.id);
+                    alert('Certificado guardado exitosamente');
+                } catch(e) {
+                    alert('Error al guardar certificado: ' + e.message);
+                }
             },
 
             async logout() {
