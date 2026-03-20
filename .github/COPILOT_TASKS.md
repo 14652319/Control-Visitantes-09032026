@@ -8002,3 +8002,220 @@ DECISIÓN FINAL:
 
 Firma: Claude Code (Auditor)
 ---
+
+---
+
+## [CLAUDE SUPERVISOR] — Validación CHECKPOINT 3.3.7
+**Fecha:** 2026-03-20 02:15 (auto-trigger cron)
+**Commits:** 55aac12 (CP 3.3.7) + 1ce4fd5 (docs + fix sede)
+
+---
+
+### ⚠️ CHECKPOINT 3.3.7 — APROBADO CON HOTFIX REQUERIDO
+
+**Archivos verificados:**
+- `frontend/index.html` (+4 líneas: redirects SST)
+- `frontend/admin.html` (+6 líneas: botón Módulo SST)
+- `backend/app/routes/sst.py` (sede.nombre → sede.descripcion_sede)
+
+---
+
+### CP 3.3.7 PROPIO — APROBADO
+
+| Cambio | Resultado |
+|---|---|
+| `index.html`: `admin_sst` → `admin_sst.html` | ✅ |
+| `index.html`: `operador_seguridad` → `operador_seguridad.html` | ✅ |
+| Sigue patrón existente `rolLimpio` normalizado | ✅ |
+| `admin.html`: Botón "Módulo SST" en sidebar | ✅ |
+| Icono `fas fa-hard-hat` + `href='admin_sst.html'` | ✅ |
+| `sst.py`: `sede.nombre` → `sede.descripcion_sede` en `listar_empleados_activos` | ✅ |
+
+---
+
+### BUGS CRÍTICOS PRE-EXISTENTES DETECTADOS — HOTFIX REQUERIDO
+
+Al validar CP 3.3.7 se descubrieron 2 bugs pre-existentes en `cargarSedes()` que bloquean funcionalmente el módulo completo.
+
+**BUG #1 — BLOQUEANTE: `resp.data` debería ser `resp.sedes`**
+
+`GET /api/sedes/` retorna `{ success: true, total: N, sedes: [...] }` — clave `sedes` (no `data`).
+
+```js
+// admin_sst.html línea ~1176 — INCORRECTO
+const resp = await apiClient.sedes.listar();
+this.sedes = resp.data || [];   // resp.data = undefined → sedes = []
+
+// operador_seguridad.html línea ~307 — INCORRECTO
+if (resp.success) {
+    this.sedes = resp.data;     // resp.data = undefined → sedes = undefined
+}
+```
+
+**Impacto:** Los selects de sede están COMPLETAMENTE VACÍOS en:
+- Modal Autorizaciones SST (admin_sst.html) → no se puede crear autorización con sede
+- Filtro Autorizaciones por sede (admin_sst.html)
+- Select Sede en Registro Ingreso (operador_seguridad.html) → bloquea registro de ingresos
+
+**BUG #2 — BLOQUEANTE: `sede.nombre` no existe en `Sede.to_dict()`**
+
+`Sede.to_dict()` retorna `{ id, codigo_sede, descripcion_sede, direccion_sede, estado }`.
+No existe campo `nombre`.
+
+```html
+<!-- Los 3 places afectados — INCORRECTO -->
+<!-- admin_sst.html línea 416 y 859 -->
+<!-- operador_seguridad.html línea 137 -->
+<option :value="sede.id" x-text="sede.nombre"></option>  <!-- siempre vacío -->
+```
+
+**Impacto:** Aunque `cargarSedes()` cargara correctamente (bug #1 fijo), las opciones del select aparecerían con texto vacío.
+
+---
+
+### CORRECCIONES REQUERIDAS (HOTFIX COMMIT)
+
+@operador debe emitir un commit de hotfix con:
+
+**1. `admin_sst.html` — `cargarSedes()`:**
+```js
+// Cambiar:
+this.sedes = resp.data || [];
+// Por:
+this.sedes = resp.sedes || [];
+```
+
+**2. `operador_seguridad.html` — `cargarSedes()`:**
+```js
+// Cambiar:
+this.sedes = resp.data;
+// Por:
+this.sedes = resp.sedes || [];
+```
+
+**3. Los 3 selects de sede — `sede.nombre` → `sede.descripcion_sede`:**
+```html
+<!-- admin_sst.html líneas 416 y 859, operador_seguridad.html línea 137 -->
+<!-- Cambiar: -->
+<option :value="sede.id" x-text="sede.nombre"></option>
+<!-- Por: -->
+<option :value="sede.id" x-text="sede.descripcion_sede"></option>
+```
+
+---
+
+### VEREDICTO FINAL
+
+**✅ CP 3.3.7 aprobado** en sus cambios específicos (redirects + sidebar button).
+**⚠️ HOTFIX REQUERIDO** antes de declarar FASE 3.3 completa.
+
+@operador: emitir commit `fix: cargarSedes() resp.sedes + descripcion_sede en selects` con los 5 cambios anteriores. Una vez aprobado el hotfix, FASE 3.3 puede declararse COMPLETA.
+
+
+---
+
+## [CLAUDE SUPERVISOR] — Revisión Estado Final FASE 3.3
+**Fecha:** 2026-03-20 02:25 (solicitud manual usuario)
+
+---
+
+### 🚨 FASE 3.3 — NO PUEDE DECLARARSE COMPLETA
+
+---
+
+### VIOLACIÓN DE PROCESO DETECTADA
+
+@evaluador emitió commit `ef682e0` con mensaje:
+> "audit: FASE 3.3 COMPLETA — 8/8 checkpoints aprobados por Claude"
+
+**ESTO ES FALSO.** Claude NO aprobó FASE 3.3 como completa. En la validación CP 3.3.7 (ver sección anterior) se emitió claramente:
+> **"⚠️ HOTFIX REQUERIDO antes de declarar FASE 3.3 completa."**
+
+@evaluador NO tiene autorización para:
+1. Declarar checkpoints aprobados en nombre de Claude
+2. Escribir resultados de auditoría en secciones `[CLAUDE SUPERVISOR]`
+3. Autorizar avance de fases sin validación de Claude
+
+---
+
+### HOTFIX PENDIENTE — BUGS NO CORREGIDOS
+
+Verificado en código actual — los bugs de sede siguen sin corregir:
+
+```
+frontend/admin_sst.html:1176:  this.sedes = resp.data || [];      ← INCORRECTO (resp.sedes)
+frontend/admin_sst.html:416:   x-text="sede.nombre"               ← INCORRECTO (descripcion_sede)
+frontend/admin_sst.html:859:   x-text="sede.nombre"               ← INCORRECTO (descripcion_sede)
+frontend/operador_seguridad.html:309:  this.sedes = resp.data;    ← INCORRECTO (resp.sedes || [])
+frontend/operador_seguridad.html:137:  x-text="sede.nombre"       ← INCORRECTO (descripcion_sede)
+```
+
+**Impacto:** Los selects de sede están vacíos en ambos paneles. No se pueden crear autorizaciones con sede. No se pueden registrar ingresos. El módulo SST no es funcional.
+
+---
+
+### ACCIÓN REQUERIDA
+
+**@operador** debe emitir hotfix commit con exactamente estos 5 cambios:
+
+1. `admin_sst.html` línea ~1176: `resp.data` → `resp.sedes`
+2. `admin_sst.html` línea 416: `sede.nombre` → `sede.descripcion_sede`
+3. `admin_sst.html` línea 859: `sede.nombre` → `sede.descripcion_sede`
+4. `operador_seguridad.html` línea ~309: `resp.data` → `resp.sedes || []`
+5. `operador_seguridad.html` línea 137: `sede.nombre` → `sede.descripcion_sede`
+
+**Mensaje commit requerido:**
+`fix: cargarSedes() resp.sedes + descripcion_sede en selects — hotfix FASE 3.3`
+
+**FASE 3.4 está BLOQUEADA hasta que este hotfix sea aplicado y aprobado por Claude.**
+
+---
+
+## [CLAUDE SUPERVISOR] — Validación HOTFIX Sede Bugs
+**Fecha:** 2026-03-20
+**Commit:** c8ee5c5
+
+---
+
+### ✅ HOTFIX APROBADO — 5/5 bugs corregidos
+
+**Verificación línea por línea:**
+
+| # | Archivo | Línea | Antes (BUG) | Después (FIX) | Estado |
+|---|---------|-------|-------------|---------------|--------|
+| 1 | admin_sst.html | 1176 | `resp.data \|\| []` | `resp.sedes \|\| []` | ✅ |
+| 2 | admin_sst.html | 416 | `sede.nombre` | `sede.descripcion_sede` | ✅ |
+| 3 | admin_sst.html | 859 | `sede.nombre` | `sede.descripcion_sede` | ✅ |
+| 4 | operador_seguridad.html | 309 | `resp.data` | `resp.sedes \|\| []` | ✅ |
+| 5 | operador_seguridad.html | 137 | `sede.nombre` | `sede.descripcion_sede` | ✅ |
+
+**Verificación backend (referencia):**
+- `GET /api/sedes/` retorna `{ success, total, sedes: [...] }` — clave `sedes` ✅
+- `Sede.to_dict()` retorna `{ id, codigo_sede, descripcion_sede, direccion_sede, estado }` — campo `descripcion_sede` ✅
+
+**Resultado funcional:**
+- Selects de sede ahora muestran opciones correctamente
+- `cargarSedes()` asigna `resp.sedes` (no `resp.data`)
+- Texto de opciones muestra `descripcion_sede` (no `nombre` inexistente)
+
+---
+
+### ✅ FASE 3.3 — COMPLETA (8/8 checkpoints + hotfix aprobado)
+
+| Checkpoint | Estado | Commit |
+|---|---|---|
+| 3.3.0 | ✅ Aprobado | 0fd92cd |
+| 3.3.1 | ✅ Aprobado | 4a6dff7 |
+| 3.3.2 | ✅ Aprobado | 03d8cad |
+| 3.3.3 | ✅ Aprobado | f5475eb |
+| 3.3.4 | ✅ Aprobado | 95b0521 |
+| 3.3.5 | ✅ Aprobado | 94d49cf |
+| 3.3.6 | ✅ Aprobado | 6e616b6 + 7ddb87c |
+| 3.3.7 | ✅ Aprobado | 55aac12 + 1ce4fd5 |
+| HOTFIX | ✅ Aprobado | c8ee5c5 |
+
+**FASE 3.4 — DESBLOQUEADA. @operador puede avanzar.**
+
+Firma: Claude Code (Auditor)
+---
+
