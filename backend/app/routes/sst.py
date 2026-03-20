@@ -1443,14 +1443,14 @@ def listar_ingresos():
             item = log.to_dict()
             item['empleado'] = {
                 'id': empleado.id,
-                'nombres_completos': f"{empleado.primer_nombre} {empleado.segundo_nombre or ''} {empleado.primer_apellido} {empleado.segundo_apellido or ''}".strip(),
-                'tipo_identificacion': empleado.tipo_identificacion,
-                'num_identificacion': empleado.num_identificacion,
+                'nombre_completo': empleado.nombre_completo,
+                'tipo_id': empleado.tipo_id,
+                'num_id': empleado.num_id,
             } if empleado else None
             
             item['empresa'] = {
                 'id': empresa.id,
-                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else f"{empresa.primer_nombre} {empresa.primer_apellido}",
+                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else empresa.nombre_completo_persona_natural,
             } if empresa else None
             
             resultado.append(item)
@@ -1510,20 +1510,19 @@ def registrar_ingreso():
             return jsonify({'success': False, 'message': f'Autorización no está aprobada (estado actual: {autorizacion.estado})'}), 400
         
         # VALIDACIÓN 2: Autorización no vencida
-        if autorizacion.vigencia_fin < date.today():
+        if autorizacion.fecha_fin < date.today():
             # Marcar como vencida
             autorizacion.estado = 'vencida'
             db.session.commit()
             return jsonify({'success': False, 'message': 'Autorización SST vencida'}), 400
         
-        # VALIDACIÓN 3: Empleado incluido en la autorización
+        # VALIDACIÓN 3: Empleado existe y pertenece a la misma empresa de la autorización
         empleado = EmpleadoContratista.query.get(empleado_id)
         if not empleado:
             return jsonify({'success': False, 'message': 'Empleado no encontrado'}), 404
         
-        # Verificar que el empleado esté en la lista de empleados de esta autorización
-        if empleado not in autorizacion.empleados:
-            return jsonify({'success': False, 'message': 'Empleado no está incluido en esta autorización SST'}), 400
+        if empleado.empresa_id != autorizacion.empresa_id:
+            return jsonify({'success': False, 'message': 'El empleado no pertenece a la empresa de esta autorización'}), 400
         
         # VALIDACIÓN 4: Empleado no tiene ingreso activo
         # Buscar el último log de este empleado
@@ -1675,15 +1674,15 @@ def listar_empleados_activos():
             item = log.to_dict()
             item['empleado'] = {
                 'id': empleado.id,
-                'nombres_completos': f"{empleado.primer_nombre} {empleado.segundo_nombre or ''} {empleado.primer_apellido} {empleado.segundo_apellido or ''}".strip(),
-                'tipo_identificacion': empleado.tipo_identificacion,
-                'num_identificacion': empleado.num_identificacion,
+                'nombre_completo': empleado.nombre_completo,
+                'tipo_id': empleado.tipo_id,
+                'num_id': empleado.num_id,
                 'empresa_id': empleado.empresa_id,
             } if empleado else None
             
             item['empresa'] = {
                 'id': empresa.id,
-                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else f"{empresa.primer_nombre} {empresa.primer_apellido}",
+                'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else empresa.nombre_completo_persona_natural,
             } if empresa else None
             
             resultado.append(item)

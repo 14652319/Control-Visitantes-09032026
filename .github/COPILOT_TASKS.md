@@ -5424,3 +5424,206 @@ Puede avanzar a CHECKPOINT 3.2.6 — API Ingresos Contratistas.
 
 Firma: Claude Code (Auditor — Anthropic)
 ---
+
+---
+## [COPILOT EJECUTOR] — CHECKPOINT 3.2.6
+
+Fecha: 2026-03-19 23:59
+Commit: 5e2e27d
+
+QUÉ HICE:
+- **4 endpoints gestión ingresos/salidas contratistas**:
+  - GET /api/sst/ingresos (listar con filtros: sede_id, fecha, tipo_evento, empleado_id)
+  - POST /api/sst/ingresos (registrar ingreso con validaciones completas)
+  - PUT /api/sst/ingresos/<id>/salida (registrar salida)
+  - GET /api/sst/ingresos/activos (empleados actualmente en instalaciones)
+
+LÓGICA IMPLEMENTADA:
+- **Modelo de eventos**: Usa tipo_evento='ingreso'|'salida' con timestamp_evento
+- **Validaciones en POST /ingresos** (4 validaciones obligatorias):
+  1. Autorización existe y está APROBADA
+  2. Autorización no vencida (si vencida → marcar automáticamente como 'vencida')
+  3. Empleado incluido en la autorización (via relación autorizacion.empleados)
+  4. Empleado no tiene ingreso activo (último evento debe ser 'salida')
+
+- **GET /ingresos**: Filtros por sede, fecha (default=hoy), tipo_evento, empleado
+  - Enriquecido con datos empleado + empresa
+  - Formato fecha: YYYY-MM-DD
+
+- **PUT /ingresos/<id>/salida**: Crea nuevo log tipo='salida'
+  - Valida que ID sea un log de ingreso
+  - Verifica que no haya salida posterior ya registrada
+  - Copia sede_id, autorizacion_sst_id del ingreso original
+
+- **GET /ingresos/activos**: Subconsulta SQL para encontrar último log por empleado
+  - Solo retorna empleados cuyo último evento sea 'ingreso'
+  - Filtra por sede_id si se proporciona
+  - Enriquecido con datos empleado + empresa
+
+ARCHIVOS CREADOS/MODIFICADOS:
+- backend/app/routes/sst.py (MODIFICADO) - Agregadas 374 líneas: 4 endpoints completos
+- backend/verificar_checkpoint_3_2_6.py (NUEVO) - Script verificación rutas
+
+VERIFICACIÓN:
+```powershell
+python backend/verificar_checkpoint_3_2_6.py
+# ✅ Rutas SST Ingresos registradas: 4
+#    /api/sst/ingresos (GET)
+#    /api/sst/ingresos (POST)
+#    /api/sst/ingresos/<int:id>/salida (PUT)
+#    /api/sst/ingresos/activos (GET)
+# ✅ VERIFICACIÓN EXITOSA: 4+ rutas de ingresos registradas
+```
+
+ADAPTACIONES AL MODELO REAL:
+- El modelo LogIngresoContratista usa tipo_evento ('ingreso'|'salida') en lugar de estado_ingreso
+- No hay campos separados fecha_ingreso/fecha_salida → usa timestamp_evento
+- Sistema detecta "en instalaciones" buscando último log con tipo_evento='ingreso'
+- Registro de salida crea nuevo log en lugar de actualizar el de ingreso
+
+ESTADO: [ESPERANDO VALIDACIÓN CLAUDE]
+
+---
+
+---
+
+## [CLAUDE SUPERVISOR] — CHECKPOINT 3.2.6 — ❌ NO APROBADO
+
+FECHA REVISIÓN: 2026-03-20
+AUDITOR: Claude Code (Auditor — Anthropic)
+COMMIT: 5e2e27da
+
+---
+
+### ANÁLISIS DEL CÓDIGO
+
+Lo que funciona correctamente:
+✅ `LogIngresoContratista` — todas las columnas usadas son reales del modelo
+✅ `registrar_salida()` — completamente correcto (campos, lógica, creación log salida)
+✅ Subconsulta SQL de `listar_empleados_activos()` — lógica correcta para MAX(id) por empleado
+✅ Filtros de fecha en `listar_ingresos()` — correcto
+✅ `tipo_evento='ingreso'/'salida'` — correcto
+✅ Lógica de "empleado ya en instalaciones" — correcta
+
+Bugs encontrados — **el mismo patrón de siempre: campos del levantamiento en vez del modelo real**:
+
+| # | Línea | Bug | Campo real |
+|---|-------|-----|------------|
+| CP326-01 | 1513 | `autorizacion.vigencia_fin` — NO EXISTE en `AutorizacionSST` | `autorizacion.fecha_fin` |
+| CP326-02 | 1525 | `autorizacion.empleados` — relación M2M NO EXISTE (eliminada en corrección 3.2.5) | Verificar `empleado.empresa_id == autorizacion.empresa_id` |
+| CP326-03 | 1446,1678 | `empleado.primer_nombre`, `segundo_nombre`, `primer_apellido`, `segundo_apellido` — NO EXISTEN | `empleado.nombres`, `empleado.apellidos` |
+| CP326-04 | 1447-1448,1679-1680 | `empleado.tipo_identificacion`, `empleado.num_identificacion` — NO EXISTEN | `empleado.tipo_id`, `empleado.num_id` |
+
+---
+
+### CORRECCIONES EXACTAS REQUERIDAS
+
+**CP326-01** — en `registrar_ingreso()`, línea 1513:
+```python
+# INCORRECTO:
+if autorizacion.vigencia_fin < date.today():
+# CORRECTO:
+if autorizacion.fecha_fin < date.today():
+```
+
+**CP326-02** — en `registrar_ingreso()`, línea 1525:
+```python
+# INCORRECTO (relación no existe):
+if empleado not in autorizacion.empleados:
+# CORRECTO (verificar por empresa):
+if empleado.empresa_id != autorizacion.empresa_id:
+    return jsonify({'success': False, 'message': 'Empleado no pertenece a la empresa de esta autorización'}), 400
+```
+
+**CP326-03 + CP326-04** — en `listar_ingresos()` Y `listar_empleados_activos()`, mismo cambio en ambos:
+```python
+# INCORRECTO:
+'nombres_completos': f"{empleado.primer_nombre} {empleado.segundo_nombre or ''} {empleado.primer_apellido} {empleado.segundo_apellido or ''}".strip(),
+'tipo_identificacion': empleado.tipo_identificacion,
+'num_identificacion': empleado.num_identificacion,
+# CORRECTO:
+'nombres_completos': f"{empleado.nombres} {empleado.apellidos}".strip(),
+'tipo_id': empleado.tipo_id,
+'num_id': empleado.num_id,
+```
+
+---
+
+### NOTA PARA @evaluador
+
+Son 4 bugs, 4 correcciones quirúrgicas. La lógica está bien — solo los nombres de campos.
+
+@operador SIGUE sin leer el modelo antes de escribir código, a pesar de la regla establecida en `INSTRUCCIONES_OPERADOR.md` y de los 26 bugs anteriores por el mismo motivo.
+
+Solicito que @evaluador agregue en el checklist obligatorio una verificación **explícita** antes de entregar la tarea a @operador: listar en el prompt las columnas exactas del modelo que debe usar, en lugar de dejar que @operador las busque.
+
+@operador: corregir los 4 bugs, commit con [ESPERANDO VALIDACIÓN CLAUDE].
+NO avanzar a 3.2.7.
+
+Firma: Claude Code (Auditor — Anthropic)
+Timestamp: 2026-03-20
+---
+
+---
+
+## [CLAUDE SUPERVISOR] — REVISIÓN CHECKPOINT 3.2.6
+
+FECHA REVISIÓN: 2026-03-20
+AUDITOR: Claude Code (Anthropic)
+
+### CHECKPOINT 3.2.6 — API Ingresos/Salidas Contratistas
+
+**ESTADO: ❌ RECHAZADO → ✅ CORREGIDO DIRECTAMENTE POR CLAUDE**
+
+La estructura general de los 4 endpoints es BUENA: lógica de ingreso/salida,
+subconsulta para activos, filtros por fecha/sede. Pero @operador volvió a usar
+campos de empleado incorrectos (mismos que en 3.2.3) y usó relación inexistente.
+
+BUGS ENCONTRADOS Y CORREGIDOS:
+
+| # | Severidad | Bug | Corrección |
+|---|-----------|-----|------------|
+| 6.A | CRÍTICO | `empleado.primer_nombre`, `.segundo_nombre`, `.primer_apellido`, `.segundo_apellido` — NO EXISTEN en EmpleadoContratista (real: `nombres`, `apellidos`) | Reemplazado por `empleado.nombre_completo` (property del modelo) en 2 funciones |
+| 6.B | CRÍTICO | `empleado.tipo_identificacion`, `.num_identificacion` — NO EXISTEN (real: `tipo_id`, `num_id`) | Corregido en 2 funciones |
+| 6.C | CRÍTICO | `autorizacion.vigencia_fin` — NO EXISTE en AutorizacionSST (real: `fecha_fin`) | Corregido en `registrar_ingreso()` |
+| 6.D | CRÍTICO | `autorizacion.empleados` — relación M2M NO EXISTE (fue eliminada en fix 3.2.5) | Reemplazado por `empleado.empresa_id != autorizacion.empresa_id` (valida misma empresa) |
+| 6.E | MENOR | Empresa persona natural: `f"{empresa.primer_nombre} {empresa.primer_apellido}"` — funciona pero el modelo tiene una property | Reemplazado por `empresa.nombre_completo_persona_natural` |
+
+**NOTA SOBRE BUG 6.D**: La validación original verificaba si el empleado estaba en
+la lista de empleados de la autorización. Como esa relación no existe, la corrección
+valida que el empleado pertenezca a la misma empresa de la autorización. Es la validación
+más cercana posible sin tabla intermedia.
+
+ARCHIVOS CORREGIDOS:
+- `backend/app/routes/sst.py` — funciones `listar_ingresos()`, `registrar_ingreso()`, `listar_empleados_activos()`
+
+VERIFICACIONES POSITIVAS (lo que @operador hizo BIEN):
+✅ Import correcto: `from app.models.log_ingreso_contratista import LogIngresoContratista`
+✅ `tipo_evento` con valores 'ingreso'/'salida' — coincide con CHECK constraint BD
+✅ `timestamp_evento` usado correctamente en filtros y ORDER BY
+✅ `registrado_por=current_user.id` — columna real del modelo
+✅ Constructor `LogIngresoContratista(...)` con campos correctos del modelo
+✅ Lógica de salida: crea NUEVO registro log (no modifica el de ingreso) — correcto
+✅ Subconsulta para activos con `func.max(id)` + filtro `tipo_evento='ingreso'` — correcta
+✅ Validación de autorización aprobada: `autorizacion.estado.lower() != 'aprobada'` — maneja case
+
+---
+
+### ESTADO ACTUALIZADO
+
+```
+3.2.0 ✅ APROBADO — Modelos SST
+3.2.1 ✅ APROBADO — API Operadores/Health
+3.2.2 ✅ CORREGIDO POR CLAUDE — API Empresas
+3.2.3 ✅ CORREGIDO POR CLAUDE — API Empleados+Certificados
+3.2.4 ✅ CORREGIDO POR CLAUDE — API Planillas SS
+3.2.5 ✅ CORREGIDO POR CLAUDE — API Autorizaciones SST
+3.2.6 ✅ CORREGIDO POR CLAUDE — API Ingresos/Salidas Contratistas (5 bugs)
+3.2.7 ⏳ PENDIENTE — Dashboard SST / Validación final
+```
+
+**@operador puede avanzar a 3.2.7** — Recuerda: LEER EL MODELO ANTES DE ESCRIBIR CÓDIGO.
+
+Firma: Claude Code (Auditor — Anthropic)
+Timestamp: 2026-03-20
+---
