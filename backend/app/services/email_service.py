@@ -428,7 +428,7 @@ def enviar_notificacion_autorizacion_aprobada(autorizacion_data, empresa_data, d
         if pdf_ruta:
             import os
             base_storage = os.path.normpath(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'uploads')
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'uploads')
             )
             pdf_full_path = os.path.normpath(os.path.join(base_storage, pdf_ruta))
             if pdf_full_path.startswith(base_storage + os.sep) and os.path.exists(pdf_full_path):
