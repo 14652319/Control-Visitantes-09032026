@@ -4,7 +4,8 @@ RUTAS: MÓDULO SST (Seguridad y Salud en el Trabajo)
 Gestión completa de contratistas, planillas y autorizaciones SST
 ========================================
 """
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.routes.auth import role_required
@@ -1718,4 +1719,120 @@ def listar_empleados_activos():
     except Exception as e:
         logger.error(f"Error listando empleados activos: {e}")
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
+
+
+# ============================================================
+# ENDPOINT: POST /api/sst/autorizaciones/<id>/generar-pdf
+# Genera el PDF SC-SST-FOR-015 para una autorización aprobada
+# Acceso: admin_sst, usuario_master
+# ============================================================
+@bp.route('/autorizaciones/<int:id>/generar-pdf', methods=['POST'])
+@login_required
+@role_required(*ROLES_ADMIN_SST)
+def generar_pdf_autorizacion(id):
+    """Genera PDF de autorización SST (formato SC-SST-FOR-015)"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+        from app.models.empresa_contratista import EmpresaContratista
+        from app.models.empleado_contratista import EmpleadoContratista
+        from app.models.planilla_ss import PlanillaSS
+        from app.models.sede import Sede
+        from app.services.pdf_service import generar_pdf_autorizacion as generar_pdf
+        from datetime import date
+
+        autorizacion = AutorizacionSST.query.get_or_404(id)
+
+        # Solo generar PDF para autorizaciones aprobadas
+        if autorizacion.estado != 'aprobada':
+            return jsonify({
+                'success': False,
+                'message': f'Solo se puede generar PDF de autorizaciones aprobadas. Estado actual: {autorizacion.estado}'
+            }), 400
+
+        empresa = EmpresaContratista.query.get(autorizacion.empresa_id)
+        if not empresa:
+            return jsonify({'success': False, 'message': 'Empresa no encontrada'}), 404
+
+        # Empleados de la empresa (activos)
+        empleados = EmpleadoContratista.query.filter_by(
+            empresa_id=empresa.id, estado='activo'
+        ).all()
+
+        # Planilla vigente más reciente
+        planilla = PlanillaSS.query.filter(
+            PlanillaSS.empresa_id == empresa.id,
+            PlanillaSS.vigencia_fin >= date.today()
+        ).order_by(PlanillaSS.vigencia_fin.desc()).first()
+
+        # Sede (puede ser None)
+        sede = Sede.query.get(autorizacion.sede_id) if autorizacion.sede_id else None
+
+        # Generar PDF
+        resultado = generar_pdf(autorizacion, empresa, empleados, planilla, sede)
+
+        if not resultado['success']:
+            return jsonify({'success': False, 'message': resultado.get('error', 'Error generando PDF')}), 500
+
+        # Guardar ruta en autorización
+        autorizacion.pdf_ruta = resultado['ruta']
+        db.session.commit()
+
+        logger.info(f"PDF generado para autorización #{id} por usuario {current_user.id}")
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'pdf_ruta': resultado['ruta'],
+                'nombre_archivo': resultado['nombre'],
+                'consecutivo': resultado['consecutivo']
+            },
+            'message': f"PDF {resultado['consecutivo']} generado exitosamente"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error generando PDF autorización #{id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================
+# ENDPOINT: GET /api/sst/autorizaciones/<id>/descargar-pdf
+# Descarga el PDF generado de una autorización
+# Acceso: cualquier rol SST
+# ============================================================
+@bp.route('/autorizaciones/<int:id>/descargar-pdf', methods=['GET'])
+@login_required
+@role_required(*ROLES_SST)
+def descargar_pdf_autorizacion(id):
+    """Descarga PDF de autorización SST"""
+    try:
+        from app.models.autorizacion_sst import AutorizacionSST
+
+        autorizacion = AutorizacionSST.query.get_or_404(id)
+
+        if not autorizacion.pdf_ruta:
+            return jsonify({'success': False, 'message': 'Esta autorización no tiene PDF generado'}), 404
+
+        # Construir ruta completa
+        ruta_completa = os.path.join(
+            current_app.config.get('PDF_STORAGE_FOLDER', 'uploads/autorizaciones_sst'),
+            '..', autorizacion.pdf_ruta
+        )
+        ruta_completa = os.path.normpath(ruta_completa)
+
+        if not os.path.exists(ruta_completa):
+            return jsonify({'success': False, 'message': 'Archivo PDF no encontrado en disco'}), 404
+
+        nombre_descarga = os.path.basename(autorizacion.pdf_ruta)
+
+        return send_file(
+            ruta_completa,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=nombre_descarga
+        )
+
+    except Exception as e:
+        logger.error(f"Error descargando PDF autorización #{id}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
