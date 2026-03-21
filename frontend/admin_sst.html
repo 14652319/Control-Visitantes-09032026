@@ -991,7 +991,8 @@
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Descripción de la Labor *</label>
                             <textarea x-model="formAutorizacion.labor" rows="3" maxlength="300"
-                                class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Describa detalladamente la labor a realizar..."></textarea>
+                                @input="formAutorizacion.labor = $event.target.value.toUpperCase()"
+                                class="w-full px-3 py-2 border rounded-lg text-sm uppercase" placeholder="Describa detalladamente la labor a realizar..."></textarea>
                             <p class="text-xs text-gray-400 mt-1" x-text="(formAutorizacion.labor || '').length + '/300 caracteres'"></p>
                         </div>
                     </div>

@@ -698,19 +698,27 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Primer Nombre *</label>
-                        <input type="text" x-model="formRegistro.primer_nombre" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                        <input type="text" x-model="formRegistro.primer_nombre"
+                            @input="formRegistro.primer_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Segundo Nombre</label>
-                        <input type="text" x-model="formRegistro.segundo_nombre" class="w-full px-4 py-3 border rounded-lg uppercase">
+                        <input type="text" x-model="formRegistro.segundo_nombre"
+                            @input="formRegistro.segundo_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase">
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Primer Apellido *</label>
-                        <input type="text" x-model="formRegistro.primer_apellido" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                        <input type="text" x-model="formRegistro.primer_apellido"
+                            @input="formRegistro.primer_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Segundo Apellido</label>
-                        <input type="text" x-model="formRegistro.segundo_apellido" class="w-full px-4 py-3 border rounded-lg uppercase">
+                        <input type="text" x-model="formRegistro.segundo_apellido"
+                            @input="formRegistro.segundo_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase">
                     </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Teléfono *</label>
