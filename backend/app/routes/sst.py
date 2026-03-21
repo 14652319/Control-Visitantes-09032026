@@ -358,29 +358,12 @@ def buscar_empresa():
                     'data': data
                 }), 200
 
-        # 3) Buscar en AutorizacionIngreso (sistema anterior)
-        if tipo_id == 'NIT':
-            # Para NIT: buscar solo por nit_empresa y devolver como JURIDICA
-            auth = AutorizacionIngreso.query.filter(
-                AutorizacionIngreso.nit_empresa == consulta
-            ).order_by(AutorizacionIngreso.id.desc()).first()
-            if auth:
-                logger.info(f"[buscar_empresa] ENCONTRADO en AutorizacionIngreso (nit_empresa) id={auth.id}")
-                data = {
-                    'id': None,
-                    'tipo_persona': 'JURIDICA',
-                    'nit': auth.nit_empresa or '',
-                    'razon_social': auth.empresa or '',
-                    'telefono': auth.num_telefono or '',
-                    'email': auth.dir_correo or '',
-                }
-                return jsonify({
-                    'success': True,
-                    'encontrado': True,
-                    'fuente': 'autorizacion_ingreso',
-                    'data': data
-                }), 200
-        else:
+        # 3) Buscar en AutorizacionIngreso (sistema anterior) — SOLO para personas naturales
+        #    Para NIT (JURIDICA) NO se usa esta tabla: el campo 'empresa' en autorizaciones
+        #    es texto libre histórico donde operators ponían nombres de personas en lugar del
+        #    nombre real de la empresa, causando datos erróneos. Si el NIT no está en
+        #    empresas_contratistas, se debe crear la empresa desde cero.
+        if tipo_id != 'NIT':
             auth = AutorizacionIngreso.query.filter(
                 db.or_(
                     AutorizacionIngreso.nit_empresa == consulta,
