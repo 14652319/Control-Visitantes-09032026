@@ -1799,9 +1799,12 @@
                 const q = this.autBusqueda.tipo_persona === 'JURIDICA'
                     ? this.autBusqueda.nit.trim()
                     : this.autBusqueda.num_id.trim();
+                const tipo = this.autBusqueda.tipo_persona === 'JURIDICA'
+                    ? 'NIT'
+                    : (this.autBusqueda.tipo_id || '');
                 if (!q || q.length < 3) { return; }
                 try {
-                    const resp = await apiClient.sst.buscarEmpresa(q);
+                    const resp = await apiClient.sst.buscarEmpresa(q, tipo);
                     if (resp.encontrado && resp.data) {
                         const emp = resp.data;
                         this.autBusqueda.resultado = emp;

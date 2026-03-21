@@ -291,28 +291,38 @@ def actualizar_empresa(id):
 @role_required(*ROLES_SST)
 def buscar_empresa():
     """
-    Búsqueda inteligente de empresa por NIT (Jurídica) o num_identificacion (Natural).
-    Si no se encuentra en EmpresaContratista, busca en la tabla de Visitantes.
+    Búsqueda inteligente por tipo + número de documento en todas las tablas.
+    Busca en: EmpresaContratista → Visitante → AutorizacionIngreso.
 
     Query params:
-        q (str): NIT o número de documento a buscar
+        q       (str): NIT o número de documento
+        tipo_id (str): Tipo de documento (CC, CE, NIT, etc.) — mejora la precisión
 
     Returns:
-        {'encontrado': bool, 'fuente': 'contratista'|'visitante'|None, 'data': {...}|None}
+        {'encontrado': bool, 'fuente': 'contratista'|'visitante'|'autorizacion_ingreso'|None, 'data': {...}|None}
     """
     try:
         from app.models.empresa_contratista import EmpresaContratista
         from app.models.visitante import Visitante
+        from app.models.autorizacion_ingreso import AutorizacionIngreso
 
         consulta = request.args.get('q', '').strip()
+        tipo_id = request.args.get('tipo_id', '').strip()
+
         if not consulta:
             return jsonify({'success': False, 'message': 'Parámetro "q" requerido'}), 400
 
-        # 1) Buscar en EmpresaContratista por NIT o num_identificacion
+        # Filtra por (tipo == tipo_id AND num == consulta) si hay tipo_id, o solo por num
+        def con_tipo(col_tipo, col_num):
+            if tipo_id:
+                return db.and_(col_tipo == tipo_id, col_num == consulta)
+            return col_num == consulta
+
+        # 1) Buscar en EmpresaContratista por NIT o tipo+num_identificacion
         empresa = EmpresaContratista.query.filter(
             db.or_(
                 EmpresaContratista.nit == consulta,
-                EmpresaContratista.num_identificacion == consulta
+                con_tipo(EmpresaContratista.tipo_identificacion, EmpresaContratista.num_identificacion)
             )
         ).first()
 
@@ -324,17 +334,16 @@ def buscar_empresa():
                 'data': empresa.to_dict()
             }), 200
 
-        # 2) Si no está en SST, buscar en la tabla de visitantes
+        # 2) Buscar en Visitantes por tipo+num_identificacion
         visitante = Visitante.query.filter(
-            Visitante.num_identificacion == consulta
+            con_tipo(Visitante.tipo_identificacion, Visitante.num_identificacion)
         ).first()
 
         if visitante:
             data = visitante.to_dict()
-            # Adaptar al formato que espera el frontend de EmpresaContratista
             data['tipo_persona'] = 'NATURAL'
             data['nombre_completo_persona_natural'] = data.get('nombre_completo', '')
-            data['id'] = None  # No es contratista todavía
+            data['id'] = None
             return jsonify({
                 'success': True,
                 'encontrado': True,
@@ -342,12 +351,11 @@ def buscar_empresa():
                 'data': data
             }), 200
 
-        # 3) Buscar en autorizaciones_ingreso (sistema anterior)
-        from app.models.autorizacion_ingreso import AutorizacionIngreso
+        # 3) Buscar en AutorizacionIngreso (sistema anterior)
         auth = AutorizacionIngreso.query.filter(
             db.or_(
-                AutorizacionIngreso.num_identificacion == consulta,
-                AutorizacionIngreso.nit_empresa == consulta
+                AutorizacionIngreso.nit_empresa == consulta,
+                con_tipo(AutorizacionIngreso.tipo_identificacion, AutorizacionIngreso.num_identificacion)
             )
         ).order_by(AutorizacionIngreso.id.desc()).first()
 

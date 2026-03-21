@@ -312,8 +312,10 @@ const apiClient = {
                 method: 'PUT', body: JSON.stringify(data)
             });
         },
-        async buscarEmpresa(q) {
-            return await apiClient.request(`/sst/empresas/buscar?q=${encodeURIComponent(q)}`);
+        async buscarEmpresa(q, tipoId = '') {
+            let url = `/sst/empresas/buscar?q=${encodeURIComponent(q)}`;
+            if (tipoId) url += `&tipo_id=${encodeURIComponent(tipoId)}`;
+            return await apiClient.request(url);
         },
 
         // --- Empleados ---
