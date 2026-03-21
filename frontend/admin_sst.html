@@ -599,12 +599,7 @@
                         </div>
                     </div>
                     
-                    <!-- Botón Buscar -->
-                    <div class="mt-4">
-                        <button @click="buscarEmpresaExistente()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
-                            <i class="fas fa-search mr-2"></i>Buscar Empresa Existente
-                        </button>
-                    </div>
+
                     
                     <!-- Campos Comunes -->
                     <div class="mt-6 space-y-4">
@@ -616,7 +611,14 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input type="email" x-model="formEmpresa.email" @input="formEmpresa.email = $event.target.value.toLowerCase().replace(/\s/g, '')" class="w-full px-4 py-2 border rounded-lg" placeholder="contacto@empresa.com">
+                                <input type="email" x-model="formEmpresa.email"
+                                    @input="formEmpresa.email = $event.target.value.toLowerCase().replace(/\s/g, ''); formEmpresa._emailError = false"
+                                    @blur="formEmpresa._emailError = formEmpresa.email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formEmpresa.email)"
+                                    :class="formEmpresa._emailError ? 'border-red-500 bg-red-50' : ''"
+                                    class="w-full px-4 py-2 border rounded-lg" placeholder="contacto@empresa.com">
+                                <p x-show="formEmpresa._emailError" class="mt-1 text-xs text-red-600">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>Ingrese un correo electrónico válido
+                                </p>
                             </div>
                         </div>
                         <div>
@@ -1540,6 +1542,12 @@
             },
             
             async guardarEmpresa() {
+                // Validar email si fue ingresado
+                if (this.formEmpresa.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formEmpresa.email)) {
+                    this.formEmpresa._emailError = true;
+                    alert('El correo electrónico ingresado no es válido.');
+                    return;
+                }
                 try {
                     if (this.empresaSeleccionada) {
                         await apiClient.sst.actualizarEmpresa(this.empresaSeleccionada.id, this.formEmpresa);
