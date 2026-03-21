@@ -342,6 +342,42 @@ def buscar_empresa():
                 'data': data
             }), 200
 
+        # 3) Buscar en autorizaciones_ingreso (sistema anterior)
+        from app.models.autorizacion_ingreso import AutorizacionIngreso
+        auth = AutorizacionIngreso.query.filter(
+            db.or_(
+                AutorizacionIngreso.num_identificacion == consulta,
+                AutorizacionIngreso.nit_empresa == consulta
+            )
+        ).order_by(AutorizacionIngreso.id.desc()).first()
+
+        if auth:
+            # Adaptar estructura al formato EmpresaContratista
+            data = {
+                'id': None,
+                'tipo_persona': 'NATURAL',
+                'tipo_identificacion': auth.tipo_identificacion,
+                'num_identificacion': auth.num_identificacion,
+                'primer_nombre': auth.primer_nombre or '',
+                'segundo_nombre': auth.segundo_nombre or '',
+                'primer_apellido': auth.primer_apellido or '',
+                'segundo_apellido': auth.segundo_apellido or '',
+                'nombre_completo_persona_natural': ' '.join(filter(None, [
+                    auth.primer_nombre, auth.segundo_nombre,
+                    auth.primer_apellido, auth.segundo_apellido
+                ])),
+                'empresa': auth.empresa or '',
+                'nit': auth.nit_empresa or '',
+                'telefono': auth.num_telefono or '',
+                'email': auth.dir_correo or '',
+            }
+            return jsonify({
+                'success': True,
+                'encontrado': True,
+                'fuente': 'autorizacion_ingreso',
+                'data': data
+            }), 200
+
         return jsonify({'success': True, 'encontrado': False, 'fuente': None, 'data': None}), 200
 
     except Exception as e:
