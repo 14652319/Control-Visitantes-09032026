@@ -309,6 +309,8 @@ def buscar_empresa():
         consulta = request.args.get('q', '').strip()
         tipo_id = request.args.get('tipo_id', '').strip()
 
+        logger.info(f"[buscar_empresa] q='{consulta}' tipo_id='{tipo_id}'")
+
         if not consulta:
             return jsonify({'success': False, 'message': 'Parámetro "q" requerido'}), 400
 
@@ -327,6 +329,7 @@ def buscar_empresa():
         ).first()
 
         if empresa:
+            logger.info(f"[buscar_empresa] ENCONTRADO en EmpresaContratista id={empresa.id}")
             return jsonify({
                 'success': True,
                 'encontrado': True,
@@ -335,61 +338,88 @@ def buscar_empresa():
             }), 200
 
         # 2) Buscar en Visitantes por tipo+num_identificacion
-        visitante = Visitante.query.filter(
-            con_tipo(Visitante.tipo_identificacion, Visitante.num_identificacion)
-        ).first()
+        #    NUNCA para búsquedas por NIT: el NIT es un identificador empresarial
+        #    y podría coincidir con el num_identificacion de un visitante registrado
+        #    con tipo='NIT', devolviendo erróneamente datos de persona natural.
+        if tipo_id != 'NIT':
+            visitante = Visitante.query.filter(
+                con_tipo(Visitante.tipo_identificacion, Visitante.num_identificacion)
+            ).first()
 
-        if visitante:
-            data = visitante.to_dict()
-            data['tipo_persona'] = 'NATURAL'
-            data['nombre_completo_persona_natural'] = data.get('nombre_completo', '')
-            data['id'] = None
-            return jsonify({
-                'success': True,
-                'encontrado': True,
-                'fuente': 'visitante',
-                'data': data
-            }), 200
+            if visitante:
+                data = visitante.to_dict()
+                data['tipo_persona'] = 'NATURAL'
+                data['nombre_completo_persona_natural'] = data.get('nombre_completo', '')
+                data['id'] = None
+                return jsonify({
+                    'success': True,
+                    'encontrado': True,
+                    'fuente': 'visitante',
+                    'data': data
+                }), 200
 
         # 3) Buscar en AutorizacionIngreso (sistema anterior)
-        auth = AutorizacionIngreso.query.filter(
-            db.or_(
-                AutorizacionIngreso.nit_empresa == consulta,
-                con_tipo(AutorizacionIngreso.tipo_identificacion, AutorizacionIngreso.num_identificacion)
-            )
-        ).order_by(AutorizacionIngreso.id.desc()).first()
+        if tipo_id == 'NIT':
+            # Para NIT: buscar solo por nit_empresa y devolver como JURIDICA
+            auth = AutorizacionIngreso.query.filter(
+                AutorizacionIngreso.nit_empresa == consulta
+            ).order_by(AutorizacionIngreso.id.desc()).first()
+            if auth:
+                logger.info(f"[buscar_empresa] ENCONTRADO en AutorizacionIngreso (nit_empresa) id={auth.id}")
+                data = {
+                    'id': None,
+                    'tipo_persona': 'JURIDICA',
+                    'nit': auth.nit_empresa or '',
+                    'razon_social': auth.empresa or '',
+                    'telefono': auth.num_telefono or '',
+                    'email': auth.dir_correo or '',
+                }
+                return jsonify({
+                    'success': True,
+                    'encontrado': True,
+                    'fuente': 'autorizacion_ingreso',
+                    'data': data
+                }), 200
+        else:
+            auth = AutorizacionIngreso.query.filter(
+                db.or_(
+                    AutorizacionIngreso.nit_empresa == consulta,
+                    con_tipo(AutorizacionIngreso.tipo_identificacion, AutorizacionIngreso.num_identificacion)
+                )
+            ).order_by(AutorizacionIngreso.id.desc()).first()
 
-        if auth:
-            # Adaptar estructura al formato EmpresaContratista
-            data = {
-                'id': None,
-                'tipo_persona': 'NATURAL',
-                'tipo_identificacion': auth.tipo_identificacion,
-                'num_identificacion': auth.num_identificacion,
-                'primer_nombre': auth.primer_nombre or '',
-                'segundo_nombre': auth.segundo_nombre or '',
-                'primer_apellido': auth.primer_apellido or '',
-                'segundo_apellido': auth.segundo_apellido or '',
-                'nombre_completo_persona_natural': ' '.join(filter(None, [
-                    auth.primer_nombre, auth.segundo_nombre,
-                    auth.primer_apellido, auth.segundo_apellido
-                ])),
-                'empresa': auth.empresa or '',
-                'nit': auth.nit_empresa or '',
-                'telefono': auth.num_telefono or '',
-                'email': auth.dir_correo or '',
-            }
-            return jsonify({
-                'success': True,
-                'encontrado': True,
-                'fuente': 'autorizacion_ingreso',
-                'data': data
-            }), 200
+            if auth:
+                logger.info(f"[buscar_empresa] ENCONTRADO en AutorizacionIngreso id={auth.id}")
+                data = {
+                    'id': None,
+                    'tipo_persona': 'NATURAL',
+                    'tipo_identificacion': auth.tipo_identificacion,
+                    'num_identificacion': auth.num_identificacion,
+                    'primer_nombre': auth.primer_nombre or '',
+                    'segundo_nombre': auth.segundo_nombre or '',
+                    'primer_apellido': auth.primer_apellido or '',
+                    'segundo_apellido': auth.segundo_apellido or '',
+                    'nombre_completo_persona_natural': ' '.join(filter(None, [
+                        auth.primer_nombre, auth.segundo_nombre,
+                        auth.primer_apellido, auth.segundo_apellido
+                    ])),
+                    'empresa': auth.empresa or '',
+                    'nit': auth.nit_empresa or '',
+                    'telefono': auth.num_telefono or '',
+                    'email': auth.dir_correo or '',
+                }
+                return jsonify({
+                    'success': True,
+                    'encontrado': True,
+                    'fuente': 'autorizacion_ingreso',
+                    'data': data
+                }), 200
 
+        logger.info(f"[buscar_empresa] NO ENCONTRADO para q='{consulta}'")
         return jsonify({'success': True, 'encontrado': False, 'fuente': None, 'data': None}), 200
 
     except Exception as e:
-        logger.error(f"Error buscando empresa: {e}")
+        logger.error(f"Error buscando empresa: {e}", exc_info=True)
         return jsonify({'success': False, 'message': 'Error interno del servidor'}), 500
 
 

@@ -862,31 +862,42 @@
                     <!-- Número de Identificación -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Número Identificación *</label>
-                        <input type="text" x-model="usuarioEdicion.num_identificacion" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                        <input type="text" x-model="usuarioEdicion.num_identificacion"
+                            @input="usuarioEdicion.num_identificacion = $event.target.value.replace(/[^0-9]/g, '')"
+                            inputmode="numeric"
+                            class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                     
                     <!-- Primer Nombre -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Primer Nombre *</label>
-                        <input type="text" x-model="usuarioEdicion.primer_nombre" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                        <input type="text" x-model="usuarioEdicion.primer_nombre"
+                            @input="usuarioEdicion.primer_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase" required>
                     </div>
                     
                     <!-- Segundo Nombre -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Segundo Nombre</label>
-                        <input type="text" x-model="usuarioEdicion.segundo_nombre" class="w-full px-4 py-3 border rounded-lg uppercase">
+                        <input type="text" x-model="usuarioEdicion.segundo_nombre"
+                            @input="usuarioEdicion.segundo_nombre = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase">
                     </div>
                     
                     <!-- Primer Apellido -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Primer Apellido *</label>
-                        <input type="text" x-model="usuarioEdicion.primer_apellido" class="w-full px-4 py-3 border rounded-lg uppercase" required>
+                        <input type="text" x-model="usuarioEdicion.primer_apellido"
+                            @input="usuarioEdicion.primer_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase" required>
                     </div>
                     
                     <!-- Segundo Apellido -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Segundo Apellido</label>
-                        <input type="text" x-model="usuarioEdicion.segundo_apellido" class="w-full px-4 py-3 border rounded-lg uppercase">
+                        <input type="text" x-model="usuarioEdicion.segundo_apellido"
+                            @input="usuarioEdicion.segundo_apellido = $event.target.value.toUpperCase()"
+                            class="w-full px-4 py-3 border rounded-lg uppercase">
                     </div>
                     
                     <!-- Teléfono -->
@@ -898,7 +909,9 @@
                     <!-- Correo -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Correo Electrónico *</label>
-                        <input type="email" x-model="usuarioEdicion.dir_correo" class="w-full px-4 py-3 border rounded-lg" required>
+                        <input type="email" x-model="usuarioEdicion.dir_correo"
+                            @input="usuarioEdicion.dir_correo = $event.target.value.toLowerCase().replace(/\s/g, '')"
+                            class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                     
                     <!-- Sede -->
@@ -953,7 +966,9 @@
                     <!-- Usuario (solo al crear) -->
                     <div x-show="!usuarioEdicion.id">
                         <label class="block text-gray-700 font-medium mb-2">Usuario (login) *</label>
-                        <input type="text" x-model="usuarioEdicion.usuario" class="w-full px-4 py-3 border rounded-lg" required>
+                        <input type="text" x-model="usuarioEdicion.usuario"
+                            @input="usuarioEdicion.usuario = $event.target.value.toLowerCase().replace(/\s/g, '')"
+                            class="w-full px-4 py-3 border rounded-lg" required>
                     </div>
                     
                     <!-- Contraseña (solo al crear) -->
