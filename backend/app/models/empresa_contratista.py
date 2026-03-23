@@ -33,6 +33,8 @@ class EmpresaContratista(db.Model):
     segundo_nombre = db.Column(db.String(100))
     primer_apellido = db.Column(db.String(100))
     segundo_apellido = db.Column(db.String(100))
+    tipo_tercero = db.Column(db.String(30), nullable=False, default='CONTRATISTA')
+    # Valores: CONTRATISTA | EMPLEADO_CONTRATISTA | MERCADERISTA | VISITANTE_REGISTRO
 
     empleados = db.relationship('EmpleadoContratista', back_populates='empresa')
     planillas = db.relationship('PlanillaSS', back_populates='empresa')
@@ -67,6 +69,7 @@ class EmpresaContratista(db.Model):
             'segundo_nombre': self.segundo_nombre,
             'primer_apellido': self.primer_apellido,
             'segundo_apellido': self.segundo_apellido,
+            'tipo_tercero': self.tipo_tercero or 'CONTRATISTA',
             'nombre_completo_persona_natural': self.nombre_completo_persona_natural,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

@@ -30,24 +30,24 @@
                     <span>Inicio</span>
                 </button>
                 
-                <!-- Empresas -->
+                <!-- Terceros -->
                 <button
                     @click="seccion = 'empresas'"
                     :class="seccion === 'empresas' ? 'bg-blue-700' : 'hover:bg-blue-700'"
                     class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
                 >
-                    <i class="fas fa-building w-5"></i>
-                    <span>Empresas</span>
+                    <i class="fas fa-id-card w-5"></i>
+                    <span>Terceros</span>
                 </button>
                 
-                <!-- Empleados -->
+                <!-- Personal de Terceros -->
                 <button
                     @click="seccion = 'empleados'"
                     :class="seccion === 'empleados' ? 'bg-blue-700' : 'hover:bg-blue-700'"
                     class="w-full text-left px-4 py-3 rounded-lg transition flex items-center space-x-3"
                 >
-                    <i class="fas fa-users w-5"></i>
-                    <span>Empleados</span>
+                    <i class="fas fa-user-tie w-5"></i>
+                    <span>Personal de Terceros</span>
                 </button>
                 
                 <!-- Planillas SS -->
@@ -146,26 +146,28 @@
             <!-- Sección EMPRESAS -->
             <div x-show="seccion === 'empresas'" x-cloak x-init="$watch('seccion', val => { if(val === 'empresas') cargarEmpresas(); })">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Empresas Contratistas</h2>
+                    <h2 class="text-2xl font-bold text-gray-800">Terceros</h2>
                     <button @click="abrirModalEmpresa()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
                         <i class="fas fa-plus"></i>
-                        <span>Nueva Empresa</span>
+                        <span>Nuevo Tercero</span>
                     </button>
                 </div>
                 
                 <!-- Filtros -->
                 <div class="bg-white rounded-xl shadow-md p-4 mb-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input type="text" x-model="filtroEmpresas.busqueda" @input="cargarEmpresas()" placeholder="Buscar por NIT, nombre..." class="px-4 py-2 border rounded-lg">
-                        <select x-model="filtroEmpresas.tipo_persona" @change="cargarEmpresas()" class="px-4 py-2 border rounded-lg">
-                            <option value="">Todos los tipos</option>
-                            <option value="JURIDICA">Jurídica</option>
-                            <option value="NATURAL">Natural</option>
+                        <input type="text" x-model="filtroEmpresas.busqueda" @input="cargarEmpresas()" placeholder="Buscar por documento, nombre..." class="px-4 py-2 border rounded-lg">
+                        <select x-model="filtroEmpresas.tipo_tercero" @change="cargarEmpresas()" class="px-4 py-2 border rounded-lg">
+                            <option value="">Todas las categorías</option>
+                            <option value="CONTRATISTA">Contratista</option>
+                            <option value="EMPLEADO_CONTRATISTA">Empleado Contratista</option>
+                            <option value="MERCADERISTA">Mercaderista</option>
+                            <option value="VISITANTE_REGISTRO">Visitante</option>
                         </select>
                         <select x-model="filtroEmpresas.estado" @change="cargarEmpresas()" class="px-4 py-2 border rounded-lg">
                             <option value="">Todos los estados</option>
-                            <option value="activa">Activa</option>
-                            <option value="inactiva">Inactiva</option>
+                            <option value="activa">Activo</option>
+                            <option value="inactiva">Inactivo</option>
                         </select>
                     </div>
                 </div>
@@ -177,7 +179,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIT/Documento</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
                             </tr>
@@ -188,7 +190,18 @@
                                     <td class="px-6 py-4 text-sm" x-text="empresa.tipo_persona === 'JURIDICA' ? (empresa.nit + '-' + empresa.digito_verificacion) : (empresa.tipo_identificacion + '-' + empresa.num_identificacion)"></td>
                                     <td class="px-6 py-4 text-sm" x-text="empresa.tipo_persona === 'JURIDICA' ? empresa.razon_social : empresa.nombre_completo_persona_natural"></td>
                                     <td class="px-6 py-4 text-sm">
-                                        <span :class="empresa.tipo_persona === 'JURIDICA' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'" class="px-2 py-1 rounded-full text-xs" x-text="empresa.tipo_persona === 'JURIDICA' ? 'Jurídica' : 'Natural'"></span>
+                                        <div>
+                                            <span :class="{
+                                                'bg-indigo-100 text-indigo-800':  empresa.tipo_tercero === 'CONTRATISTA',
+                                                'bg-teal-100 text-teal-800':      empresa.tipo_tercero === 'EMPLEADO_CONTRATISTA',
+                                                'bg-amber-100 text-amber-800':    empresa.tipo_tercero === 'MERCADERISTA',
+                                                'bg-sky-100 text-sky-800':        empresa.tipo_tercero === 'VISITANTE_REGISTRO',
+                                                'bg-gray-100 text-gray-700':      !empresa.tipo_tercero
+                                            }" class="px-2 py-1 rounded-full text-xs font-medium"
+                                            x-text="{ CONTRATISTA:'Contratista', EMPLEADO_CONTRATISTA:'Emp. Contratista', MERCADERISTA:'Mercaderista', VISITANTE_REGISTRO:'Visitante' }[empresa.tipo_tercero] || empresa.tipo_tercero"
+                                            ></span>
+                                            <span class="ml-1 text-xs text-gray-400" x-text="empresa.tipo_persona === 'JURIDICA' ? 'J' : 'N'"></span>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm">
                                         <span :class="empresa.estado === 'activa' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 rounded-full text-xs" x-text="empresa.estado === 'activa' ? 'Activa' : 'Inactiva'"></span>
@@ -201,7 +214,7 @@
                                 </tr>
                             </template>
                             <tr x-show="empresas.length === 0">
-                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay empresas registradas</td>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No hay terceros registrados</td>
                             </tr>
                         </tbody>
                     </table>
@@ -211,10 +224,10 @@
             <!-- Sección EMPLEADOS -->
             <div x-show="seccion === 'empleados'" x-cloak x-init="$watch('seccion', val => { if(val === 'empleados') cargarEmpleados(); })">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Empleados Contratistas</h2>
+                    <h2 class="text-2xl font-bold text-gray-800">Personal de Terceros</h2>
                     <button @click="abrirModalEmpleado()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
                         <i class="fas fa-plus"></i>
-                        <span>Nuevo Empleado</span>
+                        <span>Nuevo Personal</span>
                     </button>
                 </div>
                 
@@ -512,13 +525,35 @@
         <div x-show="mostrarModalEmpresa" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div @click.away="mostrarModalEmpresa = false; if(_returnToAutorizacion){ _returnToAutorizacion=false; mostrarModalAutorizacion=true; }" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold" x-text="empresaSeleccionada ? 'Editar Empresa' : 'Nueva Empresa'"></h3>
+                    <h3 class="text-xl font-bold" x-text="empresaSeleccionada ? 'Editar Tercero' : 'Nuevo Tercero'"></h3>
                     <button @click="mostrarModalEmpresa = false; if(_returnToAutorizacion){ _returnToAutorizacion=false; mostrarModalAutorizacion=true; }" class="text-gray-500 hover:text-gray-700">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 
                 <div class="p-6">
+                    <!-- Categoría del Tercero -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Categoría *</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <template x-for="opt in [
+                                {v:'CONTRATISTA',        l:'Contratista',         c:'indigo'},
+                                {v:'EMPLEADO_CONTRATISTA',l:'Emp. Contratista',   c:'teal'},
+                                {v:'MERCADERISTA',       l:'Mercaderista',        c:'amber'},
+                                {v:'VISITANTE_REGISTRO', l:'Visitante',           c:'sky'}
+                            ]" :key="opt.v">
+                                <button type="button"
+                                    @click="formEmpresa.tipo_tercero = opt.v"
+                                    :class="formEmpresa.tipo_tercero === opt.v
+                                        ? 'ring-2 ring-offset-1 ring-blue-500 font-semibold bg-blue-50 text-blue-800'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                    class="px-3 py-2 rounded-lg text-sm transition"
+                                    x-text="opt.l">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
                     <!-- Toggle Tipo Persona -->
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Persona *</label>
@@ -1400,11 +1435,12 @@
             formEmpresa: {
                 tipo_persona: 'JURIDICA',
                 nit: '', razon_social: '',
-                tipo_identificacion: 'CC', num_identificacion: '',
+                tipo_persona: 'JURIDICA', tipo_identificacion: 'CC', num_identificacion: '',
                 primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '',
-                telefono: '', email: ''
+                telefono: '', email: '',
+                tipo_tercero: 'CONTRATISTA'
             },
-            filtroEmpresas: { busqueda: '', tipo_persona: '', estado: '' },
+            filtroEmpresas: { busqueda: '', tipo_persona: '', estado: '', tipo_tercero: '' },
             
             // Empleados + Certificados
             empleados: [],
@@ -1541,9 +1577,10 @@
                     this.formEmpresa = {
                         tipo_persona: 'JURIDICA',
                         nit: '', razon_social: '',
-                        tipo_identificacion: 'CC', num_identificacion: '',
+                        tipo_persona: 'JURIDICA', tipo_identificacion: 'CC', num_identificacion: '',
                         primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '',
                         telefono: '', email: '',
+                        tipo_tercero: 'CONTRATISTA',
                         _yaExiste: false, _yaExisteNombre: ''
                     };
                     this.empresaSeleccionada = null;
@@ -1902,6 +1939,7 @@
                 // Pre-llenar con los datos conocidos del contratista buscado
                 this.formEmpresa = {
                     tipo_persona: b.tipo_persona,
+                    tipo_tercero: 'CONTRATISTA',
                     nit: b.tipo_persona === 'JURIDICA' ? b.nit : '',
                     razon_social: '',
                     tipo_identificacion: b.tipo_persona === 'NATURAL' ? (b.tipo_id || 'CC') : 'CC',

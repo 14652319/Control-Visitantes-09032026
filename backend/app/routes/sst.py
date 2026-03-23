@@ -118,6 +118,7 @@ def listar_empresas():
         tipo_persona = request.args.get('tipo_persona')  # JURIDICA | NATURAL
         estado = request.args.get('estado')  # activa | inactiva
         busqueda = request.args.get('busqueda')  # Búsqueda por nombre, razón social, NIT, o documento
+        tipo_tercero = request.args.get('tipo_tercero')  # CONTRATISTA | EMPLEADO_CONTRATISTA | MERCADERISTA | VISITANTE_REGISTRO
         
         query = EmpresaContratista.query
         
@@ -126,6 +127,9 @@ def listar_empresas():
         
         if estado and estado.lower() in ('activa', 'inactiva'):
             query = query.filter_by(estado=estado.lower())
+        
+        if tipo_tercero:
+            query = query.filter_by(tipo_tercero=tipo_tercero.upper())
         
         if busqueda:
             # Búsqueda flexible por múltiples campos
