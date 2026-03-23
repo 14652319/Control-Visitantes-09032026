@@ -1436,8 +1436,10 @@ def crear_autorizacion():
         # ── validaciones obligatorias ───────────────────────────────────────────
         if not data.get('empresa_id'):
             return jsonify({'success': False, 'message': 'empresa_id requerido'}), 400
-        if not data.get('sede_id'):
-            return jsonify({'success': False, 'message': 'sede_id requerido'}), 400
+        # sede_id: usar el del form; si no viene, usar el de la sesión del usuario
+        sede_id_efectivo = data.get('sede_id') or getattr(current_user, 'sede_id', None)
+        if not sede_id_efectivo:
+            return jsonify({'success': False, 'message': 'sede_id requerido (configure la sede del usuario)'}), 400
         if not data.get('fecha_inicio') or not data.get('fecha_fin'):
             return jsonify({'success': False, 'message': 'Fechas de vigencia requeridas'}), 400
         if not data.get('labor'):
@@ -1476,7 +1478,7 @@ def crear_autorizacion():
         autorizacion = AutorizacionSST(
             numero_autorizacion=numero_autorizacion,
             empresa_id=data['empresa_id'],
-            sede_id=data.get('sede_id'),
+            sede_id=sede_id_efectivo,
             planilla_ss_id=planilla_id,
             labor=data['labor'],
             fecha_inicio=data['fecha_inicio'],
