@@ -1360,8 +1360,14 @@ def listar_autorizaciones():
             if aut.empresa:
                 d['empresa_nombre'] = aut.empresa.razon_social if aut.empresa.tipo_persona == 'JURIDICA' \
                     else aut.empresa.nombre_completo_persona_natural
+                if aut.empresa.tipo_persona == 'JURIDICA':
+                    dv = f"-{aut.empresa.digito_verificacion}" if aut.empresa.digito_verificacion else ''
+                    d['empresa_nit'] = f"NIT {aut.empresa.nit}{dv}"
+                else:
+                    d['empresa_nit'] = f"{aut.empresa.tipo_identificacion or ''} {aut.empresa.num_identificacion or ''}".strip()
             else:
                 d['empresa_nombre'] = 'N/A'
+                d['empresa_nit'] = ''
             resultado.append(d)
 
         return jsonify({

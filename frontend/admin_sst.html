@@ -437,7 +437,10 @@
                             <template x-for="aut in autorizaciones" :key="aut.id">
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 py-3 text-sm" x-text="aut.id"></td>
-                                    <td class="px-4 py-3 text-sm" x-text="aut.empresa_nombre || 'N/A'"></td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <div x-text="aut.empresa_nombre || 'N/A'"></div>
+                                        <div x-show="aut.empresa_nit" class="text-xs text-gray-400" x-text="aut.empresa_nit"></div>
+                                    </td>
                                     <td class="px-4 py-3 text-sm" x-text="(aut.labor || '').substring(0, 50) + (aut.labor?.length > 50 ? '...' : '')"></td>
                                     <td class="px-4 py-3 text-sm" x-text="aut.fecha_inicio"></td>
                                     <td class="px-4 py-3 text-sm" x-text="aut.fecha_fin"></td>
@@ -1640,7 +1643,7 @@
                 if (!this.formEmpleado.tipo_id || !this.formEmpleado.num_id || this.formEmpleado.num_id.length < 3) return;
                 try {
                     const resp = await apiClient.sst.buscarEmpleado(
-                        `${this.formEmpleado.tipo_id}-${this.formEmpleado.num_id}`
+                        this.formEmpleado.tipo_id, this.formEmpleado.num_id
                     );
                     if (resp.encontrado) {
                         this.formEmpleado = { ...resp.data };
@@ -1766,10 +1769,19 @@
                     const emp = this.empresas.find(e => e.id == autorizacion.empresa_id);
                     if (emp) {
                         this.autBusqueda.tipo_persona = emp.tipo_persona;
-                        this.autBusqueda.nit = emp.tipo_persona === 'JURIDICA' ? emp.nit : emp.num_identificacion;
-                        this.autBusqueda.razon_social = emp.tipo_persona === 'JURIDICA'
-                            ? (emp.razon_social || '') : emp.nombre_completo_persona_natural || '';
                         this.autBusqueda.resultado = emp;
+                        if (emp.tipo_persona === 'JURIDICA') {
+                            this.autBusqueda.nit = emp.nit || '';
+                            this.autBusqueda.razon_social = emp.razon_social || '';
+                        } else {
+                            this.autBusqueda.tipo_id = emp.tipo_identificacion || 'CC';
+                            this.autBusqueda.num_id = emp.num_identificacion || '';
+                            this.autBusqueda.primer_nombre = emp.primer_nombre || '';
+                            this.autBusqueda.segundo_nombre = emp.segundo_nombre || '';
+                            this.autBusqueda.primer_apellido = emp.primer_apellido || '';
+                            this.autBusqueda.segundo_apellido = emp.segundo_apellido || '';
+                            this.autBusqueda.razon_social = emp.nombre_completo_persona_natural || '';
+                        }
                     }
                 } else {
                     const hoy = new Date().toISOString().slice(0, 10);
@@ -1941,7 +1953,7 @@
                 if (!emp.tipo_id || !emp.num_id || emp.num_id.trim().length < 3) return;
                 emp.noEncontrado = false;
                 try {
-                    const resp = await apiClient.sst.buscarEmpleado(`${emp.tipo_id}-${emp.num_id.trim()}`);
+                    const resp = await apiClient.sst.buscarEmpleado(emp.tipo_id, emp.num_id.trim());
                     if (resp.encontrado && resp.data) {
                         const d = resp.data;
                         emp.empleado_id = d.id;  // null si vino de visitantes o contratista_natural
