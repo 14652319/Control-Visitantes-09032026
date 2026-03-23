@@ -667,6 +667,33 @@ def buscar_empleado():
             data['certificados_vigentes'] = []
             return jsonify({'success': True, 'encontrado': True, 'fuente': 'visitante', 'data': data}), 200
 
+        # 3) Buscar como contratista persona natural (mismo individuo es empresa y empleado)
+        from app.models.empresa_contratista import EmpresaContratista
+        contratista_nat = EmpresaContratista.query.filter_by(
+            tipo_persona='NATURAL',
+            tipo_identificacion=tipo_doc,
+            num_identificacion=num_doc
+        ).first()
+
+        if contratista_nat:
+            nombres = f"{contratista_nat.primer_nombre or ''} {contratista_nat.segundo_nombre or ''}".strip()
+            apellidos = f"{contratista_nat.primer_apellido or ''} {contratista_nat.segundo_apellido or ''}".strip()
+            data = {
+                'id': None,
+                'tipo_id': contratista_nat.tipo_identificacion,
+                'num_id': contratista_nat.num_identificacion,
+                'primer_nombre': contratista_nat.primer_nombre or '',
+                'segundo_nombre': contratista_nat.segundo_nombre or '',
+                'primer_apellido': contratista_nat.primer_apellido or '',
+                'segundo_apellido': contratista_nat.segundo_apellido or '',
+                'nombres': nombres,
+                'apellidos': apellidos,
+                'nombre_completo': contratista_nat.nombre_completo_persona_natural,
+                'cargo': '',
+                'certificados_vigentes': []
+            }
+            return jsonify({'success': True, 'encontrado': True, 'fuente': 'contratista_natural', 'data': data}), 200
+
         return jsonify({'success': True, 'encontrado': False, 'fuente': None, 'data': None}), 200
 
     except Exception as e:

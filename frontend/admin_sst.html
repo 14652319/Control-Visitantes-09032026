@@ -1070,15 +1070,19 @@
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia hasta</label>
                                     <input type="date" x-model="autPlanilla.vigencia_iso"
+                                        @change="validarVigenciaISO()"
+                                        :class="autPlanilla.vigenciaError ? 'border-red-400' : ''"
                                         class="w-full px-3 py-2 border rounded-lg text-sm">
+                                    <p x-show="autPlanilla.vigenciaError" class="text-xs text-red-600 mt-1" x-text="autPlanilla.vigenciaError"></p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Fecha de Pago *</label>
                                     <input type="date" x-model="autPlanilla.fecha_pago"
                                         @change="alertarFechaPago()"
                                         class="w-full px-3 py-2 border rounded-lg text-sm"
-                                        :class="autPlanilla.pagoAlerta ? 'border-yellow-400' : ''">
-                                    <p x-show="autPlanilla.pagoAlerta" class="text-xs text-yellow-600 mt-1">
+                                        :class="autPlanilla.fechaError ? 'border-red-400' : (autPlanilla.pagoAlerta ? 'border-yellow-400' : '')">
+                                    <p x-show="autPlanilla.fechaError" class="text-xs text-red-600 mt-1" x-text="autPlanilla.fechaError"></p>
+                                    <p x-show="autPlanilla.pagoAlerta && !autPlanilla.fechaError" class="text-xs text-yellow-600 mt-1">
                                         <i class="fas fa-exclamation-triangle mr-1"></i>El año del pago difiere del año actual.
                                     </p>
                                 </div>
@@ -1195,11 +1199,14 @@
                                         </div>
                                     </div>
 
-                                    <!-- Alerta no encontrado -->
-                                    <div x-show="emp.noEncontrado" class="bg-yellow-50 border border-yellow-200 rounded p-2 flex items-center justify-between text-sm">
+                                    <!-- Alerta no encontrado / contratista natural -->
+                                    <div x-show="emp.noEncontrado && !emp.esContratistaNatural" class="bg-yellow-50 border border-yellow-200 rounded p-2 flex items-center justify-between text-sm">
                                         <span class="text-yellow-800">
                                             <i class="fas fa-exclamation-triangle mr-1"></i> Empleado no existe. Complete los datos para registrarlo.
                                         </span>
+                                    </div>
+                                    <div x-show="emp.esContratistaNatural" class="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-800">
+                                        <i class="fas fa-info-circle mr-1"></i> Contratista persona natural. Se registrará como empleado propio al guardar.
                                     </div>
 
                                     <!-- Tipos de trabajo autorizado -->
@@ -1781,8 +1788,8 @@
                         expandida: false, operador_id: '', tipo_planilla: '', numero: '',
                         periodo: new Date().toISOString().slice(0, 7),
                         vigencia_display: '', vigencia_iso: '', vigenciaError: '',
-                        fecha_pago: '', pagoAlerta: false,
-                        archivo: null, archivo_nombre: '',
+                        fecha_pago: '', pagoAlerta: false, fechaError: '',
+                        archivo: null, archivo_nombre: ''
                         duplicada: false, empresa_duplicada: '', fecha_duplicada: ''
                     };
                     this.autEmpleados = [];
@@ -1878,10 +1885,29 @@
 
             // ── Alerta fecha de pago en año diferente al actual ───────────────────
             alertarFechaPago() {
+                this.autPlanilla.fechaError = '';
                 const anioActual = new Date().getFullYear();
                 const anioIngresado = this.autPlanilla.fecha_pago
                     ? parseInt(this.autPlanilla.fecha_pago.slice(0, 4)) : null;
+                if (anioIngresado && (anioIngresado < 2000 || anioIngresado > 2099)) {
+                    this.autPlanilla.fecha_pago = '';
+                    this.autPlanilla.fechaError = 'Año inválido. Use un año entre 2000 y 2099.';
+                    this.autPlanilla.pagoAlerta = false;
+                    return;
+                }
                 this.autPlanilla.pagoAlerta = anioIngresado && anioIngresado !== anioActual;
+            },
+
+            // ── Validar año de vigencia (campo date directo) ──────────────────────
+            validarVigenciaISO() {
+                if (!this.autPlanilla.vigencia_iso) return;
+                const year = parseInt(this.autPlanilla.vigencia_iso.slice(0, 4));
+                if (year < 2000 || year > 2099) {
+                    this.autPlanilla.vigencia_iso = '';
+                    this.autPlanilla.vigenciaError = 'Año inválido (2000-2099).';
+                } else {
+                    this.autPlanilla.vigenciaError = '';
+                }
             },
 
             // ── Selección de archivo planilla ─────────────────────────────────────
@@ -1903,6 +1929,7 @@
                     primer_apellido: '', segundo_apellido: '',
                     nombre_completo: '',
                     cargo: '', noEncontrado: false, es_nuevo: false,
+                    esContratistaNatural: false,
                     trabajos: {},
                     trabajo_otro_desc: '',
                     documentos_archivos: {}
@@ -1917,7 +1944,7 @@
                     const resp = await apiClient.sst.buscarEmpleado(`${emp.tipo_id}-${emp.num_id.trim()}`);
                     if (resp.encontrado && resp.data) {
                         const d = resp.data;
-                        emp.empleado_id = d.id;  // null si vino de visitantes
+                        emp.empleado_id = d.id;  // null si vino de visitantes o contratista_natural
                         const nombParts = (d.nombres || '').split(' ');
                         emp.primer_nombre = nombParts[0] || d.primer_nombre || '';
                         emp.segundo_nombre = nombParts.slice(1).join(' ') || d.segundo_nombre || '';
@@ -1926,7 +1953,8 @@
                         emp.segundo_apellido = apellParts.slice(1).join(' ') || d.segundo_apellido || '';
                         emp.nombre_completo = d.nombre_completo || ((d.primer_nombre || '') + ' ' + (d.primer_apellido || '')).trim();
                         emp.cargo = d.cargo || '';
-                        emp.es_nuevo = (resp.fuente === 'visitante');  // precargar datos pero marca nuevo
+                        emp.es_nuevo = (resp.fuente === 'visitante' || resp.fuente === 'contratista_natural');
+                        emp.esContratistaNatural = (resp.fuente === 'contratista_natural');
                         emp.noEncontrado = false;
                     } else {
                         emp.empleado_id = null;
