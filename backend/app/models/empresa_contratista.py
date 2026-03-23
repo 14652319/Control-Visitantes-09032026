@@ -35,8 +35,9 @@ class EmpresaContratista(db.Model):
     segundo_apellido = db.Column(db.String(100))
     tipo_tercero = db.Column(db.String(30), nullable=False, default='CONTRATISTA')
     # Valores: CONTRATISTA | EMPLEADO_CONTRATISTA | MERCADERISTA | VISITANTE_REGISTRO
-    nit_empresa = db.Column(db.String(20))   # NIT de la empresa empleadora (para EMPLEADO_CONTRATISTA)
+    nit_empresa = db.Column(db.String(20))   # campo legacy — usar empleador_id
     observacion = db.Column(db.Text)         # Motivo de inactivación u otras observaciones
+    empleador_id = db.Column(db.Integer, db.ForeignKey('empresas_contratistas.id'), nullable=True)  # FK al contratista empleador
 
     empleados = db.relationship('EmpleadoContratista', back_populates='empresa')
     planillas = db.relationship('PlanillaSS', back_populates='empresa')
@@ -51,6 +52,26 @@ class EmpresaContratista(db.Model):
             self.segundo_apellido,
         ]
         return ' '.join(parte for parte in partes if parte)
+
+    def _get_empleador_dict(self):
+        """Retorna datos básicos del empleador sin llamar to_dict() para evitar recursion."""
+        if not self.empleador_id:
+            return None
+        try:
+            emp = db.session.get(EmpresaContratista, self.empleador_id)
+            if not emp:
+                return None
+            return {
+                'id': emp.id,
+                'nit': emp.nit,
+                'tipo_persona': emp.tipo_persona,
+                'tipo_identificacion': emp.tipo_identificacion,
+                'num_identificacion': emp.num_identificacion,
+                'razon_social': emp.razon_social,
+                'nombre_completo_persona_natural': emp.nombre_completo_persona_natural,
+            }
+        except Exception:
+            return None
 
     def to_dict(self):
         return {
@@ -74,6 +95,8 @@ class EmpresaContratista(db.Model):
             'tipo_tercero': self.tipo_tercero or 'CONTRATISTA',
             'nit_empresa': self.nit_empresa,
             'observacion': self.observacion,
+            'empleador_id': self.empleador_id,
+            'empleador': self._get_empleador_dict(),
             'nombre_completo_persona_natural': self.nombre_completo_persona_natural,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

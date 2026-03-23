@@ -264,7 +264,7 @@ def actualizar_empresa(id):
             'num_identificacion', 'primer_nombre', 'segundo_nombre',
             'primer_apellido', 'segundo_apellido', 'telefono', 'email',
             'direccion', 'ciudad', 'estado', 'digito_verificacion', 'representante_legal',
-            'nit_empresa', 'observacion'
+            'nit_empresa', 'observacion', 'empleador_id'
         ]
         
         for campo in campos_actualizables:
