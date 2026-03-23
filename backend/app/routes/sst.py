@@ -193,6 +193,21 @@ def crear_empresa():
                     'message': f'Ya existe una persona con ese documento'
                 }), 409
         
+        # Limpiar cadenas vacías a None para evitar violaciones de índices únicos
+        # (JURIDICA no usa num_identificacion; NATURAL no usa nit)
+        tipo = data.get('tipo_persona', '').upper()
+        if tipo == 'JURIDICA':
+            if not data.get('num_identificacion'):
+                data['num_identificacion'] = None
+        elif tipo == 'NATURAL':
+            if not data.get('nit'):
+                data['nit'] = None
+        # Limpiar cualquier otro campo de texto vacío a None
+        for campo in ('segundo_nombre', 'segundo_apellido', 'telefono', 'email',
+                      'nit_empresa', 'observacion', 'direccion', 'ciudad'):
+            if campo in data and data[campo] == '':
+                data[campo] = None
+
         # Crear empresa (filtrar campos internos del frontend que empiezan con _)
         campos_modelo = {k: v for k, v in data.items() if not k.startswith('_')}
         empresa = EmpresaContratista(**campos_modelo)
