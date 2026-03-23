@@ -1016,8 +1016,8 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Operador de Aportes PILA *</label>
                                     <select x-model="autPlanilla.operador_id" class="w-full px-3 py-2 border rounded-lg text-sm">
                                         <option value="">Seleccione operador...</option>
-                                        <template x-for="op in pilaOperadores" :key="op.nit">
-                                            <option :value="op.nit" x-text="op.nit + ' - ' + op.nombre"></option>
+                                        <template x-for="op in pilaOperadores" :key="op.id">
+                                            <option :value="op.id" x-text="op.nombre"></option>
                                         </template>
                                     </select>
                                 </div>
@@ -1404,18 +1404,7 @@
             operadoresAportes: { EPS: [], AFP: [], ARL: [] },
 
             // Operadores de información PILA en Colombia
-            pilaOperadores: [
-                { nit: '830108943',  nombre: 'SOI S.A. - Simple Aportes en Línea' },
-                { nit: '900365708',  nombre: 'Aportes en Línea (Heinsohn Business Group)' },
-                { nit: '900148044',  nombre: 'Mi Planilla' },
-                { nit: '900148044',  nombre: 'SUAPORTE' },
-                { nit: '860062517',  nombre: 'Banco Caja Social BCSC S.A.' },
-                { nit: '860007738',  nombre: 'PILA Colpatria Banco Multibanca' },
-                { nit: '900252369',  nombre: 'Asopagos S.A. - Sus Aportes' },
-                { nit: '900459527',  nombre: 'Visiónamos S.A.S.' },
-                { nit: '800116772',  nombre: 'Colfondos S.A. - Mi Planilla C&B' },
-                { nit: '830056729',  nombre: 'Enlace Operativo S.A.' },
-            ],
+            pilaOperadores: [],
             certificadosEmpleado: [],
             
             // Planillas
@@ -1581,16 +1570,18 @@
             // Métodos Operadores
             async cargarOperadores() {
                 try {
-                    const [eps, afp, arl] = await Promise.all([
+                    const [eps, afp, arl, pila] = await Promise.all([
                         apiClient.sst.operadores('EPS'),
                         apiClient.sst.operadores('AFP'),
-                        apiClient.sst.operadores('ARL')
+                        apiClient.sst.operadores('ARL'),
+                        apiClient.sst.operadores('PILA')
                     ]);
                     this.operadoresAportes = {
                         EPS: eps.data || [],
                         AFP: afp.data || [],
                         ARL: arl.data || []
                     };
+                    this.pilaOperadores = pila.data || [];
                 } catch(e) { 
                     console.error('Error cargando operadores:', e); 
                 }
