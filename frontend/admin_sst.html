@@ -1268,6 +1268,35 @@
                                             </template>
                                         </div>
                                     </div>
+
+                                    <!-- Resumen Planilla SS vinculada a este empleado -->
+                                    <div x-show="autPlanilla.numero" class="mt-1 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                                        <p class="text-xs font-semibold text-orange-800 mb-2">
+                                            <i class="fas fa-file-invoice mr-1"></i> Planilla SS vinculada
+                                        </p>
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs text-gray-700">
+                                            <div>
+                                                <span class="text-gray-500">Nro. Planilla:</span>
+                                                <span class="font-medium ml-1" x-text="autPlanilla.numero || '—'"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Período:</span>
+                                                <span class="font-medium ml-1" x-text="autPlanilla.periodo || '—'"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Vigencia hasta:</span>
+                                                <span class="font-medium ml-1" x-text="autPlanilla.vigencia_iso ? new Date(autPlanilla.vigencia_iso + 'T12:00:00').toLocaleDateString('es-CO') : '—'"></span>
+                                            </div>
+                                            <div>
+                                                <span class="text-gray-500">Fecha pago:</span>
+                                                <span class="font-medium ml-1" x-text="autPlanilla.fecha_pago ? new Date(autPlanilla.fecha_pago + 'T12:00:00').toLocaleDateString('es-CO') : '—'"></span>
+                                            </div>
+                                            <div x-show="autPlanilla.operador_id" class="col-span-2">
+                                                <span class="text-gray-500">Operador PILA:</span>
+                                                <span class="font-medium ml-1" x-text="pilaOperadores.find(op => op.id == autPlanilla.operador_id)?.nombre || autPlanilla.operador_id"></span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                         </div>
