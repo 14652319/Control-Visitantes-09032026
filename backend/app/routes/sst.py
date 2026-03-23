@@ -193,8 +193,9 @@ def crear_empresa():
                     'message': f'Ya existe una persona con ese documento'
                 }), 409
         
-        # Crear empresa
-        empresa = EmpresaContratista(**data)
+        # Crear empresa (filtrar campos internos del frontend que empiezan con _)
+        campos_modelo = {k: v for k, v in data.items() if not k.startswith('_')}
+        empresa = EmpresaContratista(**campos_modelo)
         db.session.add(empresa)
         db.session.commit()
         
@@ -259,7 +260,7 @@ def actualizar_empresa(id):
         
         # Actualizar campos permitidos
         campos_actualizables = [
-            'tipo_persona', 'nit', 'razon_social', 'tipo_identificacion',
+            'tipo_persona', 'tipo_tercero', 'nit', 'razon_social', 'tipo_identificacion',
             'num_identificacion', 'primer_nombre', 'segundo_nombre',
             'primer_apellido', 'segundo_apellido', 'telefono', 'email',
             'direccion', 'ciudad', 'estado', 'digito_verificacion', 'representante_legal'
