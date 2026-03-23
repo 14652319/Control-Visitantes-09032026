@@ -510,10 +510,10 @@
         
         <!-- Modal Empresa -->
         <div x-show="mostrarModalEmpresa" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div @click.away="mostrarModalEmpresa = false" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div @click.away="mostrarModalEmpresa = false; if(_returnToAutorizacion){ _returnToAutorizacion=false; mostrarModalAutorizacion=true; }" class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold" x-text="empresaSeleccionada ? 'Editar Empresa' : 'Nueva Empresa'"></h3>
-                    <button @click="mostrarModalEmpresa = false" class="text-gray-500 hover:text-gray-700">
+                    <button @click="mostrarModalEmpresa = false; if(_returnToAutorizacion){ _returnToAutorizacion=false; mostrarModalAutorizacion=true; }" class="text-gray-500 hover:text-gray-700">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
@@ -648,7 +648,7 @@
                 </div>
                 
                 <div class="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-                    <button @click="mostrarModalEmpresa = false" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                    <button @click="mostrarModalEmpresa = false; if(_returnToAutorizacion){ _returnToAutorizacion=false; mostrarModalAutorizacion=true; }" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
                         Cancelar
                     </button>
                         <button @click="guardarEmpresa()" :disabled="formEmpresa._yaExiste" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg">
@@ -1416,6 +1416,7 @@
             empresas: [],
             empresaSeleccionada: null,
             mostrarModalEmpresa: false,
+            _returnToAutorizacion: false,
             formEmpresa: {
                 tipo_persona: 'JURIDICA',
                 nit: '', digito_verificacion: '', razon_social: '', representante_legal: '',
@@ -1578,15 +1579,39 @@
                     return;
                 }
                 try {
+                    let respGuardar;
                     if (this.empresaSeleccionada) {
-                        await apiClient.sst.actualizarEmpresa(this.empresaSeleccionada.id, this.formEmpresa);
+                        respGuardar = await apiClient.sst.actualizarEmpresa(this.empresaSeleccionada.id, this.formEmpresa);
                     } else {
-                        await apiClient.sst.crearEmpresa(this.formEmpresa);
+                        respGuardar = await apiClient.sst.crearEmpresa(this.formEmpresa);
                     }
                     this.mostrarModalEmpresa = false;
                     await this.cargarEmpresas();
+
+                    // Si veníamos del modal de autorización, volver con empresa_id ya cargado
+                    if (this._returnToAutorizacion && respGuardar?.data?.id) {
+                        this._returnToAutorizacion = false;
+                        const emp = respGuardar.data;
+                        this.formAutorizacion.empresa_id = emp.id;
+                        this.autBusqueda.resultado = emp;
+                        this.autBusqueda.noEncontrada = false;
+                        if (emp.tipo_persona === 'JURIDICA') {
+                            this.autBusqueda.razon_social = emp.razon_social || '';
+                        } else {
+                            this.autBusqueda.razon_social = emp.nombre_completo_persona_natural ||
+                                [emp.primer_nombre, emp.primer_apellido].filter(Boolean).join(' ');
+                            this.autBusqueda.primer_nombre = emp.primer_nombre || '';
+                            this.autBusqueda.primer_apellido = emp.primer_apellido || '';
+                            this.autBusqueda.segundo_apellido = emp.segundo_apellido || '';
+                        }
+                        this.mostrarModalAutorizacion = true;
+                        return;  // no mostrar alert 'guardada' — el flujo continúa en autorizacion
+                    }
+
+                    this._returnToAutorizacion = false;
                     alert('Empresa guardada exitosamente');
                 } catch(e) { 
+                    this._returnToAutorizacion = false;
                     alert('Error al guardar empresa: ' + e.message); 
                 }
             },
@@ -1909,6 +1934,7 @@
                     _yaExiste: false, _yaExisteNombre: ''
                 };
                 this.empresaSeleccionada = null;
+                this._returnToAutorizacion = true;   // volver al modal de autorizacion al guardar
                 this.mostrarModalEmpresa = true;
             },
 
