@@ -1537,7 +1537,9 @@
                     }
 
                     this._returnToAutorizacion = false;
-                    alert('Empresa guardada exitosamente');
+                    const categorias = { CONTRATISTA: 'Contratista', EMPLEADO_CONTRATISTA: 'Empleado Contratista', MERCADERISTA: 'Mercaderista', VISITANTE_REGISTRO: 'Visitante' };
+                    const cat = categorias[this.formEmpresa?.tipo_tercero] || 'Tercero';
+                    alert(`${cat} guardado exitosamente`);
                 } catch(e) { 
                     this._returnToAutorizacion = false;
                     alert('Error al guardar empresa: ' + e.message); 
