@@ -9166,6 +9166,344 @@ git commit -m "chore: reorganizar raíz — docs/ y scripts/ para archivos suelt
 - No modificar contenido de los archivos, solo moverlos
 - Verificar que `.gitignore` no excluya la carpeta `docs/`
 
-ESTADO: [PENDIENTE — @operador puede ejecutar cuando no haya checkpoint activo]
+ESTADO: ✅ COMPLETADO — @operador ejecutó el 2026-03-20, commit 043febb (chore: reorganizar raíz)
 ---
 
+---
+
+## [CLAUDE SUPERVISOR] — Auditoría Formularios SST vs. Estándar 02-formularios.md
+**Fecha:** 2026-03-20
+**Estándar aplicado:** `_estandares-globales/02-formularios.md` (OWASP Input Validation + WCAG 2.2)
+
+---
+
+### RESULTADO GLOBAL: ❌ INCUMPLIMIENTO — Todos los formularios fallan
+
+**Cumplimiento promedio: < 50%**. Ningún formulario aprueba el estándar.
+
+---
+
+### SCORECARD POR FORMULARIO
+
+| Formulario | HTML | JS/Alpine | Backend | Errores visibles | Btn disabled | Nota |
+|---|---|---|---|---|---|---|
+| Empresa Jurídica | 30% | 50% | 20% | 10% | ❌ | 🔴 CRÍTICO |
+| Empresa Natural | 40% | 60% | 30% | 10% | ❌ | 🔴 CRÍTICO |
+| Empleado | 50% | 70% | 40% | 10% | ❌ | 🔴 CRÍTICO |
+| Certificado | 40% | 20% | 30% | 10% | ❌ | 🔴 CRÍTICO |
+| Planilla SS | 40% | 40% | 30% | 10% | ❌ | 🔴 CRÍTICO |
+| Autorización SST | 60% | 70% | 40% | 20% | ✅ | 🟡 PARCIAL |
+
+---
+
+### FALLAS TRANSVERSALES (presentes en TODOS los formularios)
+
+#### 1. Campos de texto sin `maxlength` — afecta TODOS los forms
+Campos sin límite de caracteres en HTML:
+- `razon_social`, `representante_legal`, `primer_nombre`, `primer_apellido`, `cargo`, `nombre_certificado`, `observaciones`, `direccion`, `ciudad`
+
+**Riesgo:** Desbordamiento en DB + XSS. El estándar exige `maxlength` en HTML **y** truncado/rechazo en backend.
+
+#### 2. Sin mensajes de error visibles — afecta TODOS los forms
+Ningún formulario implementa el patrón:
+```html
+<p x-show="errores.campo" x-text="errores.campo" class="text-red-500 text-xs mt-1"></p>
+```
+Los errores se muestran solo con `alert()` genérico. Viola WCAG 2.2 (criterio 3.3.1).
+
+#### 3. Botones sin `:disabled` durante submit — afecta Empresa, Empleado, Certificado, Planilla
+Permite doble-submit. Solo el formulario de Autorización lo implementa correctamente.
+```html
+<!-- Falta en guardarEmpresa(), guardarEmpleado(), guardarCertificado(), guardarPlanilla() -->
+:disabled="cargando"
+```
+
+#### 4. Fechas sin `min`/`max` HTML — afecta Certificado, Planilla, Autorización
+```html
+<!-- Actual (incompleto): -->
+<input type="date">
+<!-- Requerido: -->
+<input type="date" min="2000-01-01" max="2099-12-31">
+```
+
+#### 5. Backend sin validación de email ni teléfono
+- Email de empresa: solo `type="email"` en HTML, backend no usa `re.match()`
+- Teléfono: solo filter JS `[^0-9]`, backend no llama `.isdigit()` ni valida longitud 7-15
+- Estándar: **backend es la última línea de defensa, no el frontend**
+
+#### 6. Periodo de planilla sin validación de formato `YYYY-MM`
+Campo libre, acepta cualquier string. Backend no valida regex `^\d{4}-\d{2}$`.
+
+---
+
+### FALLAS ESPECÍFICAS POR FORMULARIO (muestra)
+
+**Empresa:**
+- DV (dígito verificación NIT): `maxlength="1"` ✅ pero sin `@input` que fuerce solo dígito
+- Backend `validar_empresa()`: verifica presencia de campos pero NO longitudes ni regex
+
+**Certificado:**
+- Nombre certificado: sin `maxlength`, sin `@input` transform, sin validación backend
+- Fechas expedición/vencimiento: sin `min`/`max`, backend sin `strptime()` con try/except
+
+**Planilla:**
+- `date.fromisoformat()` en backend sin try/except — crash si formato inválido
+
+**Autorización:**
+- Labor: `maxlength="300"` en HTML ✅ pero backend no valida longitud
+- Observaciones: sin `maxlength`, sin validación de ningún tipo
+
+---
+
+### LO QUE SÍ CUMPLE (no tocar)
+
+- `<select>` con whitelists HTML + whitelist backend ✅
+- `inputmode="numeric"` + filter JS `[^0-9]` en campos numéricos ✅
+- Botones autorización: `:disabled="autGuardando"` ✅
+- Contador de caracteres en Labor ✅
+- `accept=".pdf,.png,.jpg"` en file inputs ✅
+- `.toUpperCase()` en campos de texto ✅
+
+---
+
+### ACCIÓN REQUERIDA — @evaluador debe crear CHECKPOINT de corrección de formularios
+
+**@operador NO puede corregir esto sin instrucciones de @evaluador.**
+
+Se requiere un checkpoint (puede ser FASE 3.5 o checkpoint independiente) con instrucciones exactas para:
+
+1. **Agregar `maxlength`** a todos los campos de texto (con valores exactos por campo)
+2. **Agregar mensajes de error** con `x-show` bajo cada campo
+3. **Agregar `:disabled="cargando"`** a botones de Empresa, Empleado, Certificado, Planilla
+4. **Agregar `min`/`max`** a todos los `<input type="date">`
+5. **Agregar validaciones backend**: email regex, teléfono `.isdigit()`, longitudes, `strptime()` con try/except
+6. **Agregar validación formato período** `YYYY-MM` en frontend y backend
+
+Firma: Claude Code (Auditor)
+---
+
+
+
+---
+
+## URGENTE -- [CLAUDE SUPERVISOR] Auditoria Global de Formularios HTML -- 2026-03-20
+
+**Auditor:** Claude Code (Auditor Principal)
+**Fecha:** 2026-03-20
+**Prioridad:** URGENTE -- Datos incorrectos estan llegando a la base de datos ahora mismo
+**Alcance:** Auditoria completa de validacion de campos en los 7 archivos HTML del proyecto (visitantes + SST)
+
+---
+
+### VEREDICTO GENERAL
+
+FALLA: 15 campos incumplen las reglas de validacion establecidas en los estandares globales.
+
+Problema mas grave: en operador.html se usan clases CSS 'uppercase' (solo visual) creyendo que convierte el valor.
+NO lo hace. El dato que llega al backend es en minusculas aunque el usuario lo vea en mayusculas en pantalla.
+Esto afecta datos ya persistidos en la BD.
+
+---
+
+### REGLAS AUDITADAS
+
+- R1-Fecha: Campos de fecha deben tener type="date" -- NO type="text"
+- R2-Numerico: NIT, numero de documento -- filtro replace no numericos + inputmode="numeric"
+- R3-Mayusculas: Nombres, apellidos, empresa, observaciones -- @input que aplique .toUpperCase()
+- R4-Email: Correos -- @input que aplique .toLowerCase() + type="email"
+
+---
+
+### HALLAZGOS CRITICOS -- 7 campos (datos incorrectos en BD)
+
+#### C-01 -- admin.html -- Formulario Crear/Editar Usuario
+
+Todos los campos del modal de usuario carecen de validacion:
+
+- primer_nombre: sin @input.toUpperCase()
+  CORREGIR: @input="formUsuario.primer_nombre = $event.target.value.toUpperCase()"
+
+- segundo_nombre: sin @input.toUpperCase()
+  CORREGIR: igual al anterior
+
+- primer_apellido: sin @input.toUpperCase()
+  CORREGIR: igual al anterior
+
+- segundo_apellido: sin @input.toUpperCase()
+  CORREGIR: igual al anterior
+
+- dir_correo: type="email" pero sin @input.toLowerCase()
+  CORREGIR: @input="formUsuario.dir_correo = $event.target.value.toLowerCase().replace(/\s/g, '')"
+
+- num_identificacion: type="text" sin filtro numerico
+  CORREGIR: agregar inputmode="numeric" + @input que elimine caracteres no numericos
+
+- usuario: sin @input.toLowerCase()
+  CORREGIR: @input="formUsuario.usuario = $event.target.value.toLowerCase().replace(/\s/g, '')"
+
+#### C-02 -- operador.html -- Formulario principal Registro de visita
+
+ATENCION: Estos campos usan clase CSS 'uppercase' -- SOLO COSMETICO, el dato Alpine queda en minusculas:
+
+- funcionario_recibe: CSS uppercase sin @input Alpine
+  CORREGIR: @input="form.funcionario_recibe = $event.target.value.toUpperCase()"
+
+- funcionario_autoriza: CSS uppercase sin @input Alpine
+  CORREGIR: @input="form.funcionario_autoriza = $event.target.value.toUpperCase()"
+
+- observaciones1 (textarea): CSS uppercase sin @input Alpine
+  CORREGIR: @input="form.observaciones1 = $event.target.value.toUpperCase()"
+
+- num_identificacion (busqueda): type="text" sin filtro numerico
+  CORREGIR: inputmode="numeric" + @input que filtre caracteres no numericos
+
+---
+
+### HALLAZGOS ALTOS -- 4 campos (Modal registro rapido visitante)
+
+#### A-01 -- operador.html -- Modal Registrar nuevo visitante
+
+El modal de registro rapido de visitante NO tiene validaciones en campos de nombre:
+
+- primer_nombre (modal): sin @input.toUpperCase() -- verificar nombre del modelo Alpine en el modal
+- segundo_nombre (modal): igual
+- primer_apellido (modal): igual
+- segundo_apellido (modal): igual
+
+---
+
+### HALLAZGOS MEDIOS -- 6 campos
+
+M-01 -- admin_sst.html -- digito_verificacion:
+  maxlength="1" pero acepta letras.
+  CORREGIR: inputmode="numeric" + @input que filtre no numericos y haga .slice(0,1)
+
+M-02 -- admin_sst.html -- formCertificado.nombre_certificado:
+  Sin @input.toUpperCase().
+  CORREGIR: agregar @input con .toUpperCase()
+
+M-03 -- admin_sst.html -- formPlanilla.periodo:
+  type="text" con placeholder YYYY-MM -- puede recibir cualquier texto.
+  CORREGIR: CAMBIAR a type="month" -- HTML5 nativo devuelve YYYY-MM sin regex adicional. Eliminar placeholder.
+
+M-04 -- operador_seguridad.html -- num_busqueda (numero documento):
+  type="text" sin filtro numerico.
+  CORREGIR: inputmode="numeric" + @input con filtro no numericos
+
+M-05 -- operador_seguridad.html -- Observaciones:
+  textarea observaciones de ingreso: sin @input.toUpperCase()
+  textarea observacionesSalida: sin @input.toUpperCase()
+  CORREGIR: agregar @input con .toUpperCase() a ambas
+
+---
+
+### LO QUE NO SE DEBE TOCAR (ya cumple las reglas)
+
+- registro-funcionario.html: todos los campos correctos
+- funcionario.html: nombres, NIT, empresa, correo correctos
+- admin.html: formularios de sedes y dependencias correctos
+- admin_sst.html: NIT empresa, nombres empleado, fechas type="date", correo empresa correctos
+- operador.html: NIT empresa, correo, empresa en modal registro correctos
+- index.html: solo usuario/contrasena, no aplican estas reglas
+
+---
+
+### PLAN DE IMPLEMENTACION PARA @operador
+
+SOLO modificaciones quirurgicas a HTML frontend.
+NO tocar backend. NO tocar logica de negocio. NO tocar estilos existentes.
+SOLO agregar atributos @input, inputmode, y cambiar type en campo periodo.
+
+#### CHECKPOINT FV-1.0 -- frontend/admin.html -- EMPEZAR AQUI (PRIORIDAD MAXIMA)
+
+Riesgo: MINIMO -- solo se agregan atributos @input a inputs existentes.
+Como buscar: el modal de creacion/edicion de usuario, buscar x-model que apunten a formUsuario.*
+
+  Nombres y apellidos (4 campos):
+    @input="formUsuario.CAMPO = $event.target.value.toUpperCase()"
+
+  dir_correo:
+    @input="formUsuario.dir_correo = $event.target.value.toLowerCase().replace(/\s/g, '')"
+
+  num_identificacion:
+    agregar inputmode="numeric"
+    @input="formUsuario.num_identificacion = $event.target.value.replace(/[^0-9]/g, '')"
+
+  usuario:
+    @input="formUsuario.usuario = $event.target.value.toLowerCase().replace(/\s/g, '')"
+
+
+#### CHECKPOINT FV-1.1 -- frontend/operador.html (formulario principal + modal visitante)
+
+Riesgo: MINIMO -- las clases CSS uppercase pueden quedarse, solo se agrega el @input Alpine real.
+
+  funcionario_recibe, funcionario_autoriza, observaciones1:
+    @input="form.CAMPO = $event.target.value.toUpperCase()"
+
+  num_identificacion (busqueda):
+    agregar inputmode="numeric"
+    @input="form.num_identificacion = $event.target.value.replace(/[^0-9]/g, '')"
+
+  Modal visitante -- primer/segundo nombre/apellido:
+    @input="[nombreModeloModal].CAMPO = $event.target.value.toUpperCase()"
+    IMPORTANTE: verificar nombre exacto del modelo Alpine del modal antes de implementar
+
+
+#### CHECKPOINT FV-1.2 -- frontend/admin_sst.html + frontend/operador_seguridad.html
+
+Riesgo: MINIMO
+
+  admin_sst.html -- digito_verificacion:
+    agregar inputmode="numeric"
+    @input="formEmpresa.digito_verificacion = $event.target.value.replace(/[^0-9]/g, '').slice(0,1)"
+
+  admin_sst.html -- nombre_certificado:
+    @input="formCertificado.nombre_certificado = $event.target.value.toUpperCase()"
+
+  admin_sst.html -- periodo:
+    CAMBIAR type="text" a type="month"
+    ELIMINAR placeholder="YYYY-MM"
+
+  operador_seguridad.html -- num_busqueda:
+    agregar inputmode="numeric"
+    @input con filtro [^0-9] (verificar nombre exacto del modelo Alpine)
+
+  operador_seguridad.html -- observaciones de ingreso:
+    @input con .toUpperCase() (verificar nombre exacto del modelo Alpine)
+
+  operador_seguridad.html -- observacionesSalida:
+    @input con .toUpperCase() (verificar nombre exacto del modelo Alpine)
+
+---
+
+### CRITERIOS DE ACEPTACION (Claude verificara esto campo por campo)
+
+- FV-1.0: Escribir minusculas en primer_nombre -- modelo Alpine muestra MAYUSCULAS en tiempo real
+- FV-1.0: Escribir mayusculas en dir_correo -- se convierte a minusculas al instante
+- FV-1.0: Escribir letras en num_identificacion -- son rechazadas inmediatamente
+- FV-1.0: Escribir mayusculas en usuario -- se convierten a minusculas
+- FV-1.1: funcionario_recibe -- el DATO en el modelo Alpine sale en MAYUSCULAS (no solo apariencia CSS)
+- FV-1.1: Modal visitante -- nombres llegan en mayusculas al POST del backend
+- FV-1.2: periodo con type="month" -- el browser muestra selector nativo de mes/anio
+- NINGUNA validacion: ningun modal deja de abrir, ningun submit falla, ningun flujo existente se rompe
+
+---
+
+### EVALUACION DE RIESGO
+
+Riesgo global de la correccion: MUY BAJO
+- No se toca backend ni rutas API
+- No se modifican modelos de datos Alpine
+- No se cambia logica de negocio
+- Solo se agregan atributos de transformacion a inputs existentes
+
+Nota sobre datos historicos: registros ya grabados en la BD con nombres en minusculas no se corrigen retroactivamente.
+Los nuevos registros si quedaran normalizados correctamente.
+
+---
+
+Firma: Claude Code (Auditor Principal)
+Estado: URGENTE -- En espera de instrucciones en INSTRUCCIONES_OPERADOR.md por @evaluador
+Checkpoints pendientes: FV-1.0 (admin.html) > FV-1.1 (operador.html) > FV-1.2 (admin_sst + operador_seguridad)
+
+---
