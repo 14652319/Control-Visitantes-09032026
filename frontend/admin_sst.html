@@ -1095,13 +1095,14 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 mb-1">Archivo Planilla (PDF)</label>
                                 <div class="flex items-center space-x-3">
-                                    <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                    <input type="file" accept=".pdf"
                                         @change="seleccionarArchivoPlanilla($event)"
                                         class="flex-1 text-sm border rounded-lg px-3 py-1.5">
                                     <span x-show="autPlanilla.archivo_nombre" class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
                                         <i class="fas fa-check mr-1"></i><span x-text="autPlanilla.archivo_nombre"></span>
                                     </span>
                                 </div>
+                                <p x-show="autPlanilla.archivoError" class="text-xs text-red-600 mt-1" x-text="autPlanilla.archivoError"></p>
                                 <p class="text-xs text-gray-400 mt-1">
                                     Se guardará en <code>Documentos_SST/{nro_aut}/</code> con nombre estructurado.
                                 </p>
@@ -1202,6 +1203,11 @@
                                         </div>
                                     </div>
 
+                                    <!-- Alerta duplicado -->
+                                    <div x-show="emp.esDuplicado" class="bg-red-50 border border-red-300 rounded p-2 text-sm text-red-800">
+                                        <i class="fas fa-exclamation-circle mr-1"></i> Este documento ya fue agregado en otro empleado de esta autorización.
+                                    </div>
+
                                     <!-- Alerta no encontrado / contratista natural -->
                                     <div x-show="emp.noEncontrado && !emp.esContratistaNatural" class="bg-yellow-50 border border-yellow-200 rounded p-2 flex items-center justify-between text-sm">
                                         <span class="text-yellow-800">
@@ -1280,7 +1286,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Carta de Presentación / Otros documentos (PDF)</label>
-                            <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                            <input type="file" accept=".pdf"
                                 @change="seleccionarCartaPresentacion($event)"
                                 class="w-full text-sm border rounded-lg px-3 py-1.5">
                             <span x-show="autCarta.nombre" class="mt-1 inline-block text-xs text-green-700">
@@ -1306,12 +1312,20 @@
                         Cancelar
                     </button>
                     <div class="flex space-x-3">
-                        <button x-show="!autorizacionSeleccionada || autorizacionSeleccionada.estado === 'borrador'"
-                            @click="mostrarConfirmacionGuardar()"
-                            :disabled="!formAutorizacion.empresa_id || autGuardando"
-                            class="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg text-sm flex items-center">
-                            <i class="fas fa-eye mr-2"></i>Revisar y Guardar
-                        </button>
+                        <template x-if="!autorizacionSeleccionada || autorizacionSeleccionada.estado === 'borrador'">
+                            <div class="flex flex-col items-end">
+                                <button
+                                    @click="mostrarConfirmacionGuardar()"
+                                    :disabled="!formAutorizacion.empresa_id || !(formAutorizacion.labor && formAutorizacion.labor.trim().length >= 5) || autGuardando"
+                                    class="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg text-sm flex items-center">
+                                    <i class="fas fa-eye mr-2"></i>Revisar y Guardar
+                                </button>
+                                <div class="text-xs text-red-500 mt-1 space-y-0.5">
+                                    <p x-show="!formAutorizacion.empresa_id"><i class="fas fa-exclamation-circle mr-1"></i>Ingrese y busque el contratista</p>
+                                    <p x-show="formAutorizacion.empresa_id && !(formAutorizacion.labor && formAutorizacion.labor.trim().length >= 5)"><i class="fas fa-exclamation-circle mr-1"></i>Ingrese la descripción de la labor</p>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -1801,7 +1815,7 @@
                         periodo: new Date().toISOString().slice(0, 7),
                         vigencia_display: '', vigencia_iso: '', vigenciaError: '',
                         fecha_pago: '', pagoAlerta: false, fechaError: '',
-                        archivo: null, archivo_nombre: '',
+                        archivo: null, archivo_nombre: '', archivoError: '',
                         duplicada: false, empresa_duplicada: '', fecha_duplicada: ''
                     };
                     this.autEmpleados = [];
@@ -1925,7 +1939,17 @@
             // ── Selección de archivo planilla ─────────────────────────────────────
             seleccionarArchivoPlanilla(event) {
                 const file = event.target.files[0];
-                if (file) { this.autPlanilla.archivo = file; this.autPlanilla.archivo_nombre = file.name; }
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                    this.autPlanilla.archivoError = 'Solo se permiten archivos PDF.';
+                    event.target.value = '';
+                    this.autPlanilla.archivo = null;
+                    this.autPlanilla.archivo_nombre = '';
+                    return;
+                }
+                this.autPlanilla.archivoError = '';
+                this.autPlanilla.archivo = file;
+                this.autPlanilla.archivo_nombre = file.name;
             },
 
             seleccionarCartaPresentacion(event) {
@@ -1940,7 +1964,7 @@
                     primer_nombre: '', segundo_nombre: '',
                     primer_apellido: '', segundo_apellido: '',
                     nombre_completo: '',
-                    cargo: '', noEncontrado: false, es_nuevo: false,
+                    cargo: '', noEncontrado: false, esDuplicado: false, es_nuevo: false,
                     esContratistaNatural: false,
                     trabajos: {},
                     trabajo_otro_desc: '',
@@ -1951,6 +1975,20 @@
             async buscarEmpleadoEnAutorizacion(idx) {
                 const emp = this.autEmpleados[idx];
                 if (!emp.tipo_id || !emp.num_id || emp.num_id.trim().length < 3) return;
+
+                // Detectar duplicado antes de buscar en BD
+                const duplicado = this.autEmpleados.some((e, i) =>
+                    i !== idx && e.tipo_id === emp.tipo_id && e.num_id.trim() === emp.num_id.trim()
+                );
+                if (duplicado) {
+                    emp.noEncontrado = false;
+                    emp.esDuplicado = true;
+                    emp.primer_nombre = '';
+                    emp.primer_apellido = '';
+                    emp.nombre_completo = '';
+                    return;
+                }
+                emp.esDuplicado = false;
                 emp.noEncontrado = false;
                 try {
                     const resp = await apiClient.sst.buscarEmpleado(emp.tipo_id, emp.num_id.trim());
@@ -1994,6 +2032,12 @@
 
             seleccionarDocumentoEmpleado(idx, tipoKey, event) {
                 const file = event.target.files[0];
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                    alert('Solo se permiten archivos PDF para los documentos de soporte.');
+                    event.target.value = '';
+                    return;
+                }
                 if (file) {
                     if (!this.autEmpleados[idx].documentos_archivos) {
                         this.autEmpleados[idx].documentos_archivos = {};
