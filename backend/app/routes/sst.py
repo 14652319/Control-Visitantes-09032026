@@ -82,11 +82,6 @@ def validar_empresa(data, es_actualizacion=False):
             return False, "Persona Jurídica requiere NIT"
         if not data.get('razon_social'):
             return False, "Persona Jurídica requiere razón social"
-        if not es_actualizacion:
-            if not data.get('digito_verificacion'):
-                return False, "Persona Jurídica requiere dígito de verificación"
-            if not data.get('representante_legal'):
-                return False, "Persona Jurídica requiere representante legal"
     elif tipo == 'NATURAL':
         if not data.get('tipo_identificacion'):
             return False, "Persona Natural requiere tipo de identificación"
