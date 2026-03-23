@@ -36,8 +36,9 @@
                     <button @click="tabActiva = 'ingreso'" :class="tabActiva === 'ingreso' ? 'bg-orange-800 border-b-4 border-white' : 'bg-orange-600 hover:bg-orange-700'" class="px-6 py-2 rounded-t-lg transition font-medium">
                         <i class="fas fa-sign-in-alt mr-2"></i>Registrar Ingreso
                     </button>
-                    <button @click="tabActiva = 'activos'" :class="tabActiva === 'activos' ? 'bg-orange-800 border-b-4 border-white' : 'bg-orange-600 hover:bg-orange-700'" class="px-6 py-2 rounded-t-lg transition font-medium">
-                        <i class="fas fa-building mr-2"></i>Personal en Instalaciones
+                    <button @click="tabActiva = 'activos'; cargarMonitoreo()" :class="tabActiva === 'activos' ? 'bg-orange-800 border-b-4 border-white' : 'bg-orange-600 hover:bg-orange-700'" class="px-6 py-2 rounded-t-lg transition font-medium">
+                        <i class="fas fa-eye mr-2"></i>Monitoreo
+                        <span x-show="monitoreoData.length > 0" class="ml-1 bg-white text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full" x-text="monitoreoData.length"></span>
                     </button>
                 </div>
             </header>
@@ -171,94 +172,129 @@
                     </div>
                 </div>
                 
-                <!-- Tab: Personal en Instalaciones -->
-                <div x-show="tabActiva === 'activos'" class="space-y-6">
+                <!-- Tab: Monitoreo Unificado -->
+                <div x-show="tabActiva === 'activos'" class="space-y-4">
+
+                    <!-- Tarjetas de resumen -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-green-700" x-text="monitoreoData.filter(m=>m.tipo==='VISITANTE').length"></p>
+                            <p class="text-sm text-green-600 mt-1"><i class="fas fa-user mr-1"></i>Visitantes en Sede</p>
+                        </div>
+                        <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-orange-700" x-text="monitoreoData.filter(m=>m.tipo==='CONTRATISTA').length"></p>
+                            <p class="text-sm text-orange-600 mt-1"><i class="fas fa-hard-hat mr-1"></i>Contratistas</p>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-blue-700" x-text="monitoreoData.filter(m=>m.tipo==='MERCADERISTA').length"></p>
+                            <p class="text-sm text-blue-600 mt-1"><i class="fas fa-store mr-1"></i>Mercaderistas</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabla unificada -->
                     <div class="bg-white rounded-xl shadow-lg p-6">
-                        <div class="flex items-center justify-between mb-6">
-                            <h2 class="text-2xl font-bold text-gray-800">
-                                <i class="fas fa-building mr-2 text-orange-600"></i>
-                                Personal de Contratistas en Instalaciones
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold text-gray-800">
+                                <i class="fas fa-eye mr-2 text-orange-600"></i>
+                                Personal en Instalaciones
                             </h2>
-                            <button @click="cargarIngresosActivos()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                            <button @click="cargarMonitoreo()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm">
                                 <i class="fas fa-sync-alt mr-2"></i>Actualizar
                             </button>
                         </div>
-                        
-                        <div class="mb-4 text-gray-600">
-                            <span class="font-semibold">Total activos:</span> 
-                            <span class="text-2xl font-bold text-orange-600" x-text="ingresosActivos.length"></span>
+
+                        <!-- Filtro rápido por tipo -->
+                        <div class="flex space-x-2 mb-4">
+                            <button @click="filtroMonitoreo = ''" :class="filtroMonitoreo === '' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'" class="px-3 py-1 rounded-full text-xs font-medium transition">
+                                Todos (<span x-text="monitoreoData.length"></span>)
+                            </button>
+                            <button @click="filtroMonitoreo = 'VISITANTE'" :class="filtroMonitoreo === 'VISITANTE' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700'" class="px-3 py-1 rounded-full text-xs font-medium transition">
+                                <i class="fas fa-user mr-1"></i>Visitantes
+                            </button>
+                            <button @click="filtroMonitoreo = 'CONTRATISTA'" :class="filtroMonitoreo === 'CONTRATISTA' ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-700'" class="px-3 py-1 rounded-full text-xs font-medium transition">
+                                <i class="fas fa-hard-hat mr-1"></i>Contratistas
+                            </button>
+                            <button @click="filtroMonitoreo = 'MERCADERISTA'" :class="filtroMonitoreo === 'MERCADERISTA' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'" class="px-3 py-1 rounded-full text-xs font-medium transition">
+                                <i class="fas fa-store mr-1"></i>Mercaderistas
+                            </button>
                         </div>
-                        
-                        <!-- Tabla Personal Activo -->
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full bg-white border rounded-lg">
                                 <thead class="bg-gray-100">
                                     <tr>
-                                        <th class="px-4 py-3 text-left">
-                                            <input type="checkbox" @change="toggleSeleccionarTodos()" class="w-5 h-5 cursor-pointer">
-                                        </th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Empleado</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Empresa</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Autorización</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sede</th>
-                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Hora Ingreso</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Tipo</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Nombre</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Identificación</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Empresa / Dependencia</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Sede</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Hora Ingreso</th>
+                                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-700">Salida</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="ing in ingresosActivos" :key="ing.id">
+                                    <template x-for="item in monitoreoData.filter(m => !filtroMonitoreo || m.tipo === filtroMonitoreo)" :key="item._key">
                                         <tr class="border-b hover:bg-gray-50">
-                                            <td class="px-4 py-3">
-                                                <input type="checkbox" x-model="ing.seleccionado" class="w-5 h-5 cursor-pointer">
+                                            <td class="px-3 py-3">
+                                                <span x-text="item.tipo"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800': item.tipo === 'VISITANTE',
+                                                        'bg-orange-100 text-orange-800': item.tipo === 'CONTRATISTA',
+                                                        'bg-blue-100 text-blue-800': item.tipo === 'MERCADERISTA'
+                                                    }"
+                                                    class="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"></span>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <p class="font-semibold" x-text="ing.empleado?.nombre_completo || 'N/A'"></p>
-                                                <p class="text-sm text-gray-500" x-text="ing.empleado?.tipo_id + '-' + ing.empleado?.num_id"></p>
+                                            <td class="px-3 py-3">
+                                                <p class="font-semibold text-sm" x-text="item.nombre"></p>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <p class="text-sm" x-text="ing.empresa?.nombre || 'N/A'"></p>
+                                            <td class="px-3 py-3">
+                                                <p class="text-sm text-gray-600" x-text="item.tipo_doc + ' ' + item.num_doc"></p>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <p class="font-medium text-orange-600" x-text="'#' + ing.autorizacion_sst_id"></p>
+                                            <td class="px-3 py-3">
+                                                <p class="text-sm" x-text="item.empresa"></p>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <p class="text-sm" x-text="ing.sede?.nombre || 'N/A'"></p>
+                                            <td class="px-3 py-3">
+                                                <p class="text-sm text-gray-600" x-text="item.sede"></p>
                                             </td>
-                                            <td class="px-4 py-3">
-                                                <p class="text-sm font-mono" x-text="new Date(ing.timestamp_evento).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })"></p>
+                                            <td class="px-3 py-3">
+                                                <p class="text-sm font-mono" x-text="item.hora"></p>
+                                            </td>
+                                            <td class="px-3 py-3">
+                                                <button @click="marcarSalidaUnificada(item)"
+                                                    class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition">
+                                                    <i class="fas fa-sign-out-alt mr-1"></i>Salida
+                                                </button>
                                             </td>
                                         </tr>
                                     </template>
                                 </tbody>
                             </table>
-                            
-                            <!-- Empty state -->
-                            <div x-show="ingresosActivos.length === 0" class="text-center py-12">
-                                <i class="fas fa-inbox text-gray-400 text-6xl mb-4"></i>
-                                <p class="text-gray-500 text-lg">No hay personal de contratistas en las instalaciones</p>
+
+                            <div x-show="monitoreoData.length === 0" class="text-center py-12">
+                                <i class="fas fa-inbox text-gray-400 text-5xl mb-4"></i>
+                                <p class="text-gray-500">No hay personal en las instalaciones</p>
                             </div>
                         </div>
-                        
-                        <!-- Formulario Registro Salida -->
-                        <div x-show="ingresosActivos.length > 0" class="mt-6 border-t pt-6">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4">
-                                <i class="fas fa-door-open mr-2 text-red-600"></i>
-                                Registrar Salida
-                            </h3>
-                            
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones de salida (opcional)</label>
+
+                        <!-- Salida masiva contratistas/mercaderistas -->
+                        <div x-show="ingresosActivos.length > 0" class="mt-6 border-t pt-4">
+                            <p class="text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-door-open mr-1 text-red-600"></i>Salida masiva contratistas/mercaderistas</p>
+                            <div class="flex gap-3 items-start">
                                 <textarea x-model="observacionesSalida"
                                     @input="observacionesSalida = $event.target.value.toUpperCase()"
-                                    rows="2" class="w-full px-4 py-2 border rounded-lg uppercase" placeholder="Ingrese observaciones sobre la salida si es necesario..."></textarea>
-                            </div>
-                            
-                            <div class="flex justify-end">
-                                <button @click="registrarSalidas()" class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-bold text-lg">
-                                    <i class="fas fa-door-open mr-2"></i>Registrar Salida de Seleccionados
-                                </button>
+                                    rows="2" class="flex-1 px-3 py-2 border rounded-lg text-sm uppercase" placeholder="Observaciones (opcional)..."></textarea>
+                                <div class="flex flex-col gap-2">
+                                    <button @click="toggleSeleccionarTodos()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm transition">
+                                        Sel. todos
+                                    </button>
+                                    <button @click="registrarSalidas()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition font-semibold">
+                                        <i class="fas fa-door-open mr-1"></i>Registrar Salidas
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </main>
         </div>
@@ -287,6 +323,9 @@
             
             // Datos maestros
             ingresosActivos: [],
+            visitantesActivos: [],
+            monitoreoData: [],
+            filtroMonitoreo: '',
             sedes: [],
             observacionesSalida: '',
 
@@ -294,10 +333,10 @@
                 sessionManager.init();
                 await this.verificarAuth();
                 await this.cargarSedes();
-                await this.cargarIngresosActivos();
+                await this.cargarMonitoreo();
                 
                 // Auto-refresh cada 60 segundos
-                setInterval(() => this.cargarIngresosActivos(), 60000);
+                setInterval(() => this.cargarMonitoreo(), 60000);
             },
 
             async verificarAuth() {
@@ -329,6 +368,69 @@
                     }
                 } catch(e) {
                     console.error('Error cargando ingresos activos:', e);
+                }
+            },
+
+            async cargarMonitoreo() {
+                try {
+                    const [respContratistas, respVisitantes] = await Promise.all([
+                        apiClient.sst.ingresosActivos(),
+                        apiClient.visitantes.listar({ estado: 'EN_INSTALACIONES' })
+                    ]);
+
+                    if (respContratistas.success) {
+                        this.ingresosActivos = (respContratistas.data || []).map(ing => ({ ...ing, seleccionado: false }));
+                    }
+
+                    const visitantesList = respVisitantes.visitas || [];
+                    this.visitantesActivos = visitantesList;
+
+                    // Construir lista unificada
+                    const contratistas = this.ingresosActivos.map(ing => ({
+                        _key: 'c-' + ing.id,
+                        _tipo: 'CONTRATISTA',
+                        tipo: ing.empresa?.tipo_tercero === 'MERCADERISTA' ? 'MERCADERISTA' : 'CONTRATISTA',
+                        nombre: ing.empleado?.nombre_completo || 'N/A',
+                        tipo_doc: ing.empleado?.tipo_id || '',
+                        num_doc: ing.empleado?.num_id || '',
+                        empresa: ing.empresa?.nombre || 'N/A',
+                        sede: ing.sede?.nombre || 'N/A',
+                        hora: new Date(ing.timestamp_evento).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+                        _ts: ing.timestamp_evento,
+                        _ingresoId: ing.id
+                    }));
+
+                    const visitantes = visitantesList.map(v => ({
+                        _key: 'v-' + v.id,
+                        _tipo: 'VISITANTE',
+                        tipo: 'VISITANTE',
+                        nombre: v.nombre_completo || 'N/A',
+                        tipo_doc: v.tipo_identificacion || '',
+                        num_doc: v.num_identificacion || '',
+                        empresa: v.empresa || v.descripcion_dependencia || '-',
+                        sede: v.sede || v.codigo_sede || 'N/A',
+                        hora: v.hora_ingreso || '-',
+                        _ts: v.fecha_registro || '',
+                        _visitaId: v.id
+                    }));
+
+                    this.monitoreoData = [...contratistas, ...visitantes].sort((a, b) => b._ts > a._ts ? 1 : -1);
+                } catch(e) {
+                    console.error('Error cargando monitoreo:', e);
+                }
+            },
+
+            async marcarSalidaUnificada(item) {
+                if (!confirm(`¿Registrar salida de ${item.nombre}?`)) return;
+                try {
+                    if (item._visitaId) {
+                        await apiClient.visitantes.registrarSalida(item._visitaId);
+                    } else if (item._ingresoId) {
+                        await apiClient.sst.registrarSalida(item._ingresoId, { observaciones: '' });
+                    }
+                    await this.cargarMonitoreo();
+                } catch(e) {
+                    alert('Error al registrar salida: ' + e.message);
                 }
             },
             
@@ -441,8 +543,8 @@
                             observaciones: ''
                         };
                         
-                        // Recargar lista de ingresos activos
-                        await this.cargarIngresosActivos();
+                        // Recargar monitoreo unificado
+                        await this.cargarMonitoreo();
                     }
                 } catch(e) {
                     alert('Error al registrar ingreso: ' + e.message);
@@ -484,7 +586,7 @@
                 }
                 
                 this.observacionesSalida = '';
-                await this.cargarIngresosActivos();
+                await this.cargarMonitoreo();
             },
             
             toggleSeleccionarTodos() {

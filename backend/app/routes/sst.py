@@ -2091,6 +2091,7 @@ def listar_empleados_activos():
             item['empresa'] = {
                 'id': empresa.id,
                 'nombre': empresa.razon_social if empresa.tipo_persona == 'JURIDICA' else empresa.nombre_completo_persona_natural,
+                'tipo_tercero': empresa.tipo_tercero or 'CONTRATISTA',
             } if empresa else None
             
             item['sede'] = {
