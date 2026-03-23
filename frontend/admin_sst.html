@@ -883,6 +883,25 @@
                             </div>
                         </div>
 
+                        <!-- Fila: vigencia inicio + vigencia fin -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia Desde *</label>
+                                <input type="date" x-model="formAutorizacion.fecha_inicio"
+                                    class="w-full px-3 py-2 border rounded-lg text-sm"
+                                    :class="!formAutorizacion.fecha_inicio ? 'border-red-300' : ''">
+                                <p x-show="!formAutorizacion.fecha_inicio" class="text-xs text-red-500 mt-1">Requerido</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Vigencia Hasta *</label>
+                                <input type="date" x-model="formAutorizacion.fecha_fin"
+                                    :min="formAutorizacion.fecha_inicio"
+                                    class="w-full px-3 py-2 border rounded-lg text-sm"
+                                    :class="!formAutorizacion.fecha_fin ? 'border-red-300' : ''">
+                                <p x-show="!formAutorizacion.fecha_fin" class="text-xs text-red-500 mt-1">Requerido</p>
+                            </div>
+                        </div>
+
                         <!-- Tipo persona + búsqueda empresa -->
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-2">Tipo de Persona *</label>
@@ -1306,13 +1325,14 @@
                             <div class="flex flex-col items-end">
                                 <button
                                     @click="mostrarConfirmacionGuardar()"
-                                    :disabled="!formAutorizacion.empresa_id || !formAutorizacion.sede_id || !(formAutorizacion.labor && formAutorizacion.labor.trim().length >= 5) || autGuardando"
+                                    :disabled="!formAutorizacion.empresa_id || !formAutorizacion.sede_id || !formAutorizacion.fecha_inicio || !formAutorizacion.fecha_fin || !(formAutorizacion.labor && formAutorizacion.labor.trim().length >= 5) || autGuardando"
                                     class="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white rounded-lg text-sm flex items-center">
                                     <i class="fas fa-eye mr-2"></i>Revisar y Guardar
                                 </button>
                                 <div class="text-xs text-red-500 mt-1 space-y-0.5">
                                     <p x-show="!formAutorizacion.empresa_id"><i class="fas fa-exclamation-circle mr-1"></i>Ingrese y busque el contratista</p>
                                     <p x-show="formAutorizacion.empresa_id && !formAutorizacion.sede_id"><i class="fas fa-exclamation-circle mr-1"></i>Seleccione la sede</p>
+                                    <p x-show="formAutorizacion.empresa_id && (!formAutorizacion.fecha_inicio || !formAutorizacion.fecha_fin)"><i class="fas fa-exclamation-circle mr-1"></i>Ingrese las fechas de vigencia</p>
                                     <p x-show="formAutorizacion.empresa_id && !(formAutorizacion.labor && formAutorizacion.labor.trim().length >= 5)"><i class="fas fa-exclamation-circle mr-1"></i>Ingrese la descripción de la labor</p>
                                 </div>
                             </div>
